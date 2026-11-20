@@ -6,14 +6,14 @@ import { createKillerMove, discoveredKillerPatterns, forgetKillerMove, recordGuU
 import { battleAct, startBattle } from '../core/combat.js';
 import { applyEventChoice, checkStoryTriggers } from '../core/story-engine.js';
 import { advanceMinutes, moveToPlace, rewindSpringCicada, saveSpringSnapshot } from '../core/clock.js';
-import { createRefineSession, isRecipeSold, stepRefineSession } from '../core/refine.js';
+import { availableRecipeDiscovery, createRefineSession, isRecipeSold, knowsRefineRecipe, stepRefineSession } from '../core/refine.js';
 import { createBreakSession, realmGrowthText, realmGuRequirement, stepBreakSession, washMinorWall } from '../core/breakthrough.js';
 import { renderBreakModal, renderCustomKillerModal, renderEventModal, renderRefineModal, renderStartScreen } from './rituals.js';
 import { renderBattleView } from './battle-view.js';
 import { renderPlaceView } from './place-view.js';
 import { renderMapPanel } from './map-view.js';
 import { renderApertureView } from './aperture-view.js';
-import { renderRefineView } from './refine-view.js';
+import { renderRefineDetails, renderRefineView } from './refine-view.js';
 import { renderBagView, renderDeveloperView } from './bag-view.js';
 
 let G = null;
@@ -47,7 +47,7 @@ function closeModal() {
 
 function restoreRefining() {
   if (!G?.refining) return;
-  if (!Array.isArray(G.refining.pending)) {
+  if (!Array.isArray(G.refining.pending) || !REFINE_RECIPES.some(({ id }) => id === G.refining.recipeId)) {
     delete G.refining;
     addLog(G, '【停炉】炼蛊流程已更新，旧炉次已结束。');
     saveGame(G);
@@ -121,6 +121,7 @@ function renderModal() {
     html = renderRefineModal(MODAL.data, MODAL.effect);
     delete MODAL.effect;
   }
+  else if (MODAL.kind === 'refineInfo') html = renderRefineDetails(G, MODAL.data.recipe, MODAL.data.reason);
   else if (MODAL.kind === 'killer') html = renderCustomKillerModal(G);
   else if (MODAL.kind === 'developer') html = renderDeveloperView(G);
   else if (MODAL.kind === 'dead') {
@@ -246,6 +247,14 @@ function handlePlaceAction(id) {
     recordQuestProgress(G, 'gather', G.location);
     const message = `采集完成，获得「${ITEMS[got].name}」×2`;
     addLog(G, `${message}。`, 'log-good');
+    showToast(message);
+  } else if (id === 'discoverRecipe') {
+    const discovery = availableRecipeDiscovery(G);
+    if (!discovery) return;
+    (p.recipes ??= []).push(discovery.id);
+    const recipe = REFINE_RECIPES.find(({ id }) => id === discovery.id);
+    const message = `习得「${recipeOutputText(recipe)}」蛊方`;
+    addLog(G, `【蛊方】${message}。`, 'log-gold');
     showToast(message);
   } else if (id === 'huajiuLoot') {
     if (G.flags['looted:huajiu']) { showToast('遗洞宝藏已被你取空'); return; }
@@ -436,8 +445,10 @@ function handleAction(el) {
     render();
   } else if (act === 'startRefine') {
     if (G.refining || G.battle || G.player.dead) return;
+    const recipe = REFINE_RECIPES.find((entry) => entry.id === id);
+    if (!recipe || !knowsRefineRecipe(G, recipe)) return;
     const sess = createRefineSession(G, id);
-    if (sess.error) { showToast(sess.error); return; }
+    if (sess.error) { openModal('refineInfo', { recipe, reason: sess.error }); return; }
     G.refining = sess;
     openModal('refine', sess);
   } else if (act === 'refineAct' && MODAL?.kind === 'refine') {

@@ -1,6 +1,6 @@
 import { GU_DEFS, ITEMS, REFINE_RECIPES, recipeIngredientsText, recipeOutputText } from '../data/gu.js';
 import { isNight } from './calendar.js';
-import { addGu, addItem, addLog, hasGu, removeGuByUid, useItem } from './state.js';
+import { addGu, addItem, addLog, removeGuByUid, useItem } from './state.js';
 
 const REFINE_REALMS = [
   [0, '普通', 0], [3, '大师', .10], [12, '宗师', .20],
@@ -17,17 +17,22 @@ const RECIPE_SOURCES = {
   r_yupi: 'looted:huajiu',
   r_baishi: 'looted:huajiu',
   r_baiyu: 'looted:huajiu',
-  r_chunqiuchan: 'looted:huajiu',
   r_shengjiye: 'event_done:jiuyecao_inheritance',
   r_jiuyecao: 'event_done:jiuyecao_inheritance',
-  r_qingtong_sheli: 'nianmo_done',
-  r_chitie_sheli: 'clear:langchao',
-  r_dianlang_gu: 'clear:langchao',
-  r_xuefu_gu: 'clear:xuefu'
 };
 
+const RECIPE_DISCOVERIES = [
+  { id: 'r_xuefu_gu', place: 'xuefu', flag: 'clear:xuefu', action: '查探洞壁上的血道残卷' },
+  { id: 'r_dianlang_gu', place: 'jiazhuge', flag: 'clear:langchao', action: '查阅族中驭雷手卷' }
+];
+
 export function isRecipeSold(recipe) {
-  return !Object.hasOwn(RECIPE_SOURCES, recipe.id);
+  return !Object.hasOwn(RECIPE_SOURCES, recipe.id) && !RECIPE_DISCOVERIES.some(({ id }) => id === recipe.id);
+}
+
+export function availableRecipeDiscovery(gs) {
+  return RECIPE_DISCOVERIES.find(({ id, place, flag }) =>
+    gs.location === place && gs.flags[flag] && !gs.player.recipes?.includes(id));
 }
 
 export function knowsRefineRecipe(gs, recipe) {
@@ -45,8 +50,6 @@ export function canStartRefine(gs, recipeId) {
   const rc = REFINE_RECIPES.find((r) => r.id === recipeId);
   if (!rc) return { ok: false, reason: '未知蛊方' };
   if (!knowsRefineRecipe(gs, rc)) return { ok: false, reason: '尚未习得此蛊方' };
-  if (rc.minRank && gs.player.rank < rc.minRank) return { ok: false, reason: `须晋入 ${rc.minRank} 转` };
-  if (rc.unique && hasGu(gs, rc.out)) return { ok: false, reason: '已持有此蛊' };
   if (gs.player.yuanshi < rc.cost) return { ok: false, reason: `元石不足（需 ${rc.cost}）` };
   const guUids = [];
   for (const [id, count] of Object.entries(rc.gu)) {

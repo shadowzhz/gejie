@@ -3,13 +3,15 @@ import { MERCHANT_GU, PLACES, placeShopEntries } from '../data/places.js';
 import { formatDateTime, isNight } from '../core/calendar.js';
 import { esc, questBoard, SHOP_BATCH_LIMIT } from '../core/state.js';
 import { evalCond } from '../core/story-engine.js';
-import { isRecipeSold } from '../core/refine.js';
+import { availableRecipeDiscovery, isRecipeSold } from '../core/refine.js';
 import { STORY_EVENTS } from '../data/story.js';
 
 export function renderPlaceView(gs) {
   const place = PLACES[gs.location] || PLACES.zhulou;
   const night = isNight(gs.minutes);
   const actions = [];
+  const discovery = availableRecipeDiscovery(gs);
+  if (discovery) actions.push(`<button class="gold" data-action="placeAct" data-id="discoverRecipe">${esc(discovery.action)}</button>`);
 
   if (place.services.includes('cultivate')) {
     actions.push('<button class="primary" data-action="placeAct" data-id="meditate">打坐吐纳 · 1 时辰</button>');

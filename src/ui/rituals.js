@@ -2,6 +2,7 @@ import { STORY_EVENTS } from '../data/story.js';
 import { discoveredKillerPatterns, killerCraftBlock, killerPatternSequence } from '../core/killer.js';
 import { OVERLOAD_PRESSURE, refineChance, refineReady, refineTechniques } from '../core/refine.js';
 import { esc } from '../core/state.js';
+import { renderRefineRequirements } from './refine-view.js';
 
 export function renderStartScreen(startState) {
   if (startState.phase === 'kaiqiao') {
@@ -122,9 +123,9 @@ function renderRefineFurnace(sess, effect) {
 export function renderRefineModal(sess, effect) {
   const scene = `<h2 id="refine-title">${esc(sess.method)} · ${esc(sess.outName)}</h2>${renderRefineFurnace(sess, effect)}`;
   if (sess.state === 'ready') return `${scene}
-    <div class="muted">${esc(sess.materials)}</div>
+    ${renderRefineRequirements(sess.materials, sess.cost, sess.baseRate, sess.realmBonus ?? 0)}
     <div class="row">
-      <button class="primary" data-action="refineAct" data-id="ignite">开炉 · ${sess.cost} 元石</button>
+      <button class="primary" data-action="refineAct" data-id="ignite">开炉</button>
       <button class="ghost" data-action="closeModal">取消</button>
     </div>`;
   if (sess.state !== 'ongoing') return `${scene}

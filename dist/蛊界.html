@@ -755,9 +755,6 @@ const REFINE_RECIPES = [
   { id: 'r_nianxi', flow: 'moon', price: 8, out: 'nianxi', source: '原创', gu: {}, materials: {yuanshi_zha: 3}, rate: 0.72, cost: 14 },
   { id: 'r_yinshi', flow: 'armor', price: 8, out: 'yinshi', source: '原创', gu: {}, materials: {kuangshi: 2, yuanshi_zha: 2}, rate: 0.66, cost: 14 },
   { id: 'r_xuanfeng', flow: 'moon', price: 8, out: 'xuanfeng', source: '原创', gu: {}, materials: {yuelanhua: 4, yuanshi_zha: 2}, rate: 0.67, cost: 14 },
-  { id: 'r_qingtong_sheli', flow: 'armor', price: 16, out: 'qingtong_sheli', source: '原创', gu: {}, materials: {kuangshi: 5, yuanshi_zha: 3}, rate: 0.58, cost: 28 },
-  { id: 'r_chitie_sheli', flow: 'armor', price: 24, out: 'chitie_sheli', source: '原创', gu: {qingtong_sheli: 1}, materials: {kuangshi: 6, yuanshi_zha: 4}, rate: 0.49, cost: 42 },
-  { id: 'r_chunqiuchan', flow: 'reverse', price: 24, out: 'chunqiuchan', source: '原创', minRank: 3, unique: true, gu: {}, materials: {guangyin_water: 3, yuanshi_zha: 8}, rate: 0.36, cost: 42 },
   { id: 'r_fanran', flow: 'wine', price: 8, out: 'fanran', source: '原创', gu: {}, materials: {qingzhujiu: 2, yuanshi_zha: 2}, rate: 0.74, cost: 14 },
   { id: 'r_langzi', flow: 'wine', price: 16, out: 'langzi', source: '原创', gu: {}, materials: {qingzhujiu: 4, kujiu: 2, yuanshi_zha: 2}, rate: 0.61, cost: 28 },
   { id: 'r_jiuchong_fanran', flow: 'reverse', price: 8, out: 'jiuchong', method: '逆炼', gu: { siwei_jiu: 1 }, materials: { fanran: 1 }, rate: 0.70, cost: 12 },
@@ -1946,16 +1943,20 @@ const RECIPE_SOURCES = {
   r_yupi: 'looted:huajiu',
   r_baishi: 'looted:huajiu',
   r_baiyu: 'looted:huajiu',
-  r_chunqiuchan: 'looted:huajiu',
   r_shengjiye: 'event_done:jiuyecao_inheritance',
   r_jiuyecao: 'event_done:jiuyecao_inheritance',
-  r_qingtong_sheli: 'nianmo_done',
-  r_chitie_sheli: 'clear:langchao',
-  r_dianlang_gu: 'clear:langchao',
-  r_xuefu_gu: 'clear:xuefu'
 };
+
+const RECIPE_DISCOVERIES = [
+  { id: 'r_xuefu_gu', place: 'xuefu', flag: 'clear:xuefu', action: '查探洞壁上的血道残卷' },
+  { id: 'r_dianlang_gu', place: 'jiazhuge', flag: 'clear:langchao', action: '查阅族中驭雷手卷' }
+];
 function isRecipeSold(recipe) {
-  return !Object.hasOwn(RECIPE_SOURCES, recipe.id);
+  return !Object.hasOwn(RECIPE_SOURCES, recipe.id) && !RECIPE_DISCOVERIES.some(({ id }) => id === recipe.id);
+}
+function availableRecipeDiscovery(gs) {
+  return RECIPE_DISCOVERIES.find(({ id, place, flag }) =>
+    gs.location === place && gs.flags[flag] && !gs.player.recipes?.includes(id));
 }
 function knowsRefineRecipe(gs, recipe) {
   return gs.player.recipes?.includes(recipe.id) || Boolean(gs.flags[RECIPE_SOURCES[recipe.id]]);
@@ -1970,8 +1971,6 @@ function canStartRefine(gs, recipeId) {
   const rc = REFINE_RECIPES.find((r) => r.id === recipeId);
   if (!rc) return { ok: false, reason: '未知蛊方' };
   if (!knowsRefineRecipe(gs, rc)) return { ok: false, reason: '尚未习得此蛊方' };
-  if (rc.minRank && gs.player.rank < rc.minRank) return { ok: false, reason: `须晋入 ${rc.minRank} 转` };
-  if (rc.unique && hasGu(gs, rc.out)) return { ok: false, reason: '已持有此蛊' };
   if (gs.player.yuanshi < rc.cost) return { ok: false, reason: `元石不足（需 ${rc.cost}）` };
   const guUids = [];
   for (const [id, count] of Object.entries(rc.gu)) {
@@ -2472,9 +2471,9 @@ function renderRefineFurnace(sess, effect) {
 function renderRefineModal(sess, effect) {
   const scene = `<h2 id="refine-title">${esc(sess.method)} · ${esc(sess.outName)}</h2>${renderRefineFurnace(sess, effect)}`;
   if (sess.state === 'ready') return `${scene}
-    <div class="muted">${esc(sess.materials)}</div>
+    ${renderRefineRequirements(sess.materials, sess.cost, sess.baseRate, sess.realmBonus ?? 0)}
     <div class="row">
-      <button class="primary" data-action="refineAct" data-id="ignite">开炉 · ${sess.cost} 元石</button>
+      <button class="primary" data-action="refineAct" data-id="ignite">开炉</button>
       <button class="ghost" data-action="closeModal">取消</button>
     </div>`;
   if (sess.state !== 'ongoing') return `${scene}
@@ -2647,6 +2646,8 @@ function renderPlaceView(gs) {
   const place = PLACES[gs.location] || PLACES.zhulou;
   const night = isNight(gs.minutes);
   const actions = [];
+  const discovery = availableRecipeDiscovery(gs);
+  if (discovery) actions.push(`<button class="gold" data-action="placeAct" data-id="discoverRecipe">${esc(discovery.action)}</button>`);
 
   if (place.services.includes('cultivate')) {
     actions.push('<button class="primary" data-action="placeAct" data-id="meditate">打坐吐纳 · 1 时辰</button>');
@@ -2823,15 +2824,10 @@ function renderApertureView(gs) {
 function renderRefineView(gs) {
   const realm = refineRealm(gs.player);
   const cards = REFINE_RECIPES.filter((r) => knowsRefineRecipe(gs, r)).map((r) => {
-    const chk = canStartRefine(gs, r.id);
     const out = GU_DEFS[r.out] || ITEMS[r.out];
     return `<div class="card">
       <div class="kv"><b>${esc(recipeOutputText(r))}</b><span class="badge">${out.rank ? `${out.rank}转 · ` : ''}${r.method ?? '合炼'}</span></div>
-      <div class="muted">${esc(recipeIngredientsText(r))} · 费用 ${r.cost} 元石 · 稳炉成算 ${Math.round(refineSuccessRate(r.rate, realm.bonus, true) * 100)}%</div>
-      <div class="muted" style="margin-bottom:8px">${esc(out.desc)}${guEffectText(out) ? `<br>${esc(guEffectText(out))}` : ''}</div>
-      <button class="primary" ${!chk.ok ? 'disabled' : ''} data-action="startRefine" data-id="${r.id}">
-        ${chk.ok ? '查看炉方' : esc(chk.reason)}
-      </button>
+      <button class="sm" data-action="startRefine" data-id="${r.id}">查看蛊方</button>
     </div>`;
   }).join('');
 
@@ -2839,9 +2835,18 @@ function renderRefineView(gs) {
       <h3>炼蛊</h3>
       <div>炼道 · ${realm.name}</div>
       <div class="muted">炼道心得 ${realm.insight}${realm.next ? ` / ${realm.next}` : ''}</div>
-      <div class="muted">${cards ? "看准时机逐份投料，再调火候、收炉成蛊。" : "尚未习得蛊方。蛊铺出售常见蛊方，传承蛊方随剧情或历练习得。"}</div>
+      ${cards ? '' : '<div class="muted">尚未习得蛊方。</div>'}
     </div>
     <div class="grid2">${cards}</div>`;
+}
+function renderRefineRequirements(materials, cost, rate, bonus) {
+  return `<div class="muted">${esc(materials)}<br>开炉 ${cost} 元石 · 稳炉成算 ${Math.round(refineSuccessRate(rate, bonus, true) * 100)}%</div>`;
+}
+function renderRefineDetails(gs, recipe, reason) {
+  return `<h2>${esc(recipeOutputText(recipe))}</h2>
+    ${renderRefineRequirements(recipeIngredientsText(recipe), recipe.cost, recipe.rate, refineRealm(gs.player).bonus)}
+    <div>${esc(reason)}</div>
+    <button data-action="closeModal">返回炼蛊</button>`;
 }
 
 
@@ -2973,7 +2978,7 @@ function closeModal() {
 
 function restoreRefining() {
   if (!G?.refining) return;
-  if (!Array.isArray(G.refining.pending)) {
+  if (!Array.isArray(G.refining.pending) || !REFINE_RECIPES.some(({ id }) => id === G.refining.recipeId)) {
     delete G.refining;
     addLog(G, '【停炉】炼蛊流程已更新，旧炉次已结束。');
     saveGame(G);
@@ -3047,6 +3052,7 @@ function renderModal() {
     html = renderRefineModal(MODAL.data, MODAL.effect);
     delete MODAL.effect;
   }
+  else if (MODAL.kind === 'refineInfo') html = renderRefineDetails(G, MODAL.data.recipe, MODAL.data.reason);
   else if (MODAL.kind === 'killer') html = renderCustomKillerModal(G);
   else if (MODAL.kind === 'developer') html = renderDeveloperView(G);
   else if (MODAL.kind === 'dead') {
@@ -3171,6 +3177,14 @@ function handlePlaceAction(id) {
     recordQuestProgress(G, 'gather', G.location);
     const message = `采集完成，获得「${ITEMS[got].name}」×2`;
     addLog(G, `${message}。`, 'log-good');
+    showToast(message);
+  } else if (id === 'discoverRecipe') {
+    const discovery = availableRecipeDiscovery(G);
+    if (!discovery) return;
+    (p.recipes ??= []).push(discovery.id);
+    const recipe = REFINE_RECIPES.find(({ id }) => id === discovery.id);
+    const message = `习得「${recipeOutputText(recipe)}」蛊方`;
+    addLog(G, `【蛊方】${message}。`, 'log-gold');
     showToast(message);
   } else if (id === 'huajiuLoot') {
     if (G.flags['looted:huajiu']) { showToast('遗洞宝藏已被你取空'); return; }
@@ -3361,8 +3375,10 @@ function handleAction(el) {
     render();
   } else if (act === 'startRefine') {
     if (G.refining || G.battle || G.player.dead) return;
+    const recipe = REFINE_RECIPES.find((entry) => entry.id === id);
+    if (!recipe || !knowsRefineRecipe(G, recipe)) return;
     const sess = createRefineSession(G, id);
-    if (sess.error) { showToast(sess.error); return; }
+    if (sess.error) { openModal('refineInfo', { recipe, reason: sess.error }); return; }
     G.refining = sess;
     openModal('refine', sess);
   } else if (act === 'refineAct' && MODAL?.kind === 'refine') {

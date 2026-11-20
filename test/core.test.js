@@ -8,7 +8,7 @@ import { applyEventChoice, checkStoryTriggers } from '../src/core/story-engine.j
 import { createKillerMove, forgetKillerMove } from '../src/core/killer.js';
 import { battleAct, battleGuPlan, startBattle } from '../src/core/combat.js';
 import { createBreakSession, stepBreakSession, washMinorWall } from '../src/core/breakthrough.js';
-import { canStartRefine, createRefineSession, isRecipeSold, knowsRefineRecipe, refineChance, refineReady, refineRealm, refineTechniques, stepRefineSession } from '../src/core/refine.js';
+import { availableRecipeDiscovery, canStartRefine, createRefineSession, isRecipeSold, knowsRefineRecipe, refineChance, refineReady, refineRealm, refineTechniques, stepRefineSession } from '../src/core/refine.js';
 import { renderCustomKillerModal } from '../src/ui/rituals.js';
 import { renderPlaceView } from '../src/ui/place-view.js';
 import { GU_DEFS, ITEMS, REFINE_RECIPES } from '../src/data/gu.js';
@@ -463,6 +463,22 @@ test('蛊铺隐藏传承蛊方，剧情解锁后可用于炼蛊', () => {
   assert.doesNotMatch(canStartRefine(gs, moon.id).reason ?? '', /尚未习得/);
 });
 
+test('电狼蛊与血蝠蛊的掉落及蛊方发现相互独立', () => {
+  for (const [gu, place, flag] of [['dianlang_gu', 'jiazhuge', 'clear:langchao'], ['xuefu_gu', 'xuefu', 'clear:xuefu']]) {
+    const gs = createNewGame();
+    const recipe = REFINE_RECIPES.find(({ out }) => out === gu);
+    gs.location = place;
+    addGu(gs, gu);
+    assert.equal(availableRecipeDiscovery(gs), undefined);
+    gs.flags[flag] = true;
+    assert.equal(availableRecipeDiscovery(gs)?.id, recipe.id);
+    assert.equal(knowsRefineRecipe(gs, recipe), false);
+    gs.player.recipes.push(recipe.id);
+    assert.equal(availableRecipeDiscovery(gs), undefined);
+    assert.equal(knowsRefineRecipe(gs, recipe), true);
+  }
+});
+
 test('四味酒虫缺任何一种酒都不能开炉，酒在投入时逐份扣除', () => {
   const gs = createNewGame();
   gs.player.yuanshi = 100;
@@ -540,7 +556,7 @@ test('通用炼炉可踩点鼓风，偏拍后可掀盖降温并合盖', () => {
   assert.equal(ref.success, true);
 });
 
-test('炼道心得晋级后提高强行收炉成算，食物和蛊方覆盖全部活蛊', () => {
+test('炼道晋级提高成算，仙蛊与舍利蛊没有本篇蛊方', () => {
   const gs = createNewGame();
   gs.player.yuanshi = 100;
   gs.player.recipes.push('r_yuehen');
@@ -559,7 +575,7 @@ test('炼道心得晋级后提高强行收炉成算，食物和蛊方覆盖全�
   assert.ok(refineChance({ ...first, realmBonus: refineRealm(gs.player).bonus }) > chance);
   for (const { id, food } of Object.values(GU_DEFS)) {
     assert.ok(ITEMS[food], id);
-    assert.ok(REFINE_RECIPES.some(({ out }) => out === id), id);
+    assert.equal(REFINE_RECIPES.some(({ out }) => out === id), !['chunqiuchan', 'qingtong_sheli', 'chitie_sheli'].includes(id), id);
   }
 });
 
