@@ -33,19 +33,24 @@ test('豕蛊加伤只作用于拳脚和力道攻伐', () => {
   assert.equal(damage('move', strength.id), Math.round((strength.power + 9) * 1.01));
 });
 
-test('古月蛊开课后供应，商队酒虫限期出售且只卖一只', () => {
+test('古月蛊开课后供应，商队酒虫与黑豕蛊限期分别出售一只', () => {
   const gs = createNewGame();
   gs.location = 'gupu';
-  assert.deepEqual(placeShopEntries(gs), ['gu:shipi', 'gu:xuanfeng', 'item:shengjiye']);
+  assert.deepEqual(placeShopEntries(gs), ['gu:shipi', 'gu:xuanfeng', 'item:shengjiye', 'gu:shoupi', 'gu:qingsi', 'item:fanran', 'item:langzi']);
   gs.flags.kaike = true;
   assert.ok(placeShopEntries(gs).includes('gu:yueguang'));
   assert.ok(placeShopEntries(gs).includes('gu:xiaoguang'));
+  assert.ok(placeShopEntries(gs).includes('gu:henshi'));
   gs.minutes = makeTime(2, 3, 1) - 1;
   assert.ok(!placeShopEntries(gs).includes('gu:jiuchong'));
   gs.minutes++;
   assert.ok(placeShopEntries(gs).includes('gu:jiuchong'));
+  assert.ok(placeShopEntries(gs).includes('gu:heishi'));
   gs.flags.merchant_jiuchong_bought = true;
   assert.ok(!placeShopEntries(gs).includes('gu:jiuchong'));
+  assert.ok(placeShopEntries(gs).includes('gu:heishi'));
+  gs.flags.merchant_heishi_bought = true;
+  assert.ok(!placeShopEntries(gs).includes('gu:heishi'));
   gs.flags.merchant_jiuchong_bought = false;
   gs.minutes = makeTime(2, 3, 9);
   assert.ok(!placeShopEntries(gs).includes('gu:jiuchong'));
@@ -246,6 +251,45 @@ test('月光蛊能升炼成月旋蛊或月霓裳，本命蛊成功升炼后保�
     assert.equal(ref.success, true);
     assert.equal(gs.player.gu.find((gu) => gu.uid === gs.player.benming)?.id, out);
     assert.ok(!gs.player.gu.some((gu) => gu.id === aux || gu.id === 'yueguang'));
+  }
+});
+
+test('月痕蛊和黑鬃蛊按蛊方消耗对应的一转蛊虫', () => {
+  for (const [recipe, main, aux, result] of [
+    ['r_yuehen', 'yueguang', 'henshi', 'yuehen'],
+    ['r_heizong', 'heishi', 'qingsi', 'heizong']
+  ]) {
+    const gs = createNewGame();
+    gs.player.yuanshi = 100;
+    gs.player.recipes.push(recipe);
+    addGu(gs, main);
+    assert.match(createRefineSession(gs, recipe).error, /需要 1 只/);
+    assert.equal(gs.player.yuanshi, 100);
+    addGu(gs, aux);
+    const ref = createRefineSession(gs, recipe);
+    for (let i = 0; i < 3; i++) stepRefineSession(gs, ref, 'steady', () => 0.2);
+    assert.equal(ref.success, true);
+    assert.deepEqual(gs.player.gu.map((gu) => gu.id), [result]);
+  }
+});
+
+test('幡然蛊和浪子蛊分别将四味酒虫逆炼成一只和两只酒虫', () => {
+  for (const [id, expected] of [['fanran', 1], ['langzi', 2]]) {
+    const gs = createNewGame();
+    gs.player.yuanshi = 100;
+    const recipe = `r_jiuchong_${id}`;
+    gs.player.recipes.push(recipe);
+    gs.player.benming = addGu(gs, 'siwei_jiu').uid;
+    assert.match(createRefineSession(gs, recipe).error, /缺少/);
+    assert.equal(gs.player.yuanshi, 100);
+    gs.player.items[id] = 1;
+    const ref = createRefineSession(gs, recipe);
+    assert.equal(gs.player.items[id], undefined);
+    for (let i = 0; i < 3; i++) stepRefineSession(gs, ref, 'steady', () => 0.2);
+    assert.equal(ref.success, true);
+    assert.equal(gs.player.gu.length, expected);
+    assert.ok(gs.player.gu.every((gu) => gu.id === 'jiuchong'));
+    assert.equal(gs.player.benming, gs.player.gu[0].uid);
   }
 });
 

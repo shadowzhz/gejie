@@ -63,7 +63,7 @@ export const PLACES = {
     links: { shijie: 30 },
     day: '掌柜将蛊虫与蛊方分开陈列。贾家商队次年三月初到寨，停留八日。',
     night: '柜台上点着一盏油灯，掌柜仍在照看蛊虫。',
-    shop: ['gu:shipi', 'gu:xuanfeng', 'item:shengjiye'],
+    shop: ['gu:shipi', 'gu:xuanfeng', 'item:shengjiye', 'gu:shoupi', 'gu:qingsi', 'item:fanran', 'item:langzi'],
     services: ['shop', 'recipes']
   },
   renwutang: {
@@ -128,12 +128,17 @@ export const PLACES = {
     services: ['huajiu_explore']
   }
 };
+export const MERCHANT_GU = ['jiuchong', 'heishi'];
+
 export function placeShopEntries(gs) {
   const shop = PLACES[gs.location]?.shop ?? [];
   if (gs.location !== 'gupu') return shop;
   const entries = [...shop];
-  if (gs.flags.kaike) entries.push('gu:yueguang', 'gu:xiaoguang');
-  if (gs.minutes >= makeTime(2, 3, 1) && gs.minutes < makeTime(2, 3, 9)
-    && !gs.flags.merchant_jiuchong_bought) entries.push('gu:jiuchong');
+  if (gs.flags.kaike) entries.push('gu:yueguang', 'gu:xiaoguang', 'gu:henshi');
+  if (gs.minutes >= makeTime(2, 3, 1) && gs.minutes < makeTime(2, 3, 9)) {
+    for (const id of MERCHANT_GU) {
+      if (!gs.flags[`merchant_${id}_bought`]) entries.push(`gu:${id}`);
+    }
+  }
   return entries;
 }

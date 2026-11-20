@@ -1,11 +1,11 @@
-import { GU_DEFS, ITEMS, REFINE_RECIPES } from '../data/gu.js';
-import { hasPlaceActions, placeShopEntries, PLACES } from '../data/places.js';
-import { formatDateTime, formatDuration } from '../core/calendar.js';
+import { GU_DEFS, ITEMS, REFINE_RECIPES, recipeOutputText } from '../data/gu.js';
+import { hasPlaceActions, MERCHANT_GU, placeShopEntries, PLACES } from '../data/places.js';
+import { formatDateTime } from '../core/calendar.js';
 import { addGu, addItem, addLog, claimBenming, createAptitude, createNewGame, esc, feedGu, handleQuest, loadGame, realmText, recalcStats, recordQuestProgress, refineBenming, saveGame, useHealItem, useWhiteBoarGu } from '../core/state.js';
 import { createKillerMove } from '../core/killer.js';
 import { battleAct, startBattle } from '../core/combat.js';
 import { applyEventChoice, checkStoryTriggers } from '../core/story-engine.js';
-import { advanceMinutes, moveToPlace, placeMoveList, rewindSpringCicada, saveSpringSnapshot } from '../core/clock.js';
+import { advanceMinutes, moveToPlace, rewindSpringCicada, saveSpringSnapshot } from '../core/clock.js';
 import { createRefineSession, stepRefineSession } from '../core/refine.js';
 import { createBreakSession, realmGrowthText, realmGuRequirement, stepBreakSession, washMinorWall } from '../core/breakthrough.js';
 import { renderBreakModal, renderCustomKillerModal, renderEventModal, renderRefineModal, renderStartScreen } from './rituals.js';
@@ -92,14 +92,7 @@ function renderModal() {
   }
   let html = '';
   if (MODAL.kind === 'place') {
-    const routes = placeMoveList(G).filter((route) => !route.blocked);
-    const travel = routes.length ? `
-      <select id="place-destination" aria-label="行脚目的地">
-        <option value="">选择目的地</option>
-        ${routes.map((route) => `<option value="${esc(route.id)}">${esc(route.name)} · ${formatDuration(route.minutes)}</option>`).join('')}
-      </select>
-      <button class="sm" data-action="walkTo">前往</button>` : '';
-    html = `<div class="place-sheet-controls">${travel}<button class="sm" data-action="closeModal">返回地图</button></div>${renderPlaceView(G)}`;
+    html = `<div class="place-sheet-controls"><button class="sm" data-action="closeModal">返回地图</button></div>${renderPlaceView(G)}`;
   } else if (MODAL.kind === 'break') html = renderBreakModal(MODAL.data);
   else if (MODAL.kind === 'refine') html = renderRefineModal(MODAL.data);
   else if (MODAL.kind === 'killer') html = renderCustomKillerModal(G, KM_DRAFT);
@@ -280,11 +273,9 @@ function handleAction(el) {
     G.paused = !G.paused;
     render();
   } else if (act === 'walkTo') {
-    const destination = id || document.getElementById('place-destination')?.value;
-    if (!destination) return;
-    const res = moveToPlace(G, destination);
+    const res = moveToPlace(G, id);
     if (!res.ok) showToast(res.reason);
-    else if (G.location === destination) {
+    else if (G.location === id) {
       MODAL = hasPlaceActions(G) ? { kind: 'place' } : null;
       const sheet = document.getElementById('sheet');
       if (sheet) sheet.scrollTop = 0;
@@ -305,9 +296,11 @@ function handleAction(el) {
     if (!PLACES[G.location]?.services.includes('recipes') || !recipe || p.recipes?.includes(id) || p.yuanshi < recipe.price) return;
     p.yuanshi -= recipe.price;
     (p.recipes ??= []).push(id);
-    addLog(G, `【蛊方】习得「${GU_DEFS[recipe.out].name}」蛊方。`, 'log-gold');
+    const message = `已习得「${recipeOutputText(recipe)}」${recipe.method ?? ''}蛊方，花费 ${recipe.price} 元石`;
+    addLog(G, `【蛊方】${message}。`, 'log-gold');
     saveGame(G);
     render();
+    showToast(message);
   } else if (act === 'buyItem') {
     if (!placeShopEntries(G).includes(id)) return;
     const [kind, itemId] = id.split(':');
@@ -316,10 +309,12 @@ function handleAction(el) {
     G.player.yuanshi -= def.price;
     if (kind === 'gu') addGu(G, itemId, 100);
     else addItem(G, itemId, 1);
-    if (itemId === 'jiuchong') G.flags.merchant_jiuchong_bought = true;
-    addLog(G, `购入「${def.name}」（-${def.price} 元石）。`);
+    if (MERCHANT_GU.includes(itemId)) G.flags[`merchant_${itemId}_bought`] = true;
+    const message = `已购入「${def.name}」，花费 ${def.price} 元石`;
+    addLog(G, `${message}。`);
     saveGame(G);
     render();
+    showToast(message);
   } else if (act === 'checkEvents') {
     checkStoryTriggers(G, id);
     render();

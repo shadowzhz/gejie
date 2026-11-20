@@ -264,17 +264,6 @@ button.sm { min-height: 32px; padding: 4px 10px; font-size: .85rem; }
   z-index: 1;
   display: flex;
   justify-content: flex-end;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.place-sheet-controls select {
-  min-width: 0;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 4px 8px;
-  background: var(--card);
-  color: inherit;
-  font: inherit;
 }
 .toast {
   position: fixed;
@@ -386,7 +375,7 @@ const PLACES = {
     links: { shijie: 30 },
     day: '掌柜将蛊虫与蛊方分开陈列。贾家商队次年三月初到寨，停留八日。',
     night: '柜台上点着一盏油灯，掌柜仍在照看蛊虫。',
-    shop: ['gu:shipi', 'gu:xuanfeng', 'item:shengjiye'],
+    shop: ['gu:shipi', 'gu:xuanfeng', 'item:shengjiye', 'gu:shoupi', 'gu:qingsi', 'item:fanran', 'item:langzi'],
     services: ['shop', 'recipes']
   },
   renwutang: {
@@ -451,19 +440,25 @@ const PLACES = {
     services: ['huajiu_explore']
   }
 };
+const MERCHANT_GU = ['jiuchong', 'heishi'];
 function placeShopEntries(gs) {
   const shop = PLACES[gs.location]?.shop ?? [];
   if (gs.location !== 'gupu') return shop;
   const entries = [...shop];
-  if (gs.flags.kaike) entries.push('gu:yueguang', 'gu:xiaoguang');
-  if (gs.minutes >= makeTime(2, 3, 1) && gs.minutes < makeTime(2, 3, 9)
-    && !gs.flags.merchant_jiuchong_bought) entries.push('gu:jiuchong');
+  if (gs.flags.kaike) entries.push('gu:yueguang', 'gu:xiaoguang', 'gu:henshi');
+  if (gs.minutes >= makeTime(2, 3, 1) && gs.minutes < makeTime(2, 3, 9)) {
+    for (const id of MERCHANT_GU) {
+      if (!gs.flags[`merchant_${id}_bought`]) entries.push(`gu:${id}`);
+    }
+  }
   return entries;
 }
 
 
 /* === src/data/gu.js === */
 const ITEMS = {
+  fanran: { id: 'fanran', name: '幡然蛊', kind: '炼蛊用蛊', price: 20, desc: '可将四味酒虫逆炼为一只一转酒虫。' },
+  langzi: { id: 'langzi', name: '浪子蛊', kind: '炼蛊用蛊', price: 85, desc: '可将四味酒虫逆炼为两只一转酒虫。' },
   shengjiye: { id: 'shengjiye', name: '生机叶', kind: '一转消耗蛊', price: 22, heal: 24, healCooldown: 60, desc: '取自九叶生机草，疗伤后叶片消散。一小时内再次使用无效。' },
   yuelanhua: { id: 'yuelanhua', name: '月兰花瓣', kind: '口粮', price: 2, desc: '月光蛊、月芒蛊、小光蛊的食料。' },
   shourou: { id: 'shourou', name: '兽肉', kind: '口粮', price: 3, desc: '黑豕蛊、白豕蛊、血蝠蛊、电狼蛊的食料。' },
@@ -502,10 +497,15 @@ const GU_DEFS = {
   xiaoguang: { id: 'xiaoguang', name: '小光蛊', rank: 1, school: '光道', kind: '增益', cost: 4, cd: 2, power: 12, food: 'yuelanhua', price: 16, desc: '辅助月光蛊，也可与月光蛊合炼。' },
   yuemang: { id: 'yuemang', name: '月芒蛊', rank: 2, school: '月道', kind: '攻击', cost: 8, cd: 1, power: 34, food: 'yuelanhua', price: 45, desc: '将月光聚成威力更强的月刃。' },
   yuexuan: { id: 'yuexuan', name: '月旋蛊', rank: 2, school: '月道', kind: '攻击', cost: 7, cd: 1, power: 34, food: 'yuelanhua', price: 45, desc: '绿色月刃沿弧线斩出。' },
+  henshi: { id: 'henshi', name: '痕石蛊', rank: 1, kind: '炼蛊', cost: 0, cd: 0, power: 0, food: '', price: 15, desc: '可与月光蛊合炼成二转月痕蛊。' },
+  yuehen: { id: 'yuehen', name: '月痕蛊', rank: 2, school: '月道', kind: '攻击', cost: 4, cd: 0, power: 18, food: '', price: 45, desc: '月刃威力与月光蛊相同，设定中的射程从十米延至二十米。' },
   yueni: { id: 'yueni', name: '月霓裳', rank: 2, school: '月道', kind: '防御', cost: 6, cd: 2, power: 36, food: 'yuelanhua', price: 45, desc: '引月光覆于周身，织成轻盈的护身衣。' },
   yupi: { id: 'yupi', name: '玉皮蛊', rank: 1, school: '土道', kind: '防御', cost: 4, cd: 2, power: 22, food: 'fengmi', price: 20, desc: '催动后皮肤泛起温润玉光，化作护盾抵挡来袭伤害。' },
   baiyu: { id: 'baiyu', name: '白玉蛊', rank: 2, school: '土道', kind: '防御', cost: 7, cd: 2, power: 44, food: 'fengmi', price: 52, desc: '二转防御蛊，凝出厚实白玉光甲护盾，稳固空窍根基。' },
   shipi: { id: 'shipi', name: '石皮蛊', rank: 1, school: '土道', kind: '防御', cost: 3, cd: 2, power: 18, food: 'fengmi', price: 15, desc: '以石质硬皮覆体抵挡攻击。' },
+  shoupi: { id: 'shoupi', name: '兽皮蛊', rank: 1, kind: '防御', cost: 3, cd: 2, power: 14, food: '', price: 11, desc: '皮蛊中常见的一种，用于护身，售价低于石皮蛊。' },
+  qingsi: { id: 'qingsi', name: '青丝蛊', rank: 1, kind: '防御', cost: 12, cd: 2, power: 30, food: '', price: 24, desc: '催动时消耗较多真元，能抵御打击。也可与黑豕蛊合炼。' },
+  heizong: { id: 'heizong', name: '黑鬃蛊', rank: 2, kind: '防御', cost: 7, cd: 2, power: 38, food: '', price: 48, desc: '催动后，汗毛化作粗黑长鬃，在身上结成护甲。' },
   tongpi: { id: 'tongpi', name: '铜皮蛊', rank: 2, school: '金道', kind: '防御', cost: 7, cd: 2, power: 40, food: 'fengmi', price: 48, desc: '铜皮铁骨，护盾之外更可令自身气血上限微增。' },
   jiuyecao: { id: 'jiuyecao', name: '九叶生机草', rank: 2, school: '木道', kind: '治疗', cost: 8, cd: 2, power: 48, food: 'yuelanhua', price: 58, desc: '二转极品疗伤蛊，生机绵长，是保命续航之宝。' },
   jiuchong: { id: 'jiuchong', name: '酒虫', rank: 1, school: '食道', kind: '奇蛊', cost: 0, cd: 0, power: 10, food: 'qingzhujiu', price: 65, desc: '能提纯一转蛊师的真元，温养时修为增长 +25%。' },
@@ -522,12 +522,20 @@ const GU_DEFS = {
   chunqiuchan: { id: 'chunqiuchan', name: '春秋蝉（残）', rank: 3, school: '宙道', kind: '奇蛊', cost: 0, cd: 0, power: 0, food: '', price: 0, desc: '奇蛊榜第七，可于行纪中留下一道旧影；身殒时消耗它回到那一刻。' }
 };
 const REFINE_RECIPES = [
+  { id: 'r_jiuchong_fanran', price: 8, out: 'jiuchong', method: '逆炼', gu: { siwei_jiu: 1 }, materials: { fanran: 1 }, rate: 0.70, cost: 12 },
+  { id: 'r_jiuchong_langzi', price: 12, out: 'jiuchong', outCount: 2, method: '逆炼', gu: { siwei_jiu: 1 }, materials: { langzi: 1 }, rate: 0.70, cost: 12 },
   { id: 'r_yuemang', price: 12, out: 'yuemang', gu: { yueguang: 1, xiaoguang: 2 }, materials: {}, rate: 0.68, cost: 25 },
   { id: 'r_yuexuan', price: 12, out: 'yuexuan', gu: { yueguang: 1, xuanfeng: 1 }, materials: {}, rate: 0.65, cost: 25 },
+  { id: 'r_yuehen', price: 12, out: 'yuehen', gu: { yueguang: 1, henshi: 1 }, materials: {}, rate: 0.65, cost: 25 },
   { id: 'r_yueni', price: 12, out: 'yueni', gu: { yueguang: 1, yupi: 1 }, materials: {}, rate: 0.65, cost: 25 },
   { id: 'r_baiyu', price: 12, out: 'baiyu', gu: { yupi: 1, baishi: 1 }, materials: { yezhuya: 1 }, rate: 0.65, cost: 25 },
+  { id: 'r_heizong', price: 12, out: 'heizong', gu: { heishi: 1, qingsi: 1 }, materials: {}, rate: 0.65, cost: 25 },
   { id: 'r_siwei', price: 20, out: 'siwei_jiu', gu: { jiuchong: 2 }, materials: { suanjiu: 1, tianjiu: 1, kujiu: 1, lajiu: 1 }, rate: 0.58, cost: 45 }
 ];
+function recipeOutputText(recipe) {
+  const name = GU_DEFS[recipe.out].name;
+  return recipe.outCount > 1 ? `${name} ×${recipe.outCount}` : name;
+}
 function recipeIngredientsText(recipe) {
   return [...Object.entries(recipe.gu), ...Object.entries(recipe.materials)]
     .map(([id, count]) => `${(GU_DEFS[id] || ITEMS[id]).name}${count > 1 ? ` ×${count}` : ''}`)
@@ -1567,8 +1575,10 @@ function createRefineSession(gs, recipeId) {
   for (const [id, count] of Object.entries(rc.materials)) useItem(gs, id, count);
   return {
     outId: rc.out,
+    outCount: rc.outCount ?? 1,
     guUids: chk.guUids,
-    outName: GU_DEFS[rc.out].name,
+    outName: recipeOutputText(rc),
+    method: rc.method ?? '合炼',
     round: 1,
     maxRounds: 3,
     heat: 50,      // 最佳温区 45~75
@@ -1576,7 +1586,7 @@ function createRefineSession(gs, recipeId) {
     baseRate: rc.rate,
     state: 'ongoing', // ongoing | done | aborted
     success: false,
-    lines: ['地火燃起，投入合炼所需蛊虫，共守三轮火候。']
+    lines: [`地火燃起，投入${rc.method ?? '合炼'}所需蛊虫，共守三轮火候。`]
   };
 }
 function stepRefineSession(gs, sess, mode, rng = Math.random) {
@@ -1589,7 +1599,7 @@ function stepRefineSession(gs, sess, mode, rng = Math.random) {
   }
   if (!sess.guUids.every((uid) => gs.player.gu.some((g) => g.uid === uid))) {
     sess.state = 'aborted';
-    sess.lines.push('入炉的蛊虫已不齐，合炼中止。');
+    sess.lines.push('入炉的蛊虫已不齐，炼蛊中止。');
     return sess;
   }
 
@@ -1610,9 +1620,11 @@ function stepRefineSession(gs, sess, mode, rng = Math.random) {
   if (sess.heat > 96 || sess.heat < 15) {
     sess.state = 'done';
     sess.success = false;
-    removeGuByUid(gs, sess.guUids[1]);
-    sess.lines.push('炉温失控炸炉！辅蛊损毁，好在保住了主蛊。');
-    addLog(gs, `【炼蛊炸炉】「${sess.outName}」合炼失控，损毁了一只辅蛊。`, 'log-bad');
+    const auxUid = sess.guUids[1];
+    const damage = auxUid === undefined ? '保住了主蛊。' : '损毁了一只辅蛊，保住了主蛊。';
+    if (auxUid !== undefined) removeGuByUid(gs, auxUid);
+    sess.lines.push(`炉温失控炸炉！${damage}`);
+    addLog(gs, `【炼蛊炸炉】「${sess.outName}」${sess.method}失控。${damage}`, 'log-bad');
     return sess;
   }
 
@@ -1627,12 +1639,13 @@ function stepRefineSession(gs, sess, mode, rng = Math.random) {
       sess.success = true;
       const result = addGu(gs, sess.outId, 100);
       if (usesBenming) gs.player.benming = result.uid;
-      sess.lines.push(`成算 ${Math.round(finalRate * 100)}% —— 炉盖掀开，一只「${sess.outName}」振翼而出！`);
-      addLog(gs, `【炼蛊大成】成功合炼出「${sess.outName}」！`, 'log-gold');
+      for (let count = 1; count < sess.outCount; count++) addGu(gs, sess.outId, 100);
+      sess.lines.push(`成算 ${Math.round(finalRate * 100)}% —— 炉盖掀开，得「${sess.outName}」！`);
+      addLog(gs, `【炼蛊大成】成功${sess.method}出「${sess.outName}」！`, 'log-gold');
     } else {
       sess.success = false;
-      sess.lines.push(`成算 ${Math.round(finalRate * 100)}% —— 炉中青烟散尽，合炼功亏一篑。`);
-      addLog(gs, `【炼蛊失败】「${sess.outName}」合炼未成。`, 'log-bad');
+      sess.lines.push(`成算 ${Math.round(finalRate * 100)}% —— 炉中青烟散尽，${sess.method}功亏一篑。`);
+      addLog(gs, `【炼蛊失败】「${sess.outName}」${sess.method}未成。`, 'log-bad');
     }
     return sess;
   }
@@ -2077,7 +2090,7 @@ function renderPlaceView(gs) {
       const def = kind === 'gu' ? GU_DEFS[id] : ITEMS[id];
       if (!def) return '';
       return `<div class="kv">
-        <span><b>${esc(def.name)}</b> ${kind === 'gu' ? `<span class="badge">${def.rank}转</span>` : ''} ${id === 'jiuchong' ? '<span class="badge">贾家商队 · 限一只</span>' : ''} <span class="muted">${esc(def.desc)}${kind === "gu" && guEffectText(def) ? `<br>${esc(guEffectText(def))}` : ''}</span></span>
+        <span><b>${esc(def.name)}</b> ${kind === 'gu' ? `<span class="badge">${def.rank}转</span>` : ''} ${MERCHANT_GU.includes(id) ? '<span class="badge">贾家商队 · 限一只</span>' : ''} <span class="muted">${esc(def.desc)}${kind === "gu" && guEffectText(def) ? `<br>${esc(guEffectText(def))}` : ''}</span></span>
         <button class="sm" ${gs.player.yuanshi < def.price ? 'disabled' : ''} data-action="buyItem" data-id="${esc(entry)}">买 · ${def.price}元石</button>
       </div>`;
     }).join('');
@@ -2105,7 +2118,7 @@ function renderPlaceView(gs) {
     ${place.services.includes('recipes') ? `<div class="card"><h3>蛊方</h3>${REFINE_RECIPES.map((r) => {
       const owned = gs.player.recipes?.includes(r.id);
       const out = GU_DEFS[r.out];
-      return `<div class="kv"><span>${esc(out.name)}蛊方 · ${out.rank}转<br><small class="muted">${esc(recipeIngredientsText(r))}</small></span>
+      return `<div class="kv"><span>${esc(recipeOutputText(r))}${r.method ?? ''}蛊方 · ${out.rank}转<br><small class="muted">${esc(recipeIngredientsText(r))}</small></span>
         <button class="sm" ${owned || gs.player.yuanshi < r.price ? 'disabled' : ''} data-action="buyRecipe" data-id="${r.id}">${owned ? '已习得' : `买 · ${r.price} 元石`}</button></div>`;
     }).join('')}</div>` : ''}`;
 }
@@ -2187,9 +2200,9 @@ function renderRefineView(gs) {
     const chk = canStartRefine(gs, r.id);
     const out = GU_DEFS[r.out];
     return `<div class="card">
-      <div class="kv"><b>${esc(out.name)}</b><span class="badge">${out.rank}转 · 基础 ${Math.round(r.rate * 100)}%</span></div>
+      <div class="kv"><b>${esc(recipeOutputText(r))}</b><span class="badge">${out.rank}转 · ${r.method ?? '合炼'} · 基础 ${Math.round(r.rate * 100)}%</span></div>
       <div class="muted">${esc(recipeIngredientsText(r))} · 费用 ${r.cost} 元石</div>
-      <div class="muted" style="margin-bottom:8px">${esc(guEffectText(out) || out.desc)}</div>
+      <div class="muted" style="margin-bottom:8px">${esc(out.desc)}${guEffectText(out) ? `<br>${esc(guEffectText(out))}` : ''}</div>
       <button class="primary" ${!chk.ok ? 'disabled' : ''} data-action="startRefine" data-id="${r.id}">
         ${chk.ok ? '开炉控火' : esc(chk.reason)}
       </button>
@@ -2197,8 +2210,8 @@ function renderRefineView(gs) {
   }).join('');
 
   return `<div class="card">
-      <h3>合炼 · 三轮控火</h3>
-      <div class="muted">${cards ? "合炼需守三轮火候（45°～75°最佳）。" : "尚未习得蛊方，可前往蛊铺购买。"}</div>
+      <h3>炼蛊 · 三轮控火</h3>
+      <div class="muted">${cards ? "开炉需守三轮火候（45°～75°最佳）。" : "尚未习得蛊方，可前往蛊铺购买。"}</div>
     </div>
     <div class="grid2">${cards}</div>`;
 }
@@ -2342,14 +2355,7 @@ function renderModal() {
   }
   let html = '';
   if (MODAL.kind === 'place') {
-    const routes = placeMoveList(G).filter((route) => !route.blocked);
-    const travel = routes.length ? `
-      <select id="place-destination" aria-label="行脚目的地">
-        <option value="">选择目的地</option>
-        ${routes.map((route) => `<option value="${esc(route.id)}">${esc(route.name)} · ${formatDuration(route.minutes)}</option>`).join('')}
-      </select>
-      <button class="sm" data-action="walkTo">前往</button>` : '';
-    html = `<div class="place-sheet-controls">${travel}<button class="sm" data-action="closeModal">返回地图</button></div>${renderPlaceView(G)}`;
+    html = `<div class="place-sheet-controls"><button class="sm" data-action="closeModal">返回地图</button></div>${renderPlaceView(G)}`;
   } else if (MODAL.kind === 'break') html = renderBreakModal(MODAL.data);
   else if (MODAL.kind === 'refine') html = renderRefineModal(MODAL.data);
   else if (MODAL.kind === 'killer') html = renderCustomKillerModal(G, KM_DRAFT);
@@ -2529,11 +2535,9 @@ function handleAction(el) {
     G.paused = !G.paused;
     render();
   } else if (act === 'walkTo') {
-    const destination = id || document.getElementById('place-destination')?.value;
-    if (!destination) return;
-    const res = moveToPlace(G, destination);
+    const res = moveToPlace(G, id);
     if (!res.ok) showToast(res.reason);
-    else if (G.location === destination) {
+    else if (G.location === id) {
       MODAL = hasPlaceActions(G) ? { kind: 'place' } : null;
       const sheet = document.getElementById('sheet');
       if (sheet) sheet.scrollTop = 0;
@@ -2554,9 +2558,11 @@ function handleAction(el) {
     if (!PLACES[G.location]?.services.includes('recipes') || !recipe || p.recipes?.includes(id) || p.yuanshi < recipe.price) return;
     p.yuanshi -= recipe.price;
     (p.recipes ??= []).push(id);
-    addLog(G, `【蛊方】习得「${GU_DEFS[recipe.out].name}」蛊方。`, 'log-gold');
+    const message = `已习得「${recipeOutputText(recipe)}」${recipe.method ?? ''}蛊方，花费 ${recipe.price} 元石`;
+    addLog(G, `【蛊方】${message}。`, 'log-gold');
     saveGame(G);
     render();
+    showToast(message);
   } else if (act === 'buyItem') {
     if (!placeShopEntries(G).includes(id)) return;
     const [kind, itemId] = id.split(':');
@@ -2565,10 +2571,12 @@ function handleAction(el) {
     G.player.yuanshi -= def.price;
     if (kind === 'gu') addGu(G, itemId, 100);
     else addItem(G, itemId, 1);
-    if (itemId === 'jiuchong') G.flags.merchant_jiuchong_bought = true;
-    addLog(G, `购入「${def.name}」（-${def.price} 元石）。`);
+    if (MERCHANT_GU.includes(itemId)) G.flags[`merchant_${itemId}_bought`] = true;
+    const message = `已购入「${def.name}」，花费 ${def.price} 元石`;
+    addLog(G, `${message}。`);
     saveGame(G);
     render();
+    showToast(message);
   } else if (act === 'checkEvents') {
     checkStoryTriggers(G, id);
     render();

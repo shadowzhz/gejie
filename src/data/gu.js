@@ -1,4 +1,6 @@
 export const ITEMS = {
+  fanran: { id: 'fanran', name: '幡然蛊', kind: '炼蛊用蛊', price: 20, desc: '可将四味酒虫逆炼为一只一转酒虫。' },
+  langzi: { id: 'langzi', name: '浪子蛊', kind: '炼蛊用蛊', price: 85, desc: '可将四味酒虫逆炼为两只一转酒虫。' },
   shengjiye: { id: 'shengjiye', name: '生机叶', kind: '一转消耗蛊', price: 22, heal: 24, healCooldown: 60, desc: '取自九叶生机草，疗伤后叶片消散。一小时内再次使用无效。' },
   yuelanhua: { id: 'yuelanhua', name: '月兰花瓣', kind: '口粮', price: 2, desc: '月光蛊、月芒蛊、小光蛊的食料。' },
   shourou: { id: 'shourou', name: '兽肉', kind: '口粮', price: 3, desc: '黑豕蛊、白豕蛊、血蝠蛊、电狼蛊的食料。' },
@@ -39,10 +41,15 @@ export const GU_DEFS = {
   xiaoguang: { id: 'xiaoguang', name: '小光蛊', rank: 1, school: '光道', kind: '增益', cost: 4, cd: 2, power: 12, food: 'yuelanhua', price: 16, desc: '辅助月光蛊，也可与月光蛊合炼。' },
   yuemang: { id: 'yuemang', name: '月芒蛊', rank: 2, school: '月道', kind: '攻击', cost: 8, cd: 1, power: 34, food: 'yuelanhua', price: 45, desc: '将月光聚成威力更强的月刃。' },
   yuexuan: { id: 'yuexuan', name: '月旋蛊', rank: 2, school: '月道', kind: '攻击', cost: 7, cd: 1, power: 34, food: 'yuelanhua', price: 45, desc: '绿色月刃沿弧线斩出。' },
+  henshi: { id: 'henshi', name: '痕石蛊', rank: 1, kind: '炼蛊', cost: 0, cd: 0, power: 0, food: '', price: 15, desc: '可与月光蛊合炼成二转月痕蛊。' },
+  yuehen: { id: 'yuehen', name: '月痕蛊', rank: 2, school: '月道', kind: '攻击', cost: 4, cd: 0, power: 18, food: '', price: 45, desc: '月刃威力与月光蛊相同，设定中的射程从十米延至二十米。' },
   yueni: { id: 'yueni', name: '月霓裳', rank: 2, school: '月道', kind: '防御', cost: 6, cd: 2, power: 36, food: 'yuelanhua', price: 45, desc: '引月光覆于周身，织成轻盈的护身衣。' },
   yupi: { id: 'yupi', name: '玉皮蛊', rank: 1, school: '土道', kind: '防御', cost: 4, cd: 2, power: 22, food: 'fengmi', price: 20, desc: '催动后皮肤泛起温润玉光，化作护盾抵挡来袭伤害。' },
   baiyu: { id: 'baiyu', name: '白玉蛊', rank: 2, school: '土道', kind: '防御', cost: 7, cd: 2, power: 44, food: 'fengmi', price: 52, desc: '二转防御蛊，凝出厚实白玉光甲护盾，稳固空窍根基。' },
   shipi: { id: 'shipi', name: '石皮蛊', rank: 1, school: '土道', kind: '防御', cost: 3, cd: 2, power: 18, food: 'fengmi', price: 15, desc: '以石质硬皮覆体抵挡攻击。' },
+  shoupi: { id: 'shoupi', name: '兽皮蛊', rank: 1, kind: '防御', cost: 3, cd: 2, power: 14, food: '', price: 11, desc: '皮蛊中常见的一种，用于护身，售价低于石皮蛊。' },
+  qingsi: { id: 'qingsi', name: '青丝蛊', rank: 1, kind: '防御', cost: 12, cd: 2, power: 30, food: '', price: 24, desc: '催动时消耗较多真元，能抵御打击。也可与黑豕蛊合炼。' },
+  heizong: { id: 'heizong', name: '黑鬃蛊', rank: 2, kind: '防御', cost: 7, cd: 2, power: 38, food: '', price: 48, desc: '催动后，汗毛化作粗黑长鬃，在身上结成护甲。' },
   tongpi: { id: 'tongpi', name: '铜皮蛊', rank: 2, school: '金道', kind: '防御', cost: 7, cd: 2, power: 40, food: 'fengmi', price: 48, desc: '铜皮铁骨，护盾之外更可令自身气血上限微增。' },
   jiuyecao: { id: 'jiuyecao', name: '九叶生机草', rank: 2, school: '木道', kind: '治疗', cost: 8, cd: 2, power: 48, food: 'yuelanhua', price: 58, desc: '二转极品疗伤蛊，生机绵长，是保命续航之宝。' },
   jiuchong: { id: 'jiuchong', name: '酒虫', rank: 1, school: '食道', kind: '奇蛊', cost: 0, cd: 0, power: 10, food: 'qingzhujiu', price: 65, desc: '能提纯一转蛊师的真元，温养时修为增长 +25%。' },
@@ -60,12 +67,21 @@ export const GU_DEFS = {
 };
 
 export const REFINE_RECIPES = [
+  { id: 'r_jiuchong_fanran', price: 8, out: 'jiuchong', method: '逆炼', gu: { siwei_jiu: 1 }, materials: { fanran: 1 }, rate: 0.70, cost: 12 },
+  { id: 'r_jiuchong_langzi', price: 12, out: 'jiuchong', outCount: 2, method: '逆炼', gu: { siwei_jiu: 1 }, materials: { langzi: 1 }, rate: 0.70, cost: 12 },
   { id: 'r_yuemang', price: 12, out: 'yuemang', gu: { yueguang: 1, xiaoguang: 2 }, materials: {}, rate: 0.68, cost: 25 },
   { id: 'r_yuexuan', price: 12, out: 'yuexuan', gu: { yueguang: 1, xuanfeng: 1 }, materials: {}, rate: 0.65, cost: 25 },
+  { id: 'r_yuehen', price: 12, out: 'yuehen', gu: { yueguang: 1, henshi: 1 }, materials: {}, rate: 0.65, cost: 25 },
   { id: 'r_yueni', price: 12, out: 'yueni', gu: { yueguang: 1, yupi: 1 }, materials: {}, rate: 0.65, cost: 25 },
   { id: 'r_baiyu', price: 12, out: 'baiyu', gu: { yupi: 1, baishi: 1 }, materials: { yezhuya: 1 }, rate: 0.65, cost: 25 },
+  { id: 'r_heizong', price: 12, out: 'heizong', gu: { heishi: 1, qingsi: 1 }, materials: {}, rate: 0.65, cost: 25 },
   { id: 'r_siwei', price: 20, out: 'siwei_jiu', gu: { jiuchong: 2 }, materials: { suanjiu: 1, tianjiu: 1, kujiu: 1, lajiu: 1 }, rate: 0.58, cost: 45 }
 ];
+
+export function recipeOutputText(recipe) {
+  const name = GU_DEFS[recipe.out].name;
+  return recipe.outCount > 1 ? `${name} ×${recipe.outCount}` : name;
+}
 
 export function recipeIngredientsText(recipe) {
   return [...Object.entries(recipe.gu), ...Object.entries(recipe.materials)]
