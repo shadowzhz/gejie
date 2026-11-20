@@ -53,12 +53,18 @@ export function createRefineSession(gs, recipeId) {
     const gu = gs.player.gu.find((entry) => entry.uid === uid);
     return { uid, name: GU_DEFS[gu.id].name, benming: uid === gs.player.benming };
   });
+  const pending = [
+    ...ingredients.map(({ uid, name }) => ({ uid, name })),
+    ...Object.entries(rc.materials).flatMap(([item, count]) =>
+      Array.from({ length: count }, () => ({ item, name: ITEMS[item].name })))
+  ];
   return {
     recipeId,
     flow,
     outName: recipeOutputText(rc),
     method: rc.method ?? '合炼',
     ingredients,
+    pending,
     materials: recipeIngredientsText(rc),
     cost: rc.cost,
     baseRate: rc.rate,
@@ -75,6 +81,7 @@ export function createRefineSession(gs, recipeId) {
 }
 
 export function refineChance(sess) {
+  if (sess.pending.length) return 0;
   const { flow, progress, pressure } = sess;
   if (progress >= flow.target && pressure <= flow.safePressure) return 1;
   const excess = Math.max(0, pressure - flow.safePressure);
@@ -82,7 +89,8 @@ export function refineChance(sess) {
 }
 
 export function refineTechniques(sess) {
-  const { flow, pressure, progress, turns } = sess;
+  const { flow, pressure, progress } = sess;
+  const turns = sess.pending.length ? 0 : sess.turns;
   const { signature } = flow;
   const signatureReady = turns > 0 && !sess.usedSignature && (!signature.night || sess.night)
     && pressure >= (signature.minPressure ?? 0) && pressure <= (signature.maxPressure ?? Infinity)
@@ -127,7 +135,7 @@ function finishRefining(gs, sess, rc, success, message) {
   addLog(gs, `【炼蛊失败】「${sess.outName}」${sess.method}未成。`, 'log-bad');
 }
 
-export function stepRefineSession(gs, sess, action, rng = Math.random) {
+export function stepRefineSession(gs, sess, action, rng = Math.random, timing) {
   if (!sess) return sess;
   if (sess.state === 'ready' && action === 'ignite') {
     const check = canStartRefine(gs, sess.recipeId);
@@ -137,7 +145,6 @@ export function stepRefineSession(gs, sess, action, rng = Math.random) {
       return sess;
     }
     gs.player.yuanshi -= sess.cost;
-    for (const [id, count] of Object.entries(check.rc.materials)) useItem(gs, id, count);
     sess.state = 'ongoing';
     return sess;
   }
@@ -156,10 +163,54 @@ export function stepRefineSession(gs, sess, action, rng = Math.random) {
     sess.lines.push('入炉蛊虫已不齐，炼蛊中止。');
     return sess;
   }
+  if (sess.pending.length) {
+    const match = /^add:(\d+)$/.exec(action);
+    if (!match || !Number.isFinite(timing) || timing < 0 || timing > 1) return sess;
+    const index = Number(match[1]);
+    const input = sess.pending[index];
+    if (!input) return sess;
+    if (input.item && !useItem(gs, input.item)) {
+      sess.state = 'aborted';
+      sess.lines.push(`缺少「${input.name}」，炼蛊中止。`);
+      return sess;
+    }
+    sess.pending.splice(index, 1);
+    const offset = Math.abs(timing - 0.5);
+    if (offset <= 0.1) {
+      sess.progress++;
+      sess.lines.push(`「${input.name}」接住炉心的火星，蛊影聚拢了一点。`);
+    } else if (offset <= 0.25) {
+      sess.lines.push(`「${input.name}」平稳入炉。`);
+    } else {
+      const pressure = Math.min(2, sess.pressure + 1);
+      sess.lines.push(`「${input.name}」擦过炉壁，溅起一片火星。`);
+      sess.pressure = pressure;
+    }
+    return sess;
+  }
   if (action === 'seal' && refineChance(sess) > 0) {
     const chance = refineChance(sess);
     const success = chance === 1 || rng() < chance;
     finishRefining(gs, sess, rc, success, chance === 1 ? '蛊性成形，稳稳收炉。' : `强行收炉，成算 ${Math.round(chance * 100)}%，${success ? '成了！' : '炉中蛊性散去。'}`);
+    return sess;
+  }
+
+  if (action === 'pulse' && sess.turns > 0 && Number.isFinite(timing) && timing >= 0 && timing <= 1) {
+    const offset = Math.abs(timing - 0.5);
+    if (offset <= 0.1) {
+      sess.progress += sess.flow.force;
+      sess.pressure += sess.flow.surge - 1;
+      sess.lines.push('火星正中炉心，蛊影迅速凝实。');
+    } else if (offset <= 0.25) {
+      sess.progress += sess.flow.gentle;
+      sess.pressure = Math.max(0, sess.pressure - 1);
+      sess.lines.push('火候偏了一点，蛊影慢慢聚拢。');
+    } else {
+      sess.pressure++;
+      sess.lines.push('火星撞上炉壁，急火在炉内乱窜。');
+    }
+    sess.turns--;
+    if (sess.pressure >= OVERLOAD_PRESSURE) finishRefining(gs, sess, rc, false, '炉压失控，炸炉了。');
     return sess;
   }
 
@@ -179,7 +230,9 @@ export function stepRefineSession(gs, sess, action, rng = Math.random) {
   sess.pressure = technique.pressure;
   sess.turns--;
   if (action === 'signature') sess.usedSignature = true;
-  sess.lines.push(`${technique.name}：炼成度 ${sess.progress}，炉压 ${sess.pressure}。`);
+  sess.lines.push(action === 'vent' ? '热气从盖缝涌出，炉火低了，蛊影也散了一点。'
+    : action === 'signature' ? `${technique.name}过后，蛊影聚拢，炉火渐稳。`
+    : `${technique.name}过后，炉火与蛊影随之变化。`);
   if (sess.pressure >= OVERLOAD_PRESSURE) finishRefining(gs, sess, rc, false, '炉压失控，炸炉了。');
   return sess;
 }

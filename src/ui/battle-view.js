@@ -7,8 +7,6 @@ export function renderBattleView(gs) {
   const b = gs.battle;
   const p = gs.player;
   const foe = b.foe;
-  const hpPct = Math.round(p.hp / Math.max(1, p.hpMax) * 100);
-  const zyPct = Math.round(p.zy / Math.max(1, p.zyMax) * 100);
   const foeHpText = b.scouted ? `${foe.hp} / ${foe.hpMax}` : (foe.hp > foe.hpMax * 0.6 ? '气息强盛' : foe.hp > foe.hpMax * 0.25 ? '已有伤势' : '摇摇欲坠');
   const intentText = foe.stunned
     ? '敌方本轮受制，无法出手'
@@ -62,11 +60,6 @@ export function renderBattleView(gs) {
         <span>气血：${esc(foeHpText)}${foe.shield > 0 ? ` · 护盾 ${foe.shield}` : ''}</span>
       </div>
       <div class="intent-box">${esc(intentText)}</div>
-    </div>
-    <div class="card">
-      <div class="kv"><span>我方气血 <b>${Math.round(p.hp)} / ${p.hpMax}</b></span><span>真元 <b>${Math.round(p.zy)} / ${p.zyMax}</b>${b.meShield ? ` · 护盾 ${b.meShield}` : ''}</span></div>
-      <div class="bar hp" style="margin-bottom:6px"><i style="width:${hpPct}%"></i></div>
-      <div class="bar zy"><i style="width:${zyPct}%"></i></div>
     </div>
     ${footer}
     <div class="card loglist">${b.logs.slice(-10).map((l) => `<div>${esc(l)}</div>`).join('')}</div>`;

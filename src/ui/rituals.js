@@ -88,42 +88,67 @@ export function renderBreakModal(sess) {
     ${actions}`;
 }
 
-export function renderRefineModal(sess) {
-  const title = `<h2>${esc(sess.method)} · ${esc(sess.outName)}</h2>`;
-  const { flow } = sess;
-  const notes = `<div class="muted">${esc(flow.note)}${esc(flow.signature.hint)}炉压达 ${OVERLOAD_PRESSURE} 会炸炉。</div>`;
-  const names = sess.ingredients.map((gu) => esc(gu.name) + (gu.benming ? '（本命蛊）' : '')).join('、');
-  const lines = sess.lines.length ? `<div class="card loglist">${sess.lines.map((line) => `<div>${esc(line)}</div>`).join('')}</div>` : '';
-  if (sess.state === 'ready') return `${title}
-    <div class="card"><b>${esc(flow.name)}</b>${notes}
-      <div>安全收炉：炼成度至少 ${flow.target}，炉压至多 ${flow.safePressure}。可运炉 ${flow.turns} 次。</div>
-      <div class="muted">材料 · ${esc(sess.materials)}</div>
-      <div class="muted">入炉 · ${names}</div>
-    </div>
+function renderRefineFurnace(sess, effect) {
+  const { state, flow, progress, pressure, success } = sess;
+  const canTime = state === 'ongoing' && (sess.pending.length || sess.turns);
+  const formed = progress >= flow.target;
+  const hot = pressure > flow.safePressure;
+  const status = state === 'ready' ? '炉火未点'
+    : state === 'ongoing' ? sess.pending.length ? '等火星经过炉心，再投入蛊虫或蛊材'
+      : formed && !hot ? '蛊影已经凝实，可以合盖'
+      : !sess.turns ? '炉火将尽，只能收炉或撤火'
+      : hot ? '炉火太旺，掀开炉盖可以放火' : '等火星经过炉心，按下风箱'
+    : success ? `炼成 · ${sess.outName}`
+    : state === 'aborted' ? '已停炉'
+    : pressure >= OVERLOAD_PRESSURE ? '炸炉' : '炼蛊失败';
+  const outcome = state === 'done' ? (success ? 'success' : 'failure') : state;
+  return `<div class="refine-stage" data-state="${outcome}" data-effect="${effect?.action ?? ''}" data-hot="${hot}" style="--heat:${Math.min(1, pressure / OVERLOAD_PRESSURE)};--shape:${Math.min(1, progress / flow.target)}">
+      <div class="refine-scene" aria-hidden="true">
+        <div class="refine-halo"></div>
+        <div class="refine-vapor"></div>
+        <div class="refine-shape"></div>
+        <div class="refine-flame"></div>
+        <div class="refine-pot"><div class="refine-mouth"></div><div class="refine-sigil"></div></div>
+        <div class="refine-lid"></div>
+        <div class="refine-result"></div>
+        ${effect?.input ? `<div class="refine-drop">${esc(effect.input)}</div>` : ''}
+      </div>
+      ${canTime ? '<div class="refine-timing" aria-hidden="true"><i></i></div>' : ''}
+      <div class="refine-status" role="status">${esc(status)}</div>
+      ${state === 'ongoing' && effect?.action !== 'ignite' && sess.lines.length ? `<div class="refine-feedback">${esc(sess.lines.at(-1))}</div>` : ''}
+    </div>`;
+}
+
+export function renderRefineModal(sess, effect) {
+  const scene = `<h2 id="refine-title">${esc(sess.method)} · ${esc(sess.outName)}</h2>${renderRefineFurnace(sess, effect)}`;
+  if (sess.state === 'ready') return `${scene}
+    <div class="muted">${esc(sess.materials)}</div>
     <div class="row">
       <button class="primary" data-action="refineAct" data-id="ignite">开炉 · ${sess.cost} 元石</button>
       <button class="ghost" data-action="closeModal">取消</button>
     </div>`;
-  if (sess.state !== 'ongoing') return `${title}${lines}<button class="primary" data-action="closeModal">返回炼蛊</button>`;
+  if (sess.state !== 'ongoing') return `${scene}
+    <div>${sess.lines.slice(-1).map((line) => esc(line)).join('')}</div>
+    <button class="primary" data-action="closeModal">返回炼蛊</button>`;
+
+  if (sess.pending.length) return `<div class="refine-ritual">${scene}
+      <div class="row">${sess.pending.map((input, index) =>
+        `<button class="gold" data-action="refineAct" data-id="add:${index}" data-input="${esc(input.name)}">投入 ${esc(input.name)}${input.uid === undefined ? ' · 蛊材' : ' · 蛊虫'}</button>`).join('')}</div>
+    <div><button class="ghost" data-action="refineAct" data-id="abort">撤火</button></div>
+  </div>`;
 
   const chance = refineChance(sess);
-  const techniques = refineTechniques(sess).map((technique) => `<button class="${technique.pressure >= OVERLOAD_PRESSURE ? 'blood' : ''}" ${technique.enabled ? '' : 'disabled'} data-action="refineAct" data-id="${technique.id}">${technique.name} · 炼成度 ${technique.progress} / 炉压 ${technique.pressure}${technique.pressure >= OVERLOAD_PRESSURE ? '（炸炉）' : ''}</button>`).join('');
-  const protectedGu = sess.ingredients.find((gu) => gu.uid === sess.protectedUid);
-  const protectOptions = sess.ingredients.filter((gu) => !gu.benming)
-    .map((gu) => `<button class="sm" ${sess.turns ? '' : 'disabled'} data-action="refineAct" data-id="protect:${gu.uid}">护住 ${esc(gu.name)}</button>`).join('');
-  return `${title}
-    <div class="card">
-      <div class="kv"><b>${esc(flow.name)}</b><span>还可运炉 ${sess.turns} 次</span></div>
-      ${notes}
-      <div class="kv"><span>炼成度 ${sess.progress} / ${flow.target}</span><span>炉压 ${sess.pressure} · 安全上限 ${flow.safePressure}</span></div>
-      <div class="row">${techniques}</div>
-    </div>
-    ${protectedGu ? `<div class="muted">受护 · ${esc(protectedGu.name)}</div>` : protectOptions ? `<div class="muted">护蛊耗一次运炉，保住一只普通蛊。</div><div class="row">${protectOptions}</div>` : ''}
+  const techniques = refineTechniques(sess);
+  const signature = techniques.find(({ id, enabled }) => id === 'signature' && enabled);
+  return `<div class="refine-ritual">${scene}
     <div class="row">
-      <button class="primary" ${chance ? '' : 'disabled'} data-action="refineAct" data-id="seal">${chance === 1 ? '安全收炉' : `强行收炉 · 成算 ${Math.round(chance * 100)}%`}</button>
-      <button class="ghost" data-action="refineAct" data-id="abort">撤火 · 保住蛊虫</button>
+      ${sess.turns && chance !== 1 ? '<button class="gold" data-action="refineAct" data-id="pulse">按下风箱</button>' : ''}
+      ${techniques.some(({ id, enabled }) => id === 'vent' && enabled) && chance !== 1 ? '<button data-action="refineAct" data-id="vent">掀盖放火</button>' : ''}
+      ${signature && chance !== 1 ? `<button data-action="refineAct" data-id="signature">${esc(signature.name)}</button>` : ''}
+      ${chance ? `<button class="${chance === 1 ? 'primary' : 'blood'}" data-action="refineAct" data-id="seal">${chance === 1 ? '合盖收炉' : '冒险合盖'}</button>` : ''}
+      <button class="ghost" data-action="refineAct" data-id="abort">撤火</button>
     </div>
-    ${lines}`;
+  </div>`;
 }
 
 export function renderEventModal(eventId) {

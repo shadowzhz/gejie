@@ -10,8 +10,17 @@ import { battleAct, battleGuPlan, startBattle } from '../src/core/combat.js';
 import { createBreakSession, stepBreakSession, washMinorWall } from '../src/core/breakthrough.js';
 import { createRefineSession, refineChance, refineTechniques, stepRefineSession } from '../src/core/refine.js';
 
+function loadFurnace(gs, session) {
+  stepRefineSession(gs, session, 'ignite');
+  for (const input of [...session.pending]) {
+    stepRefineSession(gs, session, 'add:0', Math.random, 0.3);
+    assert.ok(!session.pending.includes(input));
+  }
+}
+
 function runRefining(gs, session, actions = ['force', 'force', 'gentle', 'gentle']) {
-  for (const action of ['ignite', ...actions]) stepRefineSession(gs, session, action);
+  loadFurnace(gs, session);
+  for (const action of actions) stepRefineSession(gs, session, action);
   assert.equal(refineChance(session), 1);
   stepRefineSession(gs, session, 'seal', () => 0.99);
 }
@@ -418,7 +427,7 @@ test('幡然蛊和浪子蛊分别将四味酒虫逆炼成一只和两只酒虫',
   }
 });
 
-test('四味酒虫缺任何一种酒都不能开炉，开炉后扣除四种酒', () => {
+test('四味酒虫缺任何一种酒都不能开炉，酒在投入时逐份扣除', () => {
   const gs = createNewGame();
   gs.player.yuanshi = 100;
   gs.player.recipes.push('r_siwei');
@@ -442,6 +451,59 @@ test('四味酒虫缺任何一种酒都不能开炉，开炉后扣除四种酒',
   assert.ok(!gs.player.gu.some((gu) => gu.id === 'jiuchong'));
 });
 
+test('手动选料并按时机投炉，撤火只损失已投辅材和开炉费', () => {
+  const gs = createNewGame();
+  gs.player.yuanshi = 100;
+  gs.player.recipes.push('r_siwei');
+  addGu(gs, 'jiuchong');
+  addGu(gs, 'jiuchong');
+  for (const wine of ['suanjiu', 'tianjiu', 'kujiu', 'lajiu']) gs.player.items[wine] = 1;
+
+  const session = createRefineSession(gs, 'r_siwei');
+  stepRefineSession(gs, session, 'ignite');
+  assert.equal(gs.player.items.suanjiu, 1);
+  stepRefineSession(gs, session, 'force');
+  assert.equal(session.turns, session.flow.turns);
+  assert.equal(refineChance(session), 0);
+
+  const wine = session.pending.findIndex(({ item }) => item === 'tianjiu');
+  stepRefineSession(gs, session, `add:${wine}`, Math.random, 0.5);
+  assert.equal(session.progress, 1);
+  assert.equal(gs.player.items.tianjiu, undefined);
+  assert.equal(gs.player.items.suanjiu, 1);
+
+  const resumed = JSON.parse(JSON.stringify(session));
+  stepRefineSession(gs, resumed, 'add:0', Math.random, 0);
+  assert.equal(resumed.pressure, 1);
+  assert.equal(resumed.pending.length, 4);
+  stepRefineSession(gs, resumed, 'abort');
+  assert.equal(resumed.state, 'aborted');
+  assert.equal(gs.player.gu.length, 2);
+  assert.equal(gs.player.yuanshi, 100 - session.cost);
+});
+
+test('通用炼炉可踩点鼓风，偏拍后可掀盖降温并合盖', () => {
+  const gs = createNewGame();
+  gs.player.yuanshi = 100;
+  gs.player.recipes.push('r_yuehen');
+  addGu(gs, 'yueguang');
+  addGu(gs, 'henshi');
+  const ref = createRefineSession(gs, 'r_yuehen');
+  stepRefineSession(gs, ref, 'ignite');
+  for (let i = 0; i < 2; i++) stepRefineSession(gs, ref, 'add:0', Math.random, 0.5);
+  stepRefineSession(gs, ref, 'pulse', Math.random, 0);
+  assert.equal(ref.progress, 2);
+  assert.equal(ref.pressure, 1);
+  for (let i = 0; i < 2; i++) stepRefineSession(gs, ref, 'pulse', Math.random, 0.5);
+  assert.ok(ref.pressure > ref.flow.safePressure);
+  stepRefineSession(gs, ref, 'vent');
+  assert.equal(ref.pressure, 0);
+  stepRefineSession(gs, ref, 'pulse', Math.random, 0.5);
+  assert.equal(refineChance(ref), 1);
+  stepRefineSession(gs, ref, 'seal', () => 0.99);
+  assert.equal(ref.success, true);
+});
+
 test('护蛊耗一次运炉，强行收炉或炸炉时仍保住本命蛊', () => {
   for (const overload of [false, true]) {
     const gs = createNewGame();
@@ -452,7 +514,7 @@ test('护蛊耗一次运炉，强行收炉或炸炉时仍保住本命蛊', () =>
     addGu(gs, 'xiaoguang');
     const ref = createRefineSession(gs, 'r_yuemang');
     assert.equal(gs.player.yuanshi, 100);
-    stepRefineSession(gs, ref, 'ignite');
+    loadFurnace(gs, ref);
     if (overload) stepRefineSession(gs, ref, `protect:${aux.uid}`);
     stepRefineSession(gs, ref, 'force');
     assert.ok(refineChance(ref) > 0 && refineChance(ref) < 1);
@@ -479,7 +541,7 @@ test('月道炼蛊可在夜里引月一次，撤火只保住蛊虫', () => {
   assert.equal(refineTechniques(createRefineSession(gs, 'r_yuehen')).find(({ id }) => id === 'signature').enabled, false);
   gs.minutes = makeTime(1, 3, 1, 10);
   const ref = createRefineSession(gs, 'r_yuehen');
-  stepRefineSession(gs, ref, 'ignite');
+  loadFurnace(gs, ref);
   stepRefineSession(gs, ref, 'signature');
   assert.equal(ref.progress, 2);
   stepRefineSession(gs, ref, 'signature');

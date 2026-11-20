@@ -47,6 +47,13 @@ function closeModal() {
 
 function restoreRefining() {
   if (!G?.refining) return;
+  if (!Array.isArray(G.refining.pending)) {
+    delete G.refining;
+    addLog(G, '【停炉】炼蛊流程已更新，旧炉次已结束。');
+    saveGame(G);
+    TAB = 'refine';
+    return;
+  }
   TAB = 'refine';
   MODAL = { kind: 'refine', data: G.refining };
 }
@@ -71,7 +78,7 @@ function renderTopBar() {
     </div>
     <div class="goal-bar"><b>当下目标：</b>${esc(G.goal)}</div>
     <div class="res-row">
-      <div class="res-item"><div class="res-head"><span>气血</span><span data-live="hp">${Math.round(p.hp)}/${p.hpMax}</span></div><div class="bar hp"><i data-live="hp-bar" style="width:${hpPct}%"></i></div></div>
+      <div class="res-item"><div class="res-head"><span>气血${G.battle?.meShield ? ` · 护盾 ${G.battle.meShield}` : ''}</span><span data-live="hp">${Math.round(p.hp)}/${p.hpMax}</span></div><div class="bar hp"><i data-live="hp-bar" style="width:${hpPct}%"></i></div></div>
       <div class="res-item"><div class="res-head"><span>真元</span><span data-live="zy">${Math.round(p.zy)}/${p.zyMax}</span></div><div class="bar zy"><i data-live="zy-bar" style="width:${zyPct}%"></i></div></div>
       <div class="res-item"><div class="res-head"><span>元石</span><span>${p.yuanshi}</span></div><div class="muted" style="font-size:.75rem">${p.mo >= 30 ? `恶名 ${p.mo}` : `${p.grade}等资质`}</div></div>
     </div>
@@ -85,10 +92,15 @@ function renderModal() {
 
   if (MODAL?.kind === 'place' && (G.battle || G.player.dead)) MODAL = null;
   const placeShown = MODAL?.kind === 'place' && !G.pendingEventId;
+  const refineShown = MODAL?.kind === 'refine';
+  const activeRefineButton = refineShown && sheetEl.contains(document.activeElement) ? document.activeElement : null;
   const samePlaceSheet = sheetEl.classList.contains('place-sheet');
-  const scrollTop = placeShown && samePlaceSheet ? sheetEl.scrollTop : 0;
+  const keepScroll = (placeShown && samePlaceSheet) || (refineShown
+    && sheetEl.classList.contains('refine-sheet') && MODAL.data.state === 'ongoing' && MODAL.effect?.action !== 'ignite');
+  const scrollTop = keepScroll ? sheetEl.scrollTop : 0;
   sheetEl.classList.toggle('place-sheet', placeShown);
-  if (placeShown) sheetEl.setAttribute('aria-labelledby', 'place-title');
+  sheetEl.classList.toggle('refine-sheet', refineShown);
+  if (placeShown || refineShown) sheetEl.setAttribute('aria-labelledby', placeShown ? 'place-title' : 'refine-title');
   else sheetEl.removeAttribute('aria-labelledby');
 
   if (G && G.pendingEventId && !G.battle && (!MODAL || MODAL.kind === 'place')) {
@@ -105,7 +117,10 @@ function renderModal() {
   if (MODAL.kind === 'place') {
     html = `<div class="place-sheet-controls"><button class="sm" data-action="closeModal">返回地图</button></div>${renderPlaceView(G)}`;
   } else if (MODAL.kind === 'break') html = renderBreakModal(MODAL.data);
-  else if (MODAL.kind === 'refine') html = renderRefineModal(MODAL.data);
+  else if (refineShown) {
+    html = renderRefineModal(MODAL.data, MODAL.effect);
+    delete MODAL.effect;
+  }
   else if (MODAL.kind === 'killer') html = renderCustomKillerModal(G);
   else if (MODAL.kind === 'developer') html = renderDeveloperView(G);
   else if (MODAL.kind === 'dead') {
@@ -132,6 +147,12 @@ function renderModal() {
   modalEl.hidden = false;
   sheetEl.scrollTop = scrollTop;
   if (placeShown && !samePlaceSheet) sheetEl.querySelector('[data-action="closeModal"]').focus();
+  if (refineShown) {
+    const buttons = [...sheetEl.querySelectorAll('button:not(:disabled)')];
+    const next = activeRefineButton && buttons.find(({ dataset }) =>
+      dataset.action === activeRefineButton.dataset.action && dataset.id === activeRefineButton.dataset.id);
+    (next || buttons[0])?.focus({ preventScroll: true });
+  }
 }
 
 export function render() {
@@ -419,7 +440,19 @@ function handleAction(el) {
     G.refining = sess;
     openModal('refine', sess);
   } else if (act === 'refineAct' && MODAL?.kind === 'refine') {
-    stepRefineSession(G, MODAL.data, id);
+    const sess = MODAL.data;
+    const { state, turns } = sess;
+    const pending = sess.pending.length;
+    const track = el.closest('.refine-ritual')?.querySelector('.refine-timing');
+    let timing;
+    if (track) {
+      const { left, width } = track.getBoundingClientRect();
+      const marker = track.firstElementChild.getBoundingClientRect();
+      if (width) timing = Math.max(0, Math.min(1, (marker.left + marker.width / 2 - left) / width));
+    }
+    stepRefineSession(G, sess, id, Math.random, timing);
+    if (state === sess.state && turns === sess.turns && pending === sess.pending.length) return;
+    MODAL.effect = { action: id.split(':')[0], input: el.dataset.input };
     saveGame(G);
     render();
   } else if (act === 'openCustomKiller') {

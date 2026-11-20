@@ -18,7 +18,7 @@ export function renderRefineView(gs) {
 
   return `<div class="card">
       <h3>炼蛊</h3>
-      <div class="muted">${cards ? "用有限火候达到蛊方的炼成度和安全炉压，再收炉成蛊。" : "尚未习得蛊方，可前往蛊铺购买。"}</div>
+      <div class="muted">${cards ? "看准时机逐份投料，再调火候、收炉成蛊。" : "尚未习得蛊方，可前往蛊铺购买。"}</div>
     </div>
     <div class="grid2">${cards}</div>`;
 }
