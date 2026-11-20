@@ -3,9 +3,13 @@ import { ENEMIES } from '../data/enemies.js';
 import { addGu, addItem, addLog, hasGu, isGuWeak, recalcStats, recordQuestProgress } from './state.js';
 import { killerEffects, killerMoveBlock, recordGuUsage } from './killer.js';
 
+function enemyMoveCost(enemy, move) {
+  return move.cost ?? enemy.rank * 4;
+}
+
 function pickIntent(enemy, rng = Math.random) {
-  const pool = enemy.moves.filter((m) => (enemy.cds[m.name] || 0) <= 0);
-  const list = pool.length ? pool : [enemy.moves[0]];
+  const list = enemy.moves.filter((m) => (enemy.cds[m.name] || 0) <= 1 && enemy.zy >= enemyMoveCost(enemy, m));
+  if (!list.length) return null;
   const total = list.reduce((s, m) => s + (m.weight || 1), 0);
   let r = rng() * total;
   for (const m of list) {
@@ -77,9 +81,14 @@ function enemyTurn(gs, b, rng = Math.random) {
     foe.intent = pickIntent(foe, rng);
     return;
   }
-  const mv = foe.intent || foe.moves[0];
+  const mv = foe.intent;
+  if (!mv || foe.zy < enemyMoveCost(foe, mv) || (foe.cds[mv.name] || 0) > 0) {
+    b.logs.push(`${foe.name}无招可施，本轮暂歇。`);
+    foe.intent = pickIntent(foe, rng);
+    return;
+  }
   if (mv.cd) foe.cds[mv.name] = mv.cd;
-  foe.zy = Math.max(0, foe.zy - (mv.cost ?? foe.rank * 4));
+  foe.zy -= enemyMoveCost(foe, mv);
   if (mv.kind === 'attack' || mv.kind === 'drain' || mv.kind === 'stun') {
     const evaded = speed > 0 && gs.player.speed + speed > foe.speed;
     const raw = Math.round(mv.power * (0.9 + rng() * 0.2) * (evaded ? 0.7 : 1));

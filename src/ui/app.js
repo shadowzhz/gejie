@@ -1,13 +1,13 @@
 import { GU_DEFS, ITEMS, REFINE_RECIPES, recipeOutputText } from '../data/gu.js';
 import { hasPlaceActions, PLACES, rareGathering } from '../data/places.js';
 import { formatDateTime, isNight, MIN_PER_DAY, MIN_PER_MONTH, MIN_PER_SHICHEN } from '../core/calendar.js';
-import { addGu, addItem, addLog, claimBenming, createAptitude, createNewGame, esc, feedGu, handleQuest, loadGame, minorXpNeed, purchaseShopEntry, RANK_NAMES, realmText, recalcStats, recordQuestProgress, refineBenming, saveGame, useHealItem, useHealingGu, useBoarGu, XIAO_NAMES } from '../core/state.js';
+import { addGu, addItem, addLog, claimBenming, createAptitude, createNewGame, esc, feedGu, handleQuest, loadGame, minorXpNeed, purchaseShopEntry, RANK_NAMES, realmText, recalcStats, recordQuestProgress, refineBenming, removeGuByUid, saveGame, useHealItem, useHealingGu, useBoarGu, XIAO_NAMES } from '../core/state.js';
 import { createKillerMove, discoveredKillerPatterns, forgetKillerMove, recordGuUsage } from '../core/killer.js';
 import { battleAct, startBattle } from '../core/combat.js';
 import { applyEventChoice, checkStoryTriggers, innRumors, nextRetreatTime } from '../core/story-engine.js';
 import { advanceMinutes, moveToPlace, rewindSpringCicada, saveSpringSnapshot } from '../core/clock.js';
-import { availableRecipeDiscovery, createRefineSession, isRecipeSold, knowsRefineRecipe, stepRefineSession } from '../core/refine.js';
-import { createBreakSession, realmGrowthText, stepBreakSession, washMinorWall } from '../core/breakthrough.js';
+import { availableRecipeDiscovery, createRefineSession, isRecipeSold, knowsRefineRecipe, restoreRefineSession, stepRefineSession } from '../core/refine.js';
+import { createBreakSession, realmGrowthText, stepBreakSession, validBreakSession, washMinorWall } from '../core/breakthrough.js';
 import { renderBreakModal, renderCustomKillerModal, renderEventModal, renderRefineModal, renderStartScreen } from './rituals.js';
 import { renderBattleView } from './battle-view.js';
 import { renderPlaceView } from './place-view.js';
@@ -36,6 +36,7 @@ function openModal(kind, data) {
 }
 
 function closeModal() {
+  if (MODAL?.kind === 'break' && G.breakthrough) return;
   if (MODAL?.kind === 'refine') {
     if (G.refining?.state === 'ongoing') return;
     delete G.refining;
@@ -45,17 +46,37 @@ function closeModal() {
   render();
 }
 
-function restoreRefining() {
-  if (!G?.refining) return;
-  if (!Array.isArray(G.refining.pending) || !REFINE_RECIPES.some(({ id }) => id === G.refining.recipeId)) {
-    delete G.refining;
-    addLog(G, '【停炉】炼蛊流程已更新，旧炉次已结束。');
-    saveGame(G);
-    TAB = 'refine';
-    return;
+function restoreSessions(save = false) {
+  if (!G) return;
+  MODAL = null;
+  const notices = [];
+  if (Object.hasOwn(G, 'breakthrough')) {
+    if (validBreakSession(G, G.breakthrough)) {
+      TAB = 'aperture';
+      MODAL = { kind: 'break', data: G.breakthrough };
+    } else {
+      delete G.breakthrough;
+      notices.push('破壁会话无法恢复，已退出冲关。');
+      save = true;
+    }
   }
-  TAB = 'refine';
-  MODAL = { kind: 'refine', data: G.refining };
+  if (Object.hasOwn(G, 'refining')) {
+    const sess = !G.breakthrough && restoreRefineSession(G, G.refining);
+    if (sess) {
+      save ||= G.refining.version !== sess.version;
+      G.refining = sess;
+      TAB = 'refine';
+      MODAL = { kind: 'refine', data: sess };
+    } else {
+      delete G.refining;
+      notices.push('炼蛊会话无法恢复，已安全停炉，蛊虫保留。已扣除的元石和辅材按存档保留原结算。');
+      save = true;
+    }
+  }
+  for (const notice of notices) addLog(G, `【会话恢复】${notice}`, 'log-warn');
+  if (save && !saveGame(G)) notices.push('保存失败，请检查本地存储。');
+  if (notices.length) showToast(notices.join(' '));
+  return notices.length > 0;
 }
 
 function renderTopBar() {
@@ -352,6 +373,8 @@ function handleDeveloperAction(action) {
 function handleAction(el) {
   const act = el.dataset.action;
   if (!act) return;
+  if (G?.breakthrough && act !== 'breakAct') return;
+  if (MODAL?.kind === 'refine' && act !== 'refineAct' && act !== 'closeModal') return;
   const id = el.dataset.id || '';
 
   if (act === 'startKaiqiao') {
@@ -381,7 +404,7 @@ function handleAction(el) {
     G = loadGame();
     if (!G) { showToast('未找到可用存档'); return; }
     TAB = 'place';
-    restoreRefining();
+    restoreSessions();
     render();
   } else if (act === 'navTab') {
     if (MODAL?.kind === 'place') MODAL = null;
@@ -456,12 +479,15 @@ function handleAction(el) {
     saveGame(G);
     render();
   } else if (act === 'openBreak') {
+    if (G.breakthrough || G.refining || G.battle || G.player.dead) return;
     const sess = createBreakSession(G);
     if (sess.error) { showToast(sess.error); return; }
+    G.breakthrough = sess;
+    if (!saveGame(G)) showToast('破壁进度保存失败，请检查本地存储。');
     openModal('break', sess);
-  } else if (act === 'breakAct' && MODAL?.kind === 'break') {
-    stepBreakSession(G, MODAL.data, id);
-    saveGame(G);
+  } else if (act === 'breakAct' && MODAL?.kind === 'break' && G.breakthrough) {
+    stepBreakSession(G, G.breakthrough, id);
+    if (!saveGame(G)) showToast('破壁进度保存失败，请检查本地存储。');
     render();
   } else if (act === 'startRefine') {
     if (G.refining || G.battle || G.player.dead) return;
@@ -470,6 +496,7 @@ function handleAction(el) {
     const sess = createRefineSession(G, id);
     if (sess.error) { openModal('refineInfo', { recipe, reason: sess.error }); return; }
     G.refining = sess;
+    if (!saveGame(G)) showToast('炼蛊进度保存失败，请检查本地存储。');
     openModal('refine', sess);
   } else if (act === 'refineAct' && MODAL?.kind === 'refine') {
     const sess = MODAL.data;
@@ -485,7 +512,7 @@ function handleAction(el) {
     stepRefineSession(G, sess, id, Math.random, timing);
     if (state === sess.state && turns === sess.turns && pending === sess.pending.length) return;
     MODAL.effect = { action: id.split(':')[0], input: el.dataset.input };
-    saveGame(G);
+    if (!saveGame(G)) showToast('炼蛊进度保存失败，请检查本地存储。');
     render();
   } else if (act === 'openCustomKiller') {
     if (!G.battle && discoveredKillerPatterns(G.player).length) openModal('killer');
@@ -550,7 +577,7 @@ function handleAction(el) {
       return;
     }
     const before = { ...G.player };
-    G.player.gu = G.player.gu.filter((x) => x.uid !== uid);
+    removeGuByUid(G, uid);
     G.player.xiao++;
     recalcStats(G);
     const message = `晋入${realmText(G.player)} · ${realmGrowthText(before, G.player)}`;
@@ -590,12 +617,10 @@ function handleAction(el) {
     const res = rewindSpringCicada(G);
     if (!res.ok) { showToast(res.reason); return; }
     G = res.state;
-    closeModal();
-    saveGame(G);
+    restoreSessions(true);
     render();
   } else if (act === 'manualSave') {
-    saveGame(G);
-    showToast('进度已保存');
+    showToast(saveGame(G) ? '进度已保存' : '保存失败，请检查本地存储。');
   } else if (act === 'exportSave') {
     const text = JSON.stringify(G, null, 2);
     if (navigator.clipboard) navigator.clipboard.writeText(text).then(() => showToast('存档 JSON 已复制到剪贴板'));
@@ -611,11 +636,9 @@ function handleAction(el) {
       if (!PLACES[parsed.location]) parsed.location = 'shijie';
       recalcStats(parsed);
       G = parsed;
-      saveGame(G);
-      MODAL = null;
-      restoreRefining();
+      const warned = restoreSessions(true);
       render();
-      showToast('存档已导入');
+      if (!warned) showToast('存档已导入');
     } catch {
       showToast('存档格式无效，导入失败');
     }
@@ -670,5 +693,5 @@ setInterval(() => {
 }, 1000);
 
 G = loadGame();
-restoreRefining();
+restoreSessions();
 render();

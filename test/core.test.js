@@ -1,17 +1,101 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createNewGame, addGu, BENMING_ZY_COST, claimBenming, handleQuest, purchaseShopEntry, questBoard, refineBenming, realmText, recordQuestProgress, removeGuByUid, useHealItem, useHealingGu, useBoarGu } from '../src/core/state.js';
+import { createNewGame, addGu, BENMING_ZY_COST, claimBenming, handleQuest, loadGame, purchaseShopEntry, questBoard, refineBenming, realmText, recordQuestProgress, removeGuByUid, saveGame, useHealItem, useHealingGu, useBoarGu } from '../src/core/state.js';
 import { PLACES, placeShopEntries, rareGathering } from '../src/data/places.js';
 import { advanceMinutes, moveToPlace, rewindSpringCicada, saveSpringSnapshot } from '../src/core/clock.js';
-import { makeTime } from '../src/core/calendar.js';
+import { makeTime, MIN_PER_MONTH } from '../src/core/calendar.js';
 import { applyEventChoice, checkStoryTriggers, innRumors, nextRetreatTime } from '../src/core/story-engine.js';
 import { createKillerMove, forgetKillerMove } from '../src/core/killer.js';
 import { battleAct, battleGuPlan, startBattle } from '../src/core/combat.js';
-import { createBreakSession, stepBreakSession, washMinorWall } from '../src/core/breakthrough.js';
-import { availableRecipeDiscovery, canStartRefine, createRefineSession, isRecipeSold, knowsRefineRecipe, refineChance, refineReady, refineRealm, refineTechniques, stepRefineSession } from '../src/core/refine.js';
+import { createBreakSession, stepBreakSession, validBreakSession, washMinorWall } from '../src/core/breakthrough.js';
+import { availableRecipeDiscovery, canStartRefine, createRefineSession, isRecipeSold, knowsRefineRecipe, REFINE_SESSION_VERSION, refineChance, refineReady, refineRealm, refineTechniques, restoreRefineSession, stepRefineSession } from '../src/core/refine.js';
 import { renderCustomKillerModal, renderEventModal } from '../src/ui/rituals.js';
 import { renderPlaceView } from '../src/ui/place-view.js';
 import { GU_DEFS, ITEMS, REFINE_RECIPES } from '../src/data/gu.js';
+
+test('破壁跨存档保留进度，成功、失败和退关都只结算一次', () => {
+  for (const outcome of ['win', 'lose', 'stopped']) {
+    let raw;
+    const storage = { setItem: (_, value) => { raw = value; }, getItem: () => raw };
+    const gs = createNewGame();
+    gs.player.xiao = 3;
+    addGu(gs, 'yuehen');
+    gs.player.zy = gs.player.zyMax;
+    gs.player.yuanshi = 50;
+    gs.breakthrough = createBreakSession(gs);
+    stepBreakSession(gs, gs.breakthrough, 'hard', () => 0.5);
+    stepBreakSession(gs, gs.breakthrough, 'stone');
+    assert.ok(saveGame(gs, storage));
+    const loaded = loadGame(storage);
+    const sess = loaded.breakthrough;
+    assert.deepEqual(sess, gs.breakthrough);
+    assert.equal(validBreakSession(loaded, sess), true);
+    if (outcome === 'win') sess.crack = 99;
+    if (outcome === 'lose') sess.hurt = 99;
+    const action = outcome === 'stopped' ? 'stop' : 'hard';
+    stepBreakSession(loaded, sess, action, () => 0.5);
+    stepBreakSession(loaded, sess, action, () => 0.5);
+    assert.equal(sess.state, outcome);
+    assert.equal(loaded.player.yuanshi, 40);
+    assert.equal(loaded.player.rank, outcome === 'win' ? 2 : 1);
+    assert.equal(loaded.player.attempts, outcome === 'win' ? 0 : 1);
+    assert.ok(saveGame(loaded, storage));
+    assert.equal(loadGame(storage).breakthrough, undefined);
+  }
+});
+
+test('炼蛊会话可从旧版恢复，未识别版本和损坏输入安全拒绝', () => {
+  const gs = createNewGame();
+  gs.flags.kaike = true;
+  gs.player.yuanshi = 100;
+  gs.player.items.yuanshi_zha = 1;
+  const sess = createRefineSession(gs, 'r_yueguang');
+  assert.equal(sess.version, REFINE_SESSION_VERSION);
+  stepRefineSession(gs, sess, 'ignite');
+  stepRefineSession(gs, sess, 'add:0', Math.random, 0.5);
+  const legacy = JSON.parse(JSON.stringify(sess));
+  delete legacy.version;
+  assert.deepEqual(restoreRefineSession(gs, legacy), sess);
+  assert.equal(restoreRefineSession(gs, { ...sess, version: 999 }), null);
+  assert.equal(restoreRefineSession(gs, { ...sess, pending: [null] }), null);
+  assert.equal(restoreRefineSession(gs, { ...sess, pending: [{ item: { toString: null } }] }), null);
+  assert.equal(restoreRefineSession(gs, { ...sess, turns: '5' }), null);
+  assert.equal(restoreRefineSession(gs, { ...sess, flow: null }).flow, sess.flow);
+  assert.equal(gs.player.yuanshi, 100 - sess.cost);
+});
+
+test('敌方真元不足时已预告的招式也不会执行，恰好足够时可施法', () => {
+  for (const zy of [0, 49, 50]) {
+    const gs = createNewGame();
+    const b = startBattle(gs, 'caoren', '', () => 0.5);
+    const move = { name: '重击', kind: 'attack', power: 20, cost: 50, cd: 2 };
+    b.foe.moves = [move];
+    b.foe.intent = move;
+    b.foe.zy = zy;
+    battleAct(gs, 'attack', '', () => 0.5);
+    assert.equal(gs.player.hp, gs.player.hpMax - (zy === 50 ? 20 : 0));
+    assert.equal(b.foe.zy, zy === 50 ? 0 : zy);
+    assert.equal(b.foe.cds[move.name], zy === 50 ? 2 : undefined);
+    assert.equal(b.foe.intent, null);
+  }
+});
+
+test('跨三个月逐月发放月例，满血服药不扣库存或设置冷却', () => {
+  const gs = createNewGame('试炼', { grade: '乙', hai: 7 });
+  gs.flags.kaike = true;
+  gs.minutes = makeTime(1, 11, 12);
+  advanceMinutes(gs, 3 * MIN_PER_MONTH);
+  assert.equal(gs.player.yuanshi, 48);
+  const payouts = gs.logs.filter(({ text }) => text.startsWith('【月例】'));
+  assert.equal(payouts.length, 3);
+  assert.match(payouts[0].text, /第二年 二月初一/);
+  assert.match(payouts[2].text, /第一年 腊月初一/);
+  gs.player.items.shengjiye = 1;
+  assert.equal(useHealItem(gs, 'shengjiye').ok, false);
+  assert.equal(gs.player.items.shengjiye, 1);
+  assert.equal(gs.player.healReadyAt, undefined);
+  assert.equal(saveGame(gs, { setItem() { throw new Error('full'); } }), false);
+});
 
 test('卷一两条路线按日期连到卷末，证词和恶名改变查案与大比选项', () => {
   for (const outlaw of [false, true]) {

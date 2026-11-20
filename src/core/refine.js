@@ -87,6 +87,7 @@ const REFINE_FLOWS = {
 };
 
 export const OVERLOAD_PRESSURE = 7;
+export const REFINE_SESSION_VERSION = 1;
 
 export function createRefineSession(gs, recipeId) {
   const check = canStartRefine(gs, recipeId);
@@ -103,6 +104,7 @@ export function createRefineSession(gs, recipeId) {
       Array.from({ length: count }, () => ({ item, name: ITEMS[item].name })))
   ];
   return {
+    version: REFINE_SESSION_VERSION,
     recipeId,
     flow,
     outName: recipeOutputText(rc),
@@ -122,6 +124,65 @@ export function createRefineSession(gs, recipeId) {
     state: 'ready',
     success: false,
     lines: []
+  };
+}
+
+export function restoreRefineSession(gs, saved) {
+  if (!saved || typeof saved !== 'object' || Array.isArray(saved)) return null;
+  // The original unversioned session used the same counters and input lists.
+  if (Object.hasOwn(saved, 'version') && saved.version !== REFINE_SESSION_VERSION) return null;
+  const rc = REFINE_RECIPES.find(({ id }) => id === saved.recipeId);
+  if (!rc) return null;
+  const flow = REFINE_FLOWS[rc.flow];
+  const { ingredients, pending, state, protectedUid, lines } = saved;
+  const active = state === 'ready' || state === 'ongoing';
+  const counter = (value, max) => Number.isSafeInteger(value) && value >= 0 && value <= max;
+  if ((!active && state !== 'done' && state !== 'aborted')
+    || (active && (gs.player.dead || gs.battle))
+    || !Array.isArray(ingredients) || !Array.isArray(pending)
+    || !Array.isArray(lines) || !lines.every((line) => typeof line === 'string')
+    || !counter(saved.turns, flow.turns) || !counter(saved.progress, Number.MAX_SAFE_INTEGER)
+    || !counter(saved.pressure, OVERLOAD_PRESSURE + flow.surge - 1)
+    || (active && saved.pressure >= OVERLOAD_PRESSURE)
+    || typeof saved.night !== 'boolean' || typeof saved.usedSignature !== 'boolean'
+    || typeof saved.success !== 'boolean' || (saved.success && state !== 'done')
+    || !REFINE_REALMS.some(([, , bonus]) => bonus === saved.realmBonus)) return null;
+
+  const expected = Object.entries(rc.gu).flatMap(([id, count]) => Array(count).fill(id));
+  const uids = new Set();
+  if (ingredients.length !== expected.length || !ingredients.every((entry, index) => {
+    const id = expected[index];
+    if (!Number.isSafeInteger(entry?.uid) || uids.has(entry.uid)
+      || entry.name !== GU_DEFS[id].name || typeof entry.benming !== 'boolean') return false;
+    if (active && (!gs.player.gu.some((gu) => gu.uid === entry.uid && gu.id === id)
+      || entry.benming !== (entry.uid === gs.player.benming))) return false;
+    uids.add(entry.uid);
+    return true;
+  })) return null;
+  if (protectedUid !== null && !ingredients.some((gu) => gu.uid === protectedUid && !gu.benming)) return null;
+
+  const remainingGu = new Map(ingredients.map(({ uid, name }) => [uid, name]));
+  const remainingItems = { ...rc.materials };
+  for (const input of pending) {
+    if (!input || typeof input !== 'object') return null;
+    if (Object.hasOwn(input, 'uid')) {
+      if (Object.hasOwn(input, 'item') || !remainingGu.has(input.uid) || remainingGu.get(input.uid) !== input.name) return null;
+      remainingGu.delete(input.uid);
+    } else {
+      if (typeof input.item !== 'string' || !Object.hasOwn(remainingItems, input.item) || remainingItems[input.item] <= 0
+        || ITEMS[input.item].name !== input.name) return null;
+      remainingItems[input.item]--;
+    }
+  }
+  if (state === 'ready' && (pending.length !== expected.length + Object.values(rc.materials).reduce((sum, count) => sum + count, 0)
+    || saved.progress !== 0 || saved.pressure !== 0 || saved.turns !== flow.turns
+    || protectedUid !== null || saved.usedSignature)) return null;
+  if (state === 'done' && pending.length) return null;
+
+  return {
+    ...saved, version: REFINE_SESSION_VERSION, flow,
+    outName: recipeOutputText(rc), method: rc.method ?? '合炼',
+    materials: recipeIngredientsText(rc), cost: rc.cost, baseRate: rc.rate
   };
 }
 

@@ -60,9 +60,22 @@ export function createBreakSession(gs) {
   };
 }
 
+export function validBreakSession(gs, sess) {
+  const p = gs.player;
+  const inRange = (value, max) => Number.isFinite(value) && value >= 0 && value <= max;
+  return sess?.state === 'ongoing' && !p.dead && !gs.battle && p.xiao === 3
+    && sess.turn === p.rank && sess.turn >= 1 && sess.turn < 4 && sess.zyMax === p.zyMax
+    && inRange(sess.zy, sess.zyMax) && inRange(sess.crack, 100) && sess.crack < 100
+    && inRange(sess.hurt, 100) && sess.hurt < 100
+    && Number.isSafeInteger(sess.stones) && Number.isSafeInteger(sess.stonesUsed)
+    && sess.stones >= 0 && sess.stonesUsed >= 0 && sess.stones + sess.stonesUsed === p.yuanshi
+    && [2, 3, 5, 7].includes(sess.wallHeal) && inRange(sess.crackMult, 2.2) && sess.crackMult >= 1
+    && Number.isSafeInteger(sess.steps) && sess.steps >= 0
+    && Array.isArray(sess.lines) && sess.lines.every((line) => typeof line === 'string');
+}
+
 export function stepBreakSession(gs, sess, key, rng = Math.random) {
   if (!sess || sess.state !== 'ongoing') return sess;
-  sess.steps++;
   const zyMax = sess.zyMax;
   const hardNeed = Math.max(1, Math.round(zyMax * 0.55));
   const softNeed = Math.max(1, Math.round(zyMax * 0.28));
@@ -95,24 +108,24 @@ export function stepBreakSession(gs, sess, key, rng = Math.random) {
     sess.hurt -= heal;
     msg = `催动真元温养空窍（真元 -${steadyNeed}），震伤 -${heal}。`;
   } else if (key === 'stop') {
-    sess.state = 'stopped';
-    gs.player.attempts = (gs.player.attempts || 0) + 1;
-    gs.player.yuanshi = Math.max(0, gs.player.yuanshi - sess.stonesUsed);
+    sess.steps++;
+    settleBreakSession(gs, sess, 'stopped');
     gs.player.zy = Math.round(sess.zy);
     sess.lines.push('你主动散去真元退关，此番心得已留存。');
     addLog(gs, '【退关】破壁暂止，已积攒冲关心得。', 'log-warn');
     return sess;
+  } else {
+    return sess;
   }
 
+  sess.steps++;
   if (sess.crack >= 100) {
     sess.crack = 100;
-    sess.state = 'win';
-    gs.player.yuanshi = Math.max(0, gs.player.yuanshi - sess.stonesUsed);
+    settleBreakSession(gs, sess, 'win');
     const before = { ...gs.player };
     gs.player.rank++;
     gs.player.xiao = 0;
     gs.player.xp = 0;
-    gs.player.attempts = 0;
     recalcStats(gs);
     gs.player.zy = Math.round(gs.player.zyMax * 0.5);
     if (gs.player.rank >= 2) gs.flags['open:jiazhuge'] = true;
@@ -125,9 +138,7 @@ export function stepBreakSession(gs, sess, key, rng = Math.random) {
 
   if (sess.hurt >= 100) {
     sess.hurt = 100;
-    sess.state = 'lose';
-    gs.player.attempts = (gs.player.attempts || 0) + 1;
-    gs.player.yuanshi = Math.max(0, gs.player.yuanshi - sess.stonesUsed);
+    settleBreakSession(gs, sess, 'lose');
     gs.player.hp = Math.max(5, Math.round(gs.player.hp * 0.5));
     gs.player.zy = 0;
     sess.lines.push(msg, '空窍震伤过重，真元反噬，被迫中止冲关！');
@@ -141,4 +152,12 @@ export function stepBreakSession(gs, sess, key, rng = Math.random) {
   sess.lines.push(`${msg} 窍壁自愈 ${healed.toFixed(1)}%。`);
   if (sess.lines.length > 6) sess.lines = sess.lines.slice(-6);
   return sess;
+}
+
+function settleBreakSession(gs, sess, state) {
+  sess.state = state;
+  const p = gs.player;
+  p.yuanshi = Math.max(0, p.yuanshi - sess.stonesUsed);
+  p.attempts = state === 'win' ? 0 : (p.attempts || 0) + 1;
+  if (gs.breakthrough === sess) delete gs.breakthrough;
 }

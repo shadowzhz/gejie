@@ -1597,6 +1597,7 @@ function useHealItem(gs, id) {
   const def = ITEMS[id];
   if (!def?.heal) return { ok: false };
   const p = gs.player;
+  if (p.hp >= p.hpMax) return { ok: false, reason: '气血已满，无需用药' };
   if (gs.minutes < (p.healReadyAt?.[id] ?? 0)) {
     return { ok: false, reason: '上一片生机叶的药力未散，请稍候再用' };
   }
@@ -1605,18 +1606,20 @@ function useHealItem(gs, id) {
   if (def.healCooldown) (p.healReadyAt ??= {})[id] = gs.minutes + def.healCooldown;
   return { ok: true };
 }
-function saveGame(gs, storage = typeof localStorage !== 'undefined' ? localStorage : null) {
-  if (!storage || !gs) return false;
+function saveGame(gs, storage) {
   try {
+    if (storage === undefined) storage = globalThis.localStorage;
+    if (!storage || !gs) return false;
     storage.setItem(SAVE_KEY, JSON.stringify(gs));
     return true;
   } catch {
     return false;
   }
 }
-function loadGame(storage = typeof localStorage !== 'undefined' ? localStorage : null) {
-  if (!storage) return null;
+function loadGame(storage) {
   try {
+    if (storage === undefined) storage = globalThis.localStorage;
+    if (!storage) return null;
     const raw = storage.getItem(SAVE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
@@ -1768,9 +1771,13 @@ function createKillerMove(gs, patternId, customName = '') {
 
 
 
+function enemyMoveCost(enemy, move) {
+  return move.cost ?? enemy.rank * 4;
+}
+
 function pickIntent(enemy, rng = Math.random) {
-  const pool = enemy.moves.filter((m) => (enemy.cds[m.name] || 0) <= 0);
-  const list = pool.length ? pool : [enemy.moves[0]];
+  const list = enemy.moves.filter((m) => (enemy.cds[m.name] || 0) <= 1 && enemy.zy >= enemyMoveCost(enemy, m));
+  if (!list.length) return null;
   const total = list.reduce((s, m) => s + (m.weight || 1), 0);
   let r = rng() * total;
   for (const m of list) {
@@ -1841,9 +1848,14 @@ function enemyTurn(gs, b, rng = Math.random) {
     foe.intent = pickIntent(foe, rng);
     return;
   }
-  const mv = foe.intent || foe.moves[0];
+  const mv = foe.intent;
+  if (!mv || foe.zy < enemyMoveCost(foe, mv) || (foe.cds[mv.name] || 0) > 0) {
+    b.logs.push(`${foe.name}无招可施，本轮暂歇。`);
+    foe.intent = pickIntent(foe, rng);
+    return;
+  }
   if (mv.cd) foe.cds[mv.name] = mv.cd;
-  foe.zy = Math.max(0, foe.zy - (mv.cost ?? foe.rank * 4));
+  foe.zy -= enemyMoveCost(foe, mv);
   if (mv.kind === 'attack' || mv.kind === 'drain' || mv.kind === 'stun') {
     const evaded = speed > 0 && gs.player.speed + speed > foe.speed;
     const raw = Math.round(mv.power * (0.9 + rng() * 0.2) * (evaded ? 0.7 : 1));
@@ -2272,10 +2284,10 @@ function moveToPlace(gs, targetId) {
 function advanceMinutes(gs, minutes) {
   if (!gs || gs.player.dead || minutes <= 0) return;
   const oldDay = Math.floor(gs.minutes / MIN_PER_DAY);
-  const oldMonth = Math.floor(gs.minutes / (MIN_PER_DAY * 30));
+  const oldMonth = Math.floor(gs.minutes / MIN_PER_MONTH);
   gs.minutes += minutes;
   const newDay = Math.floor(gs.minutes / MIN_PER_DAY);
-  const newMonth = Math.floor(gs.minutes / (MIN_PER_DAY * 30));
+  const newMonth = Math.floor(gs.minutes / MIN_PER_MONTH);
 
   const p = gs.player;
   const kes = minutes / MIN_PER_KE;
@@ -2319,11 +2331,13 @@ function advanceMinutes(gs, minutes) {
   }
 
   // 跨月发放学堂/家族月例
-  if (newMonth > oldMonth && gs.flags['kaike']) {
+  if (gs.flags.kaike) {
     const base = { 甲: 18, 乙: 12, 丙: 8, 丁: 5 }[p.grade] || 8;
     const stipend = base * p.rank;
-    p.yuanshi += stipend;
-    addLog(gs, `【月例】${dayOf(gs.minutes)}日发俸，按${p.grade}等资质与${p.rank}转修为领得元石 +${stipend}。`, 'log-gold');
+    for (let month = oldMonth + 1; month <= newMonth; month++) {
+      p.yuanshi += stipend;
+      addLog(gs, `【月例】${formatDateTime(month * MIN_PER_MONTH)}发俸，领得元石 +${stipend}。`, 'log-gold');
+    }
   }
 
   if (p.rank >= 2) gs.flags['open:jiazhuge'] = true;
@@ -2343,8 +2357,8 @@ function rewindSpringCicada(gs) {
   if (!gs || !gs.snapshot) return { ok: false, reason: '未曾留下春秋蝉旧影' };
   const snap = JSON.parse(JSON.stringify(gs.snapshot));
   // 消耗春秋蝉
-  const idx = snap.player.gu.findIndex((g) => g.id === 'chunqiuchan');
-  if (idx >= 0) snap.player.gu.splice(idx, 1);
+  const cicada = snap.player.gu.find((g) => g.id === 'chunqiuchan');
+  if (cicada) removeGuByUid(snap, cicada.uid);
   snap.snapshot = null;
   snap.player.dead = false;
   if (!PLACES[snap.location]) snap.location = 'shijie';
@@ -2436,6 +2450,7 @@ const REFINE_FLOWS = {
   }
 };
 const OVERLOAD_PRESSURE = 7;
+const REFINE_SESSION_VERSION = 1;
 function createRefineSession(gs, recipeId) {
   const check = canStartRefine(gs, recipeId);
   if (!check.ok) return { error: check.reason };
@@ -2451,6 +2466,7 @@ function createRefineSession(gs, recipeId) {
       Array.from({ length: count }, () => ({ item, name: ITEMS[item].name })))
   ];
   return {
+    version: REFINE_SESSION_VERSION,
     recipeId,
     flow,
     outName: recipeOutputText(rc),
@@ -2470,6 +2486,64 @@ function createRefineSession(gs, recipeId) {
     state: 'ready',
     success: false,
     lines: []
+  };
+}
+function restoreRefineSession(gs, saved) {
+  if (!saved || typeof saved !== 'object' || Array.isArray(saved)) return null;
+  // The original unversioned session used the same counters and input lists.
+  if (Object.hasOwn(saved, 'version') && saved.version !== REFINE_SESSION_VERSION) return null;
+  const rc = REFINE_RECIPES.find(({ id }) => id === saved.recipeId);
+  if (!rc) return null;
+  const flow = REFINE_FLOWS[rc.flow];
+  const { ingredients, pending, state, protectedUid, lines } = saved;
+  const active = state === 'ready' || state === 'ongoing';
+  const counter = (value, max) => Number.isSafeInteger(value) && value >= 0 && value <= max;
+  if ((!active && state !== 'done' && state !== 'aborted')
+    || (active && (gs.player.dead || gs.battle))
+    || !Array.isArray(ingredients) || !Array.isArray(pending)
+    || !Array.isArray(lines) || !lines.every((line) => typeof line === 'string')
+    || !counter(saved.turns, flow.turns) || !counter(saved.progress, Number.MAX_SAFE_INTEGER)
+    || !counter(saved.pressure, OVERLOAD_PRESSURE + flow.surge - 1)
+    || (active && saved.pressure >= OVERLOAD_PRESSURE)
+    || typeof saved.night !== 'boolean' || typeof saved.usedSignature !== 'boolean'
+    || typeof saved.success !== 'boolean' || (saved.success && state !== 'done')
+    || !REFINE_REALMS.some(([, , bonus]) => bonus === saved.realmBonus)) return null;
+
+  const expected = Object.entries(rc.gu).flatMap(([id, count]) => Array(count).fill(id));
+  const uids = new Set();
+  if (ingredients.length !== expected.length || !ingredients.every((entry, index) => {
+    const id = expected[index];
+    if (!Number.isSafeInteger(entry?.uid) || uids.has(entry.uid)
+      || entry.name !== GU_DEFS[id].name || typeof entry.benming !== 'boolean') return false;
+    if (active && (!gs.player.gu.some((gu) => gu.uid === entry.uid && gu.id === id)
+      || entry.benming !== (entry.uid === gs.player.benming))) return false;
+    uids.add(entry.uid);
+    return true;
+  })) return null;
+  if (protectedUid !== null && !ingredients.some((gu) => gu.uid === protectedUid && !gu.benming)) return null;
+
+  const remainingGu = new Map(ingredients.map(({ uid, name }) => [uid, name]));
+  const remainingItems = { ...rc.materials };
+  for (const input of pending) {
+    if (!input || typeof input !== 'object') return null;
+    if (Object.hasOwn(input, 'uid')) {
+      if (Object.hasOwn(input, 'item') || !remainingGu.has(input.uid) || remainingGu.get(input.uid) !== input.name) return null;
+      remainingGu.delete(input.uid);
+    } else {
+      if (typeof input.item !== 'string' || !Object.hasOwn(remainingItems, input.item) || remainingItems[input.item] <= 0
+        || ITEMS[input.item].name !== input.name) return null;
+      remainingItems[input.item]--;
+    }
+  }
+  if (state === 'ready' && (pending.length !== expected.length + Object.values(rc.materials).reduce((sum, count) => sum + count, 0)
+    || saved.progress !== 0 || saved.pressure !== 0 || saved.turns !== flow.turns
+    || protectedUid !== null || saved.usedSignature)) return null;
+  if (state === 'done' && pending.length) return null;
+
+  return {
+    ...saved, version: REFINE_SESSION_VERSION, flow,
+    outName: recipeOutputText(rc), method: rc.method ?? '合炼',
+    materials: recipeIngredientsText(rc), cost: rc.cost, baseRate: rc.rate
   };
 }
 function refineReady(sess) {
@@ -2699,9 +2773,21 @@ function createBreakSession(gs) {
     ]
   };
 }
+function validBreakSession(gs, sess) {
+  const p = gs.player;
+  const inRange = (value, max) => Number.isFinite(value) && value >= 0 && value <= max;
+  return sess?.state === 'ongoing' && !p.dead && !gs.battle && p.xiao === 3
+    && sess.turn === p.rank && sess.turn >= 1 && sess.turn < 4 && sess.zyMax === p.zyMax
+    && inRange(sess.zy, sess.zyMax) && inRange(sess.crack, 100) && sess.crack < 100
+    && inRange(sess.hurt, 100) && sess.hurt < 100
+    && Number.isSafeInteger(sess.stones) && Number.isSafeInteger(sess.stonesUsed)
+    && sess.stones >= 0 && sess.stonesUsed >= 0 && sess.stones + sess.stonesUsed === p.yuanshi
+    && [2, 3, 5, 7].includes(sess.wallHeal) && inRange(sess.crackMult, 2.2) && sess.crackMult >= 1
+    && Number.isSafeInteger(sess.steps) && sess.steps >= 0
+    && Array.isArray(sess.lines) && sess.lines.every((line) => typeof line === 'string');
+}
 function stepBreakSession(gs, sess, key, rng = Math.random) {
   if (!sess || sess.state !== 'ongoing') return sess;
-  sess.steps++;
   const zyMax = sess.zyMax;
   const hardNeed = Math.max(1, Math.round(zyMax * 0.55));
   const softNeed = Math.max(1, Math.round(zyMax * 0.28));
@@ -2734,24 +2820,24 @@ function stepBreakSession(gs, sess, key, rng = Math.random) {
     sess.hurt -= heal;
     msg = `催动真元温养空窍（真元 -${steadyNeed}），震伤 -${heal}。`;
   } else if (key === 'stop') {
-    sess.state = 'stopped';
-    gs.player.attempts = (gs.player.attempts || 0) + 1;
-    gs.player.yuanshi = Math.max(0, gs.player.yuanshi - sess.stonesUsed);
+    sess.steps++;
+    settleBreakSession(gs, sess, 'stopped');
     gs.player.zy = Math.round(sess.zy);
     sess.lines.push('你主动散去真元退关，此番心得已留存。');
     addLog(gs, '【退关】破壁暂止，已积攒冲关心得。', 'log-warn');
     return sess;
+  } else {
+    return sess;
   }
 
+  sess.steps++;
   if (sess.crack >= 100) {
     sess.crack = 100;
-    sess.state = 'win';
-    gs.player.yuanshi = Math.max(0, gs.player.yuanshi - sess.stonesUsed);
+    settleBreakSession(gs, sess, 'win');
     const before = { ...gs.player };
     gs.player.rank++;
     gs.player.xiao = 0;
     gs.player.xp = 0;
-    gs.player.attempts = 0;
     recalcStats(gs);
     gs.player.zy = Math.round(gs.player.zyMax * 0.5);
     if (gs.player.rank >= 2) gs.flags['open:jiazhuge'] = true;
@@ -2764,9 +2850,7 @@ function stepBreakSession(gs, sess, key, rng = Math.random) {
 
   if (sess.hurt >= 100) {
     sess.hurt = 100;
-    sess.state = 'lose';
-    gs.player.attempts = (gs.player.attempts || 0) + 1;
-    gs.player.yuanshi = Math.max(0, gs.player.yuanshi - sess.stonesUsed);
+    settleBreakSession(gs, sess, 'lose');
     gs.player.hp = Math.max(5, Math.round(gs.player.hp * 0.5));
     gs.player.zy = 0;
     sess.lines.push(msg, '空窍震伤过重，真元反噬，被迫中止冲关！');
@@ -2780,6 +2864,14 @@ function stepBreakSession(gs, sess, key, rng = Math.random) {
   sess.lines.push(`${msg} 窍壁自愈 ${healed.toFixed(1)}%。`);
   if (sess.lines.length > 6) sess.lines = sess.lines.slice(-6);
   return sess;
+}
+
+function settleBreakSession(gs, sess, state) {
+  sess.state = state;
+  const p = gs.player;
+  p.yuanshi = Math.max(0, p.yuanshi - sess.stonesUsed);
+  p.attempts = state === 'win' ? 0 : (p.attempts || 0) + 1;
+  if (gs.breakthrough === sess) delete gs.breakthrough;
 }
 
 
@@ -2979,7 +3071,7 @@ function renderBattleView(gs) {
     ? '本轮受制，无法出手'
     : b.scouted && foe.intent
       ? `${foe.intent.name}（${foe.intent.kind === 'shield' ? '护盾' : foe.intent.kind === 'heal' ? '疗伤' : `威能约 ${foe.intent.power}`}）`
-      : '未明';
+      : b.scouted ? '暂歇' : '未明';
 
   const { choices, queued, cost } = battleGuPlan(gs);
   const hasQueue = queued.length > 0;
@@ -3553,6 +3645,7 @@ function openModal(kind, data) {
 }
 
 function closeModal() {
+  if (MODAL?.kind === 'break' && G.breakthrough) return;
   if (MODAL?.kind === 'refine') {
     if (G.refining?.state === 'ongoing') return;
     delete G.refining;
@@ -3562,17 +3655,37 @@ function closeModal() {
   render();
 }
 
-function restoreRefining() {
-  if (!G?.refining) return;
-  if (!Array.isArray(G.refining.pending) || !REFINE_RECIPES.some(({ id }) => id === G.refining.recipeId)) {
-    delete G.refining;
-    addLog(G, '【停炉】炼蛊流程已更新，旧炉次已结束。');
-    saveGame(G);
-    TAB = 'refine';
-    return;
+function restoreSessions(save = false) {
+  if (!G) return;
+  MODAL = null;
+  const notices = [];
+  if (Object.hasOwn(G, 'breakthrough')) {
+    if (validBreakSession(G, G.breakthrough)) {
+      TAB = 'aperture';
+      MODAL = { kind: 'break', data: G.breakthrough };
+    } else {
+      delete G.breakthrough;
+      notices.push('破壁会话无法恢复，已退出冲关。');
+      save = true;
+    }
   }
-  TAB = 'refine';
-  MODAL = { kind: 'refine', data: G.refining };
+  if (Object.hasOwn(G, 'refining')) {
+    const sess = !G.breakthrough && restoreRefineSession(G, G.refining);
+    if (sess) {
+      save ||= G.refining.version !== sess.version;
+      G.refining = sess;
+      TAB = 'refine';
+      MODAL = { kind: 'refine', data: sess };
+    } else {
+      delete G.refining;
+      notices.push('炼蛊会话无法恢复，已安全停炉，蛊虫保留。已扣除的元石和辅材按存档保留原结算。');
+      save = true;
+    }
+  }
+  for (const notice of notices) addLog(G, `【会话恢复】${notice}`, 'log-warn');
+  if (save && !saveGame(G)) notices.push('保存失败，请检查本地存储。');
+  if (notices.length) showToast(notices.join(' '));
+  return notices.length > 0;
 }
 
 function renderTopBar() {
@@ -3868,6 +3981,8 @@ function handleDeveloperAction(action) {
 function handleAction(el) {
   const act = el.dataset.action;
   if (!act) return;
+  if (G?.breakthrough && act !== 'breakAct') return;
+  if (MODAL?.kind === 'refine' && act !== 'refineAct' && act !== 'closeModal') return;
   const id = el.dataset.id || '';
 
   if (act === 'startKaiqiao') {
@@ -3897,7 +4012,7 @@ function handleAction(el) {
     G = loadGame();
     if (!G) { showToast('未找到可用存档'); return; }
     TAB = 'place';
-    restoreRefining();
+    restoreSessions();
     render();
   } else if (act === 'navTab') {
     if (MODAL?.kind === 'place') MODAL = null;
@@ -3972,12 +4087,15 @@ function handleAction(el) {
     saveGame(G);
     render();
   } else if (act === 'openBreak') {
+    if (G.breakthrough || G.refining || G.battle || G.player.dead) return;
     const sess = createBreakSession(G);
     if (sess.error) { showToast(sess.error); return; }
+    G.breakthrough = sess;
+    if (!saveGame(G)) showToast('破壁进度保存失败，请检查本地存储。');
     openModal('break', sess);
-  } else if (act === 'breakAct' && MODAL?.kind === 'break') {
-    stepBreakSession(G, MODAL.data, id);
-    saveGame(G);
+  } else if (act === 'breakAct' && MODAL?.kind === 'break' && G.breakthrough) {
+    stepBreakSession(G, G.breakthrough, id);
+    if (!saveGame(G)) showToast('破壁进度保存失败，请检查本地存储。');
     render();
   } else if (act === 'startRefine') {
     if (G.refining || G.battle || G.player.dead) return;
@@ -3986,6 +4104,7 @@ function handleAction(el) {
     const sess = createRefineSession(G, id);
     if (sess.error) { openModal('refineInfo', { recipe, reason: sess.error }); return; }
     G.refining = sess;
+    if (!saveGame(G)) showToast('炼蛊进度保存失败，请检查本地存储。');
     openModal('refine', sess);
   } else if (act === 'refineAct' && MODAL?.kind === 'refine') {
     const sess = MODAL.data;
@@ -4001,7 +4120,7 @@ function handleAction(el) {
     stepRefineSession(G, sess, id, Math.random, timing);
     if (state === sess.state && turns === sess.turns && pending === sess.pending.length) return;
     MODAL.effect = { action: id.split(':')[0], input: el.dataset.input };
-    saveGame(G);
+    if (!saveGame(G)) showToast('炼蛊进度保存失败，请检查本地存储。');
     render();
   } else if (act === 'openCustomKiller') {
     if (!G.battle && discoveredKillerPatterns(G.player).length) openModal('killer');
@@ -4066,7 +4185,7 @@ function handleAction(el) {
       return;
     }
     const before = { ...G.player };
-    G.player.gu = G.player.gu.filter((x) => x.uid !== uid);
+    removeGuByUid(G, uid);
     G.player.xiao++;
     recalcStats(G);
     const message = `晋入${realmText(G.player)} · ${realmGrowthText(before, G.player)}`;
@@ -4106,12 +4225,10 @@ function handleAction(el) {
     const res = rewindSpringCicada(G);
     if (!res.ok) { showToast(res.reason); return; }
     G = res.state;
-    closeModal();
-    saveGame(G);
+    restoreSessions(true);
     render();
   } else if (act === 'manualSave') {
-    saveGame(G);
-    showToast('进度已保存');
+    showToast(saveGame(G) ? '进度已保存' : '保存失败，请检查本地存储。');
   } else if (act === 'exportSave') {
     const text = JSON.stringify(G, null, 2);
     if (navigator.clipboard) navigator.clipboard.writeText(text).then(() => showToast('存档 JSON 已复制到剪贴板'));
@@ -4127,11 +4244,9 @@ function handleAction(el) {
       if (!PLACES[parsed.location]) parsed.location = 'shijie';
       recalcStats(parsed);
       G = parsed;
-      saveGame(G);
-      MODAL = null;
-      restoreRefining();
+      const warned = restoreSessions(true);
       render();
-      showToast('存档已导入');
+      if (!warned) showToast('存档已导入');
     } catch {
       showToast('存档格式无效，导入失败');
     }
@@ -4186,7 +4301,7 @@ setInterval(() => {
 }, 1000);
 
 G = loadGame();
-restoreRefining();
+restoreSessions();
 render();
 
 </script>

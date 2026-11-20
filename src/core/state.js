@@ -306,6 +306,7 @@ export function useHealItem(gs, id) {
   const def = ITEMS[id];
   if (!def?.heal) return { ok: false };
   const p = gs.player;
+  if (p.hp >= p.hpMax) return { ok: false, reason: '气血已满，无需用药' };
   if (gs.minutes < (p.healReadyAt?.[id] ?? 0)) {
     return { ok: false, reason: '上一片生机叶的药力未散，请稍候再用' };
   }
@@ -315,9 +316,10 @@ export function useHealItem(gs, id) {
   return { ok: true };
 }
 
-export function saveGame(gs, storage = typeof localStorage !== 'undefined' ? localStorage : null) {
-  if (!storage || !gs) return false;
+export function saveGame(gs, storage) {
   try {
+    if (storage === undefined) storage = globalThis.localStorage;
+    if (!storage || !gs) return false;
     storage.setItem(SAVE_KEY, JSON.stringify(gs));
     return true;
   } catch {
@@ -325,9 +327,10 @@ export function saveGame(gs, storage = typeof localStorage !== 'undefined' ? loc
   }
 }
 
-export function loadGame(storage = typeof localStorage !== 'undefined' ? localStorage : null) {
-  if (!storage) return null;
+export function loadGame(storage) {
   try {
+    if (storage === undefined) storage = globalThis.localStorage;
+    if (!storage) return null;
     const raw = storage.getItem(SAVE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);

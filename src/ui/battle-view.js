@@ -17,7 +17,7 @@ export function renderBattleView(gs) {
     ? '本轮受制，无法出手'
     : b.scouted && foe.intent
       ? `${foe.intent.name}（${foe.intent.kind === 'shield' ? '护盾' : foe.intent.kind === 'heal' ? '疗伤' : `威能约 ${foe.intent.power}`}）`
-      : '未明';
+      : b.scouted ? '暂歇' : '未明';
 
   const { choices, queued, cost } = battleGuPlan(gs);
   const hasQueue = queued.length > 0;

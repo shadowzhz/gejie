@@ -1,6 +1,6 @@
 import { GU_DEFS } from '../data/gu.js';
 import { PLACES } from '../data/places.js';
-import { MIN_PER_DAY, MIN_PER_KE, dayOf } from './calendar.js';
+import { formatDateTime, MIN_PER_DAY, MIN_PER_KE, MIN_PER_MONTH } from './calendar.js';
 import { activeCultivationWine, addLog, feedGu, hasGu, recalcStats, recordQuestProgress, removeGuByUid } from './state.js';
 import { checkStoryTriggers } from './story-engine.js';
 
@@ -49,10 +49,10 @@ export function moveToPlace(gs, targetId) {
 export function advanceMinutes(gs, minutes) {
   if (!gs || gs.player.dead || minutes <= 0) return;
   const oldDay = Math.floor(gs.minutes / MIN_PER_DAY);
-  const oldMonth = Math.floor(gs.minutes / (MIN_PER_DAY * 30));
+  const oldMonth = Math.floor(gs.minutes / MIN_PER_MONTH);
   gs.minutes += minutes;
   const newDay = Math.floor(gs.minutes / MIN_PER_DAY);
-  const newMonth = Math.floor(gs.minutes / (MIN_PER_DAY * 30));
+  const newMonth = Math.floor(gs.minutes / MIN_PER_MONTH);
 
   const p = gs.player;
   const kes = minutes / MIN_PER_KE;
@@ -96,11 +96,13 @@ export function advanceMinutes(gs, minutes) {
   }
 
   // 跨月发放学堂/家族月例
-  if (newMonth > oldMonth && gs.flags['kaike']) {
+  if (gs.flags.kaike) {
     const base = { 甲: 18, 乙: 12, 丙: 8, 丁: 5 }[p.grade] || 8;
     const stipend = base * p.rank;
-    p.yuanshi += stipend;
-    addLog(gs, `【月例】${dayOf(gs.minutes)}日发俸，按${p.grade}等资质与${p.rank}转修为领得元石 +${stipend}。`, 'log-gold');
+    for (let month = oldMonth + 1; month <= newMonth; month++) {
+      p.yuanshi += stipend;
+      addLog(gs, `【月例】${formatDateTime(month * MIN_PER_MONTH)}发俸，领得元石 +${stipend}。`, 'log-gold');
+    }
   }
 
   if (p.rank >= 2) gs.flags['open:jiazhuge'] = true;
@@ -122,8 +124,8 @@ export function rewindSpringCicada(gs) {
   if (!gs || !gs.snapshot) return { ok: false, reason: '未曾留下春秋蝉旧影' };
   const snap = JSON.parse(JSON.stringify(gs.snapshot));
   // 消耗春秋蝉
-  const idx = snap.player.gu.findIndex((g) => g.id === 'chunqiuchan');
-  if (idx >= 0) snap.player.gu.splice(idx, 1);
+  const cicada = snap.player.gu.find((g) => g.id === 'chunqiuchan');
+  if (cicada) removeGuByUid(snap, cicada.uid);
   snap.snapshot = null;
   snap.player.dead = false;
   if (!PLACES[snap.location]) snap.location = 'shijie';
