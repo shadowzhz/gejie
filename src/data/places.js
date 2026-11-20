@@ -55,7 +55,7 @@ export const PLACES = {
     links: { shijie: 30 },
     day: '货架上堆着月兰花瓣、腌肉、蜂王蜜与各色一转炼材。',
     night: '柜台亮着油灯，伙计仍在招呼来买口粮和炼材的客人。',
-    shop: ['item:yuelanhua', 'item:shourou', 'item:fengmi', 'item:kuangshi', 'item:yuanshi_zha', 'item:yezhuya'],
+    shop: ['item:yuelanhua', 'item:shourou', 'item:fengmi', 'item:yushi', 'item:kuangshi', 'item:yuanshi_zha', 'item:yezhuya'],
     services: ['shop']
   },
   gupu: {

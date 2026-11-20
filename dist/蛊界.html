@@ -367,7 +367,7 @@ const PLACES = {
     links: { shijie: 30 },
     day: '货架上堆着月兰花瓣、腌肉、蜂王蜜与各色一转炼材。',
     night: '柜台亮着油灯，伙计仍在招呼来买口粮和炼材的客人。',
-    shop: ['item:yuelanhua', 'item:shourou', 'item:fengmi', 'item:kuangshi', 'item:yuanshi_zha', 'item:yezhuya'],
+    shop: ['item:yuelanhua', 'item:shourou', 'item:fengmi', 'item:yushi', 'item:kuangshi', 'item:yuanshi_zha', 'item:yezhuya'],
     services: ['shop']
   },
   gupu: {
@@ -462,7 +462,8 @@ const ITEMS = {
   shengjiye: { id: 'shengjiye', name: '生机叶', kind: '一转消耗蛊', price: 22, heal: 24, healCooldown: 60, desc: '取自九叶生机草，疗伤后叶片消散。一小时内再次使用无效。' },
   yuelanhua: { id: 'yuelanhua', name: '月兰花瓣', kind: '口粮', price: 2, desc: '月光蛊、月芒蛊、小光蛊的食料。' },
   shourou: { id: 'shourou', name: '兽肉', kind: '口粮', price: 3, desc: '黑豕蛊、白豕蛊、血蝠蛊、电狼蛊的食料。' },
-  fengmi: { id: 'fengmi', name: '蜂王蜜', kind: '口粮', price: 4, desc: '玉皮蛊、白玉蛊、石皮蛊、铜皮蛊的食料。' },
+  fengmi: { id: 'fengmi', name: '蜂王蜜', kind: '口粮', price: 4, desc: '目前可用于喂养铜皮蛊。' },
+  yushi: { id: 'yushi', name: '玉石', kind: '口粮', price: 4, desc: '玉皮蛊和白玉蛊的食料。' },
   qingzhujiu: { id: 'qingzhujiu', name: '青竹酒', kind: '口粮', price: 5, desc: '酒虫最喜的竹香米酒，也可略微活血。' },
   tianjiu: { id: 'tianjiu', name: '甜果酒', kind: '口粮', price: 8, desc: '四味酒虫所需的四味之一。' },
   lajiu: { id: 'lajiu', name: '烈辣烧酒', kind: '口粮', price: 10, desc: '四味酒虫所需的烈酒，饮之暖身。' },
@@ -500,9 +501,9 @@ const GU_DEFS = {
   henshi: { id: 'henshi', name: '痕石蛊', rank: 1, kind: '炼蛊', cost: 0, cd: 0, power: 0, food: '', price: 15, desc: '可与月光蛊合炼成二转月痕蛊。' },
   yuehen: { id: 'yuehen', name: '月痕蛊', rank: 2, school: '月道', kind: '攻击', cost: 4, cd: 0, power: 18, food: '', price: 45, desc: '月刃威力与月光蛊相同，设定中的射程从十米延至二十米。' },
   yueni: { id: 'yueni', name: '月霓裳', rank: 2, school: '月道', kind: '防御', cost: 6, cd: 2, power: 36, food: 'yuelanhua', price: 45, desc: '引月光覆于周身，织成轻盈的护身衣。' },
-  yupi: { id: 'yupi', name: '玉皮蛊', rank: 1, school: '土道', kind: '防御', cost: 4, cd: 2, power: 22, food: 'fengmi', price: 20, desc: '催动后皮肤泛起温润玉光，化作护盾抵挡来袭伤害。' },
-  baiyu: { id: 'baiyu', name: '白玉蛊', rank: 2, school: '土道', kind: '防御', cost: 7, cd: 2, power: 44, food: 'fengmi', price: 52, desc: '二转防御蛊，凝出厚实白玉光甲护盾，稳固空窍根基。' },
-  shipi: { id: 'shipi', name: '石皮蛊', rank: 1, school: '土道', kind: '防御', cost: 3, cd: 2, power: 18, food: 'fengmi', price: 15, desc: '以石质硬皮覆体抵挡攻击。' },
+  yupi: { id: 'yupi', name: '玉皮蛊', rank: 1, school: '土道', kind: '防御', cost: 4, cd: 2, power: 22, food: 'yushi', price: 20, desc: '催动后皮肤泛起温润玉光，化作护盾抵挡来袭伤害。' },
+  baiyu: { id: 'baiyu', name: '白玉蛊', rank: 2, school: '土道', kind: '防御', cost: 7, cd: 2, power: 44, food: 'yushi', price: 52, desc: '二转防御蛊，凝出厚实白玉光甲护盾，稳固空窍根基。' },
+  shipi: { id: 'shipi', name: '石皮蛊', rank: 1, school: '土道', kind: '防御', cost: 3, cd: 2, power: 18, food: '', foodUnknown: true, price: 15, desc: '以石质硬皮覆体抵挡攻击。' },
   shoupi: { id: 'shoupi', name: '兽皮蛊', rank: 1, kind: '防御', cost: 3, cd: 2, power: 14, food: '', price: 11, desc: '皮蛊中常见的一种，用于护身，售价低于石皮蛊。' },
   qingsi: { id: 'qingsi', name: '青丝蛊', rank: 1, kind: '防御', cost: 12, cd: 2, power: 30, food: '', price: 24, desc: '催动时消耗较多真元，能抵御打击。也可与黑豕蛊合炼。' },
   heizong: { id: 'heizong', name: '黑鬃蛊', rank: 2, kind: '防御', cost: 7, cd: 2, power: 38, food: '', price: 48, desc: '催动后，汗毛化作粗黑长鬃，在身上结成护甲。' },
@@ -2136,13 +2137,18 @@ function renderPlaceView(gs) {
 
   let shopHtml = '';
   const shop = placeShopEntries(gs);
+  const sellsRecipes = place.services.includes('recipes');
   if (shop.length) {
     const rows = shop.map((entry) => {
       const [kind, id] = entry.split(':');
       const def = kind === 'gu' ? GU_DEFS[id] : ITEMS[id];
       if (!def) return '';
+      const recipes = sellsRecipes ? REFINE_RECIPES
+        .filter((recipe) => kind === 'gu' ? recipe.gu[id] : recipe.materials[id])
+        .map(recipeOutputText) : [];
+      const usage = recipes.length ? `<br><small class="muted">蛊方材料 · ${esc(recipes.join('、'))}</small>` : '';
       return `<div class="kv">
-        <span><b>${esc(def.name)}</b> ${kind === 'gu' ? `<span class="badge">${def.rank}转</span>` : ''} ${MERCHANT_GU.includes(id) ? '<span class="badge">贾家商队 · 限一只</span>' : ''} <span class="muted">${esc(def.desc)}${kind === "gu" && guEffectText(def) ? `<br>${esc(guEffectText(def))}` : ''}</span></span>
+        <span><b>${esc(def.name)}</b> ${kind === 'gu' ? `<span class="badge">${def.rank}转</span>` : ''} ${MERCHANT_GU.includes(id) ? '<span class="badge">贾家商队 · 限一只</span>' : ''} <span class="muted">${esc(def.desc)}${kind === "gu" && guEffectText(def) ? `<br>${esc(guEffectText(def))}` : ''}</span>${usage}</span>
         <button class="sm" ${gs.player.yuanshi < def.price ? 'disabled' : ''} data-action="buyItem" data-id="${esc(entry)}">买 · ${def.price}元石</button>
       </div>`;
     }).join('');
@@ -2167,7 +2173,7 @@ function renderPlaceView(gs) {
           </button></div>`;
       }).join('')}</div>` : ''}
     ${shopHtml}
-    ${place.services.includes('recipes') ? `<div class="card"><h3>蛊方</h3>${REFINE_RECIPES.map((r) => {
+    ${sellsRecipes ? `<div class="card"><h3>蛊方</h3>${REFINE_RECIPES.map((r) => {
       const owned = gs.player.recipes?.includes(r.id);
       const out = GU_DEFS[r.out];
       return `<div class="kv"><span>${esc(recipeOutputText(r))}${r.method ?? ''}蛊方 · ${out.rank}转<br><small class="muted">${esc(recipeIngredientsText(r))}</small></span>
@@ -2195,15 +2201,20 @@ function renderApertureView(gs) {
     const eq = p.equipped.includes(g.uid);
     const isBm = p.benming === g.uid;
     const isSheli = g.id === 'qingtong_sheli' || g.id === 'chitie_sheli';
-    const foodCount = def.food ? (p.items[def.food] || 0) : 0;
+    const food = ITEMS[def.food];
+    const foodCount = p.items[def.food] ?? 0;
+    const effect = guEffectText(def);
     return `<div class="card">
       <div class="kv">
         <b>${isBm ? '★ ' : ''}${esc(def.name)} <span class="badge">${def.rank}转 · ${esc(def.kind)}</span></b>
         <span class="muted">饱食 ${g.satiety}%</span>
       </div>
-      <div class="muted" style="margin-bottom:8px">${esc(def.desc)}${guEffectText(def) ? `<br>${esc(guEffectText(def))}` : ''}</div>
+      <div class="muted" style="margin-bottom:8px">
+        ${esc(def.desc)}${effect ? `<br>${esc(effect)}` : ''}
+        <br>${food ? `食物 <b>${esc(food.name)}</b> · 行囊 ${foodCount} 份` : def.foodUnknown ? '食物未核实 · 暂不消耗口粮' : '无需喂食'}
+      </div>
       <div class="row">
-        ${def.food ? `<button class="sm" ${foodCount <= 0 || g.satiety >= 100 ? 'disabled' : ''} data-action="feedGu" data-id="${g.uid}">喂食(${foodCount})</button>` : ''}
+        ${food ? `<button class="sm" ${foodCount <= 0 || g.satiety >= 100 ? 'disabled' : ''} data-action="feedGu" data-id="${g.uid}">喂食</button>` : ''}
         ${['攻击', '防御', '治疗', '增益', '控制', '探知', '隐匿'].includes(def.kind) ? `<button class="sm ${eq ? 'primary' : ''}" data-action="toggleEquip" data-id="${g.uid}">${eq ? '已出战' : '设出战'}</button>` : ''}
         ${isSheli ? `<button class="sm gold" data-action="useSheli" data-id="${g.uid}">炼化破境</button>` : ''}
         ${g.id === 'baishi' ? `<button class="sm gold" data-action="useWhiteBoarGu" data-id="${g.uid}">消耗蛊虫 · 增一猪之力</button>` : ''}
@@ -2525,7 +2536,9 @@ function handlePlaceAction(id) {
     const got = pool[Math.floor(Math.random() * pool.length)];
     addItem(G, got, 2);
     recordQuestProgress(G, 'gather', G.location);
-    addLog(G, `你在山间采集了 2 份「${ITEMS[got].name}」。`, 'log-good');
+    const message = `采集完成，获得「${ITEMS[got].name}」×2`;
+    addLog(G, `${message}。`, 'log-good');
+    showToast(message);
   } else if (id === 'huajiuLoot') {
     if (G.flags['looted:huajiu']) { showToast('遗洞宝藏已被你取空'); return; }
     G.flags['looted:huajiu'] = true;

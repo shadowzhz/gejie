@@ -211,7 +211,9 @@ function handlePlaceAction(id) {
     const got = pool[Math.floor(Math.random() * pool.length)];
     addItem(G, got, 2);
     recordQuestProgress(G, 'gather', G.location);
-    addLog(G, `你在山间采集了 2 份「${ITEMS[got].name}」。`, 'log-good');
+    const message = `采集完成，获得「${ITEMS[got].name}」×2`;
+    addLog(G, `${message}。`, 'log-good');
+    showToast(message);
   } else if (id === 'huajiuLoot') {
     if (G.flags['looted:huajiu']) { showToast('遗洞宝藏已被你取空'); return; }
     G.flags['looted:huajiu'] = true;

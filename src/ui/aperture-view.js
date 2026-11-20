@@ -1,4 +1,4 @@
-import { GU_DEFS, guEffectText } from '../data/gu.js';
+import { GU_DEFS, ITEMS, guEffectText } from '../data/gu.js';
 import { BENMING_ZY_COST, esc, minorXpNeed, realmText } from '../core/state.js';
 
 import { realmGuRequirement } from '../core/breakthrough.js';
@@ -21,15 +21,20 @@ export function renderApertureView(gs) {
     const eq = p.equipped.includes(g.uid);
     const isBm = p.benming === g.uid;
     const isSheli = g.id === 'qingtong_sheli' || g.id === 'chitie_sheli';
-    const foodCount = def.food ? (p.items[def.food] || 0) : 0;
+    const food = ITEMS[def.food];
+    const foodCount = p.items[def.food] ?? 0;
+    const effect = guEffectText(def);
     return `<div class="card">
       <div class="kv">
         <b>${isBm ? '★ ' : ''}${esc(def.name)} <span class="badge">${def.rank}转 · ${esc(def.kind)}</span></b>
         <span class="muted">饱食 ${g.satiety}%</span>
       </div>
-      <div class="muted" style="margin-bottom:8px">${esc(def.desc)}${guEffectText(def) ? `<br>${esc(guEffectText(def))}` : ''}</div>
+      <div class="muted" style="margin-bottom:8px">
+        ${esc(def.desc)}${effect ? `<br>${esc(effect)}` : ''}
+        <br>${food ? `食物 <b>${esc(food.name)}</b> · 行囊 ${foodCount} 份` : def.foodUnknown ? '食物未核实 · 暂不消耗口粮' : '无需喂食'}
+      </div>
       <div class="row">
-        ${def.food ? `<button class="sm" ${foodCount <= 0 || g.satiety >= 100 ? 'disabled' : ''} data-action="feedGu" data-id="${g.uid}">喂食(${foodCount})</button>` : ''}
+        ${food ? `<button class="sm" ${foodCount <= 0 || g.satiety >= 100 ? 'disabled' : ''} data-action="feedGu" data-id="${g.uid}">喂食</button>` : ''}
         ${['攻击', '防御', '治疗', '增益', '控制', '探知', '隐匿'].includes(def.kind) ? `<button class="sm ${eq ? 'primary' : ''}" data-action="toggleEquip" data-id="${g.uid}">${eq ? '已出战' : '设出战'}</button>` : ''}
         ${isSheli ? `<button class="sm gold" data-action="useSheli" data-id="${g.uid}">炼化破境</button>` : ''}
         ${g.id === 'baishi' ? `<button class="sm gold" data-action="useWhiteBoarGu" data-id="${g.uid}">消耗蛊虫 · 增一猪之力</button>` : ''}

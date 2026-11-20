@@ -51,13 +51,18 @@ export function renderPlaceView(gs) {
 
   let shopHtml = '';
   const shop = placeShopEntries(gs);
+  const sellsRecipes = place.services.includes('recipes');
   if (shop.length) {
     const rows = shop.map((entry) => {
       const [kind, id] = entry.split(':');
       const def = kind === 'gu' ? GU_DEFS[id] : ITEMS[id];
       if (!def) return '';
+      const recipes = sellsRecipes ? REFINE_RECIPES
+        .filter((recipe) => kind === 'gu' ? recipe.gu[id] : recipe.materials[id])
+        .map(recipeOutputText) : [];
+      const usage = recipes.length ? `<br><small class="muted">蛊方材料 · ${esc(recipes.join('、'))}</small>` : '';
       return `<div class="kv">
-        <span><b>${esc(def.name)}</b> ${kind === 'gu' ? `<span class="badge">${def.rank}转</span>` : ''} ${MERCHANT_GU.includes(id) ? '<span class="badge">贾家商队 · 限一只</span>' : ''} <span class="muted">${esc(def.desc)}${kind === "gu" && guEffectText(def) ? `<br>${esc(guEffectText(def))}` : ''}</span></span>
+        <span><b>${esc(def.name)}</b> ${kind === 'gu' ? `<span class="badge">${def.rank}转</span>` : ''} ${MERCHANT_GU.includes(id) ? '<span class="badge">贾家商队 · 限一只</span>' : ''} <span class="muted">${esc(def.desc)}${kind === "gu" && guEffectText(def) ? `<br>${esc(guEffectText(def))}` : ''}</span>${usage}</span>
         <button class="sm" ${gs.player.yuanshi < def.price ? 'disabled' : ''} data-action="buyItem" data-id="${esc(entry)}">买 · ${def.price}元石</button>
       </div>`;
     }).join('');
@@ -82,7 +87,7 @@ export function renderPlaceView(gs) {
           </button></div>`;
       }).join('')}</div>` : ''}
     ${shopHtml}
-    ${place.services.includes('recipes') ? `<div class="card"><h3>蛊方</h3>${REFINE_RECIPES.map((r) => {
+    ${sellsRecipes ? `<div class="card"><h3>蛊方</h3>${REFINE_RECIPES.map((r) => {
       const owned = gs.player.recipes?.includes(r.id);
       const out = GU_DEFS[r.out];
       return `<div class="kv"><span>${esc(recipeOutputText(r))}${r.method ?? ''}蛊方 · ${out.rank}转<br><small class="muted">${esc(recipeIngredientsText(r))}</small></span>
