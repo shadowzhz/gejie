@@ -2,6 +2,8 @@ import { GU_DEFS, ITEMS } from '../data/gu.js';
 import { PLACES } from '../data/places.js';
 import { formatDateTime, isNight } from '../core/calendar.js';
 import { esc } from '../core/state.js';
+import { evalCond } from '../core/story-engine.js';
+import { STORY_EVENTS } from '../data/story.js';
 import { renderMapPanel } from './map-view.js';
 
 export function renderPlaceView(gs, mode = 'place') {
@@ -31,8 +33,10 @@ export function renderPlaceView(gs, mode = 'place') {
     else actions.push('<button class="gold" data-action="openBreak">破壁冲关</button>');
   }
   if (place.services.includes('xuetang_gu')) {
-    if (!gs.player.benming) actions.push('<button class="gold" data-action="placeAct" data-id="pickBenming">进蛊室领本命蛊（月光蛊）</button>');
-    if (gs.flags['toumin_race'] && gs.player.benming) actions.push('<button class="primary" data-action="checkEvents">向家老交卷夺头名</button>');
+    if (!gs.player.benming && !gs.player.unrefinedBenming) actions.push('<button class="gold" data-action="placeAct" data-id="pickBenming">进蛊室领本命蛊（月光蛊）</button>');
+    if (gs.player.unrefinedBenming) actions.push('<button class="primary" data-action="navTab" data-tab="aperture">前往空窍炼化月光蛊</button>');
+    const submission = STORY_EVENTS.find((event) => event.id === 'toumin_win');
+    if (evalCond(gs, submission.cond)) actions.push('<button class="primary" data-action="checkEvents" data-id="toumin_win">向家老交卷夺头名</button>');
   }
   if (place.services.includes('practice_caoren')) {
     actions.push('<button class="gold" data-action="placeAct" data-id="caoren">与草人傀儡对练 · 2 刻</button>');

@@ -1,5 +1,5 @@
 import { GU_DEFS } from '../data/gu.js';
-import { esc, minorXpNeed, realmText } from '../core/state.js';
+import { BENMING_ZY_COST, esc, minorXpNeed, realmText } from '../core/state.js';
 
 export function renderApertureView(gs) {
   const p = gs.player;
@@ -56,6 +56,11 @@ export function renderApertureView(gs) {
         <button class="gold" ${p.rank >= 2 ? '' : 'disabled'} data-action="openCustomKiller">自创杀招${p.rank < 2 ? '（需二转）' : ''}</button>
       </div>
     </div>
+    ${p.unrefinedBenming ? `<div class="card">
+      <div class="kv"><b>月光蛊</b><span class="badge">待炼化</span></div>
+      <button class="gold" ${p.zy < BENMING_ZY_COST ? 'disabled' : ''} data-action="refineBenming">炼化本命蛊 · ${BENMING_ZY_COST} 真元</button>
+      ${p.zy < BENMING_ZY_COST ? '<span class="muted">真元不足</span>' : ''}
+    </div>` : ''}
     <div class="card"><h3>杀招</h3><div class="grid2">${movesHtml}</div></div>
     <div class="card"><h3>蛊囊（${p.gu.length} 只）</h3><div class="grid2">${guRows || '<span class="muted">暂无蛊虫</span>'}</div></div>`;
 }

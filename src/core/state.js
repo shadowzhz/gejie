@@ -5,6 +5,7 @@ export const SAVE_KEY = 'gujie_qingmaoshan_v1';
 export const RANK_NAMES = ['', '一转', '二转', '三转', '四转'];
 export const XIAO_NAMES = ['初阶', '中阶', '高阶', '巅峰'];
 export const REALM_CAP_NEED = [0, 80, 260, 720];
+export const BENMING_ZY_COST = 10;
 
 export function createAptitude(rng = Math.random) {
   const r = rng();
@@ -35,6 +36,7 @@ export function createNewGame(name = '无名', apt = null) {
       speed: 8,
       powerBonus: 0,
       benming: null,
+      unrefinedBenming: false,
       gu: [],
       equipped: [],
       moves: [],
@@ -110,6 +112,27 @@ export function addGu(gs, id, satiety = 100) {
   }
   recalcStats(gs);
   return inst;
+}
+
+export function claimBenming(gs) {
+  const p = gs.player;
+  if (gs.location !== 'xuetang' || p.benming || p.unrefinedBenming) return;
+  p.unrefinedBenming = true;
+  addItem(gs, 'yuelanhua', 8);
+  addLog(gs, '【本命蛊】你在学堂领到「月光蛊」，附赠 8 片月兰花瓣。', 'log-gold');
+  gs.goal = '前往「空窍」，消耗真元炼化月光蛊';
+}
+
+export function refineBenming(gs) {
+  const p = gs.player;
+  if (!p.unrefinedBenming || p.benming) return { ok: false, reason: '没有待炼化的本命蛊' };
+  if (p.zy < BENMING_ZY_COST) return { ok: false, reason: '真元不足' };
+  p.zy -= BENMING_ZY_COST;
+  p.benming = addGu(gs, 'yueguang').uid;
+  p.unrefinedBenming = false;
+  addLog(gs, `【本命蛊】你消耗 ${BENMING_ZY_COST} 点真元，炼化了「月光蛊」。`, 'log-gold');
+  gs.goal = gs.flags.toumin_race ? '赶在三月三日前回「学堂」向家老交卷夺取头名赏' : '前往「演武场」找草人傀儡练手';
+  return { ok: true };
 }
 
 export function removeGuByUid(gs, uid) {

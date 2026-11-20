@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createNewGame, addGu, realmText } from '../src/core/state.js';
+import { createNewGame, addGu, BENMING_ZY_COST, claimBenming, refineBenming, realmText } from '../src/core/state.js';
 import { advanceMinutes, moveToPlace, rewindSpringCicada, saveSpringSnapshot } from '../src/core/clock.js';
 import { makeTime } from '../src/core/calendar.js';
 import { applyEventChoice, checkStoryTriggers } from '../src/core/story-engine.js';
@@ -19,6 +19,36 @@ test('轻实时时钟推进与头名之争死线截胡', () => {
   gs.minutes = makeTime(1, 3, 3, 1);
   const ev = checkStoryTriggers(gs);
   assert.equal(ev?.id, 'toumin_lost');
+});
+
+test('月光蛊须消耗真元手动炼化，炼化后才能交卷', () => {
+  const gs = createNewGame();
+  const p = gs.player;
+  applyEventChoice(gs, 'kaike', 0);
+  gs.location = 'xuetang';
+  const initialZy = p.zy;
+  claimBenming(gs);
+  claimBenming(gs);
+  assert.equal(p.items.yuelanhua, 14);
+  assert.equal(p.zy, initialZy);
+  assert.equal(p.benming, null);
+  assert.deepEqual(p.gu, []);
+  assert.deepEqual(p.equipped, []);
+  assert.equal(checkStoryTriggers(gs, 'toumin_win'), null);
+
+  p.zy = BENMING_ZY_COST - 1;
+  assert.equal(refineBenming(gs).ok, false);
+  assert.equal(p.zy, BENMING_ZY_COST - 1);
+  assert.equal(p.unrefinedBenming, true);
+  p.zy = initialZy;
+  assert.equal(refineBenming(gs).ok, true);
+  assert.equal(refineBenming(gs).ok, false);
+  assert.equal(p.zy, initialZy - BENMING_ZY_COST);
+  assert.equal(p.unrefinedBenming, false);
+  assert.equal(p.gu.find((g) => g.uid === p.benming)?.id, 'yueguang');
+  assert.deepEqual(p.equipped, [p.benming]);
+  assert.equal(checkStoryTriggers(gs), null);
+  assert.equal(checkStoryTriggers(gs, 'toumin_win')?.id, 'toumin_win');
 });
 
 test('舆图门禁与隐藏遗洞解锁', () => {

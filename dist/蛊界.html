@@ -591,6 +591,7 @@ const STORY_EVENTS = [
   },
   {
     id: 'toumin_win',
+    manual: true,
     title: '学堂头名',
     cond: 'flag:toumin_race&benming&before:1-3-3-0&at:xuetang',
     text: '你赶在众人之前步入学堂，将已经温顺下来的本命蛊气息放出一丝。\n家老抬眼打量了你片刻，点头记下名册：“头名归你，这是二十块元石。”',
@@ -694,6 +695,7 @@ const SAVE_KEY = 'gujie_qingmaoshan_v1';
 const RANK_NAMES = ['', '一转', '二转', '三转', '四转'];
 const XIAO_NAMES = ['初阶', '中阶', '高阶', '巅峰'];
 const REALM_CAP_NEED = [0, 80, 260, 720];
+const BENMING_ZY_COST = 10;
 function createAptitude(rng = Math.random) {
   const r = rng();
   if (r < 0.14) return { grade: '甲', hai: Number((8.0 + rng() * 1.6).toFixed(1)), desc: '甲等资质，元海深厚，族中必定重点栽培。' };
@@ -722,6 +724,7 @@ function createNewGame(name = '无名', apt = null) {
       speed: 8,
       powerBonus: 0,
       benming: null,
+      unrefinedBenming: false,
       gu: [],
       equipped: [],
       moves: [],
@@ -790,6 +793,25 @@ function addGu(gs, id, satiety = 100) {
   }
   recalcStats(gs);
   return inst;
+}
+function claimBenming(gs) {
+  const p = gs.player;
+  if (gs.location !== 'xuetang' || p.benming || p.unrefinedBenming) return;
+  p.unrefinedBenming = true;
+  addItem(gs, 'yuelanhua', 8);
+  addLog(gs, '【本命蛊】你在学堂领到「月光蛊」，附赠 8 片月兰花瓣。', 'log-gold');
+  gs.goal = '前往「空窍」，消耗真元炼化月光蛊';
+}
+function refineBenming(gs) {
+  const p = gs.player;
+  if (!p.unrefinedBenming || p.benming) return { ok: false, reason: '没有待炼化的本命蛊' };
+  if (p.zy < BENMING_ZY_COST) return { ok: false, reason: '真元不足' };
+  p.zy -= BENMING_ZY_COST;
+  p.benming = addGu(gs, 'yueguang').uid;
+  p.unrefinedBenming = false;
+  addLog(gs, `【本命蛊】你消耗 ${BENMING_ZY_COST} 点真元，炼化了「月光蛊」。`, 'log-gold');
+  gs.goal = gs.flags.toumin_race ? '赶在三月三日前回「学堂」向家老交卷夺取头名赏' : '前往「演武场」找草人傀儡练手';
+  return { ok: true };
 }
 function removeGuByUid(gs, uid) {
   const idx = gs.player.gu.findIndex((g) => g.uid === uid);
@@ -1158,9 +1180,10 @@ function evalCond(gs, cond) {
     return neg ? !ok : ok;
   });
 }
-function checkStoryTriggers(gs) {
+function checkStoryTriggers(gs, eventId) {
   if (!gs || gs.player.dead || gs.pendingEventId || gs.battle) return null;
   for (const ev of STORY_EVENTS) {
+    if (eventId ? ev.id !== eventId : ev.manual) continue;
     if (gs.flags[`event_done:${ev.id}`]) continue;
     if (evalCond(gs, ev.cond)) {
       gs.pendingEventId = ev.id;
@@ -1800,8 +1823,10 @@ function renderPlaceView(gs, mode = 'place') {
     else actions.push('<button class="gold" data-action="openBreak">破壁冲关</button>');
   }
   if (place.services.includes('xuetang_gu')) {
-    if (!gs.player.benming) actions.push('<button class="gold" data-action="placeAct" data-id="pickBenming">进蛊室领本命蛊（月光蛊）</button>');
-    if (gs.flags['toumin_race'] && gs.player.benming) actions.push('<button class="primary" data-action="checkEvents">向家老交卷夺头名</button>');
+    if (!gs.player.benming && !gs.player.unrefinedBenming) actions.push('<button class="gold" data-action="placeAct" data-id="pickBenming">进蛊室领本命蛊（月光蛊）</button>');
+    if (gs.player.unrefinedBenming) actions.push('<button class="primary" data-action="navTab" data-tab="aperture">前往空窍炼化月光蛊</button>');
+    const submission = STORY_EVENTS.find((event) => event.id === 'toumin_win');
+    if (evalCond(gs, submission.cond)) actions.push('<button class="primary" data-action="checkEvents" data-id="toumin_win">向家老交卷夺头名</button>');
   }
   if (place.services.includes('practice_caoren')) {
     actions.push('<button class="gold" data-action="placeAct" data-id="caoren">与草人傀儡对练 · 2 刻</button>');
@@ -1916,6 +1941,11 @@ function renderApertureView(gs) {
         <button class="gold" ${p.rank >= 2 ? '' : 'disabled'} data-action="openCustomKiller">自创杀招${p.rank < 2 ? '（需二转）' : ''}</button>
       </div>
     </div>
+    ${p.unrefinedBenming ? `<div class="card">
+      <div class="kv"><b>月光蛊</b><span class="badge">待炼化</span></div>
+      <button class="gold" ${p.zy < BENMING_ZY_COST ? 'disabled' : ''} data-action="refineBenming">炼化本命蛊 · ${BENMING_ZY_COST} 真元</button>
+      ${p.zy < BENMING_ZY_COST ? '<span class="muted">真元不足</span>' : ''}
+    </div>` : ''}
     <div class="card"><h3>杀招</h3><div class="grid2">${movesHtml}</div></div>
     <div class="card"><h3>蛊囊（${p.gu.length} 只）</h3><div class="grid2">${guRows || '<span class="muted">暂无蛊虫</span>'}</div></div>`;
 }
@@ -2142,13 +2172,7 @@ function handlePlaceAction(id) {
   else if (id === 'rest') { advanceMinutes(G, 480); addLog(G, '你在竹楼安歇四个时辰，精神恢复了不少。'); }
   else if (id === 'wait') { advanceMinutes(G, 120); }
   else if (id === 'pickBenming') {
-    if (p.benming) return;
-    const inst = addGu(G, 'yueguang', 100);
-    p.benming = inst.uid;
-    addItem(G, 'yuelanhua', 8);
-    addLog(G, '【本命蛊】你在学堂蛊室选定并炼化了「月光蛊」，附赠 8 片月兰花瓣。', 'log-gold');
-    G.goal = G.flags['toumin_race'] ? '赶在三月三日前向家老交卷夺取头名赏' : '前往「演武场」找草人傀儡练手';
-    checkStoryTriggers(G);
+    claimBenming(G);
   } else if (id === 'caoren') {
     advanceMinutes(G, 30);
     G.flags['practiced'] = true;
@@ -2269,7 +2293,12 @@ function handleAction(el) {
     saveGame(G);
     render();
   } else if (act === 'checkEvents') {
-    checkStoryTriggers(G);
+    checkStoryTriggers(G, id);
+    render();
+  } else if (act === 'refineBenming') {
+    const res = refineBenming(G);
+    if (!res.ok) { showToast(res.reason); return; }
+    saveGame(G);
     render();
   } else if (act === 'chooseEvent') {
     applyEventChoice(G, id, Number(el.dataset.idx) || 0);

@@ -10,6 +10,7 @@ export const STORY_EVENTS = [
   },
   {
     id: 'toumin_win',
+    manual: true,
     title: '学堂头名',
     cond: 'flag:toumin_race&benming&before:1-3-3-0&at:xuetang',
     text: '你赶在众人之前步入学堂，将已经温顺下来的本命蛊气息放出一丝。\n家老抬眼打量了你片刻，点头记下名册：“头名归你，这是二十块元石。”',

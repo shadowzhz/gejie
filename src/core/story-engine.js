@@ -24,9 +24,10 @@ export function evalCond(gs, cond) {
   });
 }
 
-export function checkStoryTriggers(gs) {
+export function checkStoryTriggers(gs, eventId) {
   if (!gs || gs.player.dead || gs.pendingEventId || gs.battle) return null;
   for (const ev of STORY_EVENTS) {
+    if (eventId ? ev.id !== eventId : ev.manual) continue;
     if (gs.flags[`event_done:${ev.id}`]) continue;
     if (evalCond(gs, ev.cond)) {
       gs.pendingEventId = ev.id;

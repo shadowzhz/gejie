@@ -1,7 +1,7 @@
 import { GU_DEFS, ITEMS } from '../data/gu.js';
 import { PLACES } from '../data/places.js';
 import { formatDateTime } from '../core/calendar.js';
-import { addGu, addItem, addLog, createAptitude, createNewGame, esc, loadGame, realmText, recalcStats, saveGame, useItem } from '../core/state.js';
+import { addGu, addItem, addLog, claimBenming, createAptitude, createNewGame, esc, loadGame, realmText, recalcStats, refineBenming, saveGame, useItem } from '../core/state.js';
 import { createKillerMove } from '../core/killer.js';
 import { battleAct, startBattle } from '../core/combat.js';
 import { applyEventChoice, checkStoryTriggers } from '../core/story-engine.js';
@@ -153,13 +153,7 @@ function handlePlaceAction(id) {
   else if (id === 'rest') { advanceMinutes(G, 480); addLog(G, '你在竹楼安歇四个时辰，精神恢复了不少。'); }
   else if (id === 'wait') { advanceMinutes(G, 120); }
   else if (id === 'pickBenming') {
-    if (p.benming) return;
-    const inst = addGu(G, 'yueguang', 100);
-    p.benming = inst.uid;
-    addItem(G, 'yuelanhua', 8);
-    addLog(G, '【本命蛊】你在学堂蛊室选定并炼化了「月光蛊」，附赠 8 片月兰花瓣。', 'log-gold');
-    G.goal = G.flags['toumin_race'] ? '赶在三月三日前向家老交卷夺取头名赏' : '前往「演武场」找草人傀儡练手';
-    checkStoryTriggers(G);
+    claimBenming(G);
   } else if (id === 'caoren') {
     advanceMinutes(G, 30);
     G.flags['practiced'] = true;
@@ -280,7 +274,12 @@ function handleAction(el) {
     saveGame(G);
     render();
   } else if (act === 'checkEvents') {
-    checkStoryTriggers(G);
+    checkStoryTriggers(G, id);
+    render();
+  } else if (act === 'refineBenming') {
+    const res = refineBenming(G);
+    if (!res.ok) { showToast(res.reason); return; }
+    saveGame(G);
     render();
   } else if (act === 'chooseEvent') {
     applyEventChoice(G, id, Number(el.dataset.idx) || 0);
