@@ -1,4 +1,4 @@
-import { PLACES } from '../data/places.js';
+import { hasPlaceActions, PLACES } from '../data/places.js';
 import { formatDuration, isNight } from '../core/calendar.js';
 import { placeMoveList } from '../core/clock.js';
 import { esc } from '../core/state.js';
@@ -27,7 +27,10 @@ export function renderMapPanel(gs, title = '青茅山舆图 · 可去之处') {
     const mv = moveMap[pid];
     const style = `left:${place.x}%;top:${place.y}%`;
     if (pid === gs.location) {
-      nodes += `<button type="button" class="map-node is-here" style="${style}" data-action="openPlace" aria-haspopup="dialog"><b>${esc(place.name)}</b><small>在此</small></button>`;
+      const label = `<b>${esc(place.name)}</b><small>在此</small>`;
+      nodes += hasPlaceActions(gs)
+        ? `<button type="button" class="map-node is-here" style="${style}" data-action="openPlace" aria-haspopup="dialog">${label}</button>`
+        : `<div class="map-node is-here" style="${style}">${label}</div>`;
     } else if (mv) {
       nodes += `<button type="button" class="map-node is-move" style="${style}" data-action="walkTo" data-id="${pid}" ${mv.blocked ? 'disabled title="' + esc(mv.blocked) + '"' : ''}>
         <b>${esc(place.name)}</b><small>${esc(mv.blocked ? '受阻' : formatDuration(mv.minutes))}</small>

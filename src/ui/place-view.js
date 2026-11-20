@@ -1,4 +1,4 @@
-import { GU_DEFS, ITEMS, REFINE_RECIPES, guEffectText } from '../data/gu.js';
+import { GU_DEFS, ITEMS, REFINE_RECIPES, guEffectText, recipeIngredientsText } from '../data/gu.js';
 import { PLACES } from '../data/places.js';
 import { formatDateTime, isNight } from '../core/calendar.js';
 import { esc, QUESTS } from '../core/state.js';
@@ -52,17 +52,16 @@ export function renderPlaceView(gs) {
 
   let shopHtml = '';
   if (place.shop && place.shop.length) {
-    const closed = night && place.id === 'jucaifang';
     const rows = place.shop.map((entry) => {
       const [kind, id] = entry.split(':');
       const def = kind === 'gu' ? GU_DEFS[id] : ITEMS[id];
       if (!def) return '';
       return `<div class="kv">
         <span><b>${esc(def.name)}</b> ${kind === 'gu' ? `<span class="badge">${def.rank}转</span>` : ''} <span class="muted">${esc(def.desc)}${kind === "gu" && guEffectText(def) ? `<br>${esc(guEffectText(def))}` : ''}</span></span>
-        <button class="sm" ${closed || gs.player.yuanshi < def.price ? 'disabled' : ''} data-action="buyItem" data-id="${esc(entry)}">买 · ${def.price}元石</button>
+        <button class="sm" ${gs.player.yuanshi < def.price ? 'disabled' : ''} data-action="buyItem" data-id="${esc(entry)}">买 · ${def.price}元石</button>
       </div>`;
     }).join('');
-    shopHtml = `<div class="card"><h3>${esc(place.name)}货架 ${closed ? '<span class="badge">入夜收摊</span>' : ''}</h3>${rows}</div>`;
+    shopHtml = `<div class="card"><h3>${esc(place.name)}货架</h3>${rows}</div>`;
   }
 
   return `<section class="stage ${night ? 'is-night' : ''}">
@@ -84,7 +83,7 @@ export function renderPlaceView(gs) {
     ${place.services.includes('recipes') ? `<div class="card"><h3>蛊方</h3>${REFINE_RECIPES.map((r) => {
       const owned = gs.player.recipes?.includes(r.id);
       const out = GU_DEFS[r.out];
-      return `<div class="kv"><span>${esc(out.name)}蛊方 · ${out.rank}转</span>
+      return `<div class="kv"><span>${esc(out.name)}蛊方 · ${out.rank}转<br><small class="muted">${esc(recipeIngredientsText(r))}${r.adapted ? ' · 游戏改编' : ''}</small></span>
         <button class="sm" ${owned || gs.player.yuanshi < r.price ? 'disabled' : ''} data-action="buyRecipe" data-id="${r.id}">${owned ? '已习得' : `买 · ${r.price} 元石`}</button></div>`;
     }).join('')}</div>` : ''}`;
 }

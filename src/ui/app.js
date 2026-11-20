@@ -1,6 +1,6 @@
 import { GU_DEFS, ITEMS, REFINE_RECIPES } from '../data/gu.js';
-import { PLACES } from '../data/places.js';
-import { formatDateTime, isNight } from '../core/calendar.js';
+import { hasPlaceActions, PLACES } from '../data/places.js';
+import { formatDateTime } from '../core/calendar.js';
 import { addGu, addItem, addLog, claimBenming, createAptitude, createNewGame, esc, feedGu, handleQuest, loadGame, realmText, recalcStats, refineBenming, saveGame, useItem } from '../core/state.js';
 import { createKillerMove } from '../core/killer.js';
 import { battleAct, startBattle } from '../core/combat.js';
@@ -271,11 +271,11 @@ function handleAction(el) {
   } else if (act === 'walkTo') {
     const res = moveToPlace(G, id);
     if (!res.ok) showToast(res.reason);
-    else if (G.location === id && !G.battle && !G.player.dead) MODAL = { kind: 'place' };
+    else if (G.location === id && !G.battle && !G.player.dead && hasPlaceActions(G)) MODAL = { kind: 'place' };
     saveGame(G);
     render();
   } else if (act === 'openPlace') {
-    if (G && !G.battle && !G.player.dead) openModal('place');
+    if (G && !G.battle && !G.player.dead && hasPlaceActions(G)) openModal('place');
   } else if (act === 'placeAct') {
     handlePlaceAction(id);
   } else if (act === 'quest') {
@@ -293,7 +293,7 @@ function handleAction(el) {
     render();
   } else if (act === 'buyItem') {
     const place = PLACES[G.location];
-    if (!place?.shop?.includes(id) || (place.id === 'jucaifang' && isNight(G.minutes))) return;
+    if (!place?.shop?.includes(id)) return;
     const [kind, itemId] = id.split(':');
     const def = kind === 'gu' ? GU_DEFS[itemId] : ITEMS[itemId];
     if (!def || G.player.yuanshi < def.price) { showToast('元石不足'); return; }

@@ -1,3 +1,8 @@
+export function hasPlaceActions(gs) {
+  return !!(PLACES[gs.location]?.services.length
+    || (gs.location === 'zhaimen' && gs.flags.qingmao_finished));
+}
+
 export const PLACES = {
   zhulou: {
     id: 'zhulou', name: '竹楼', region: '古月山寨', x: 10, y: 22,
@@ -40,15 +45,15 @@ export const PLACES = {
     links: { shijie: 30 },
     day: '行脚商人与族人挤在木桌旁喝青竹酒，消息在这里传得最快。',
     night: '灯火通明，角落里有人压低声音议论山外的风声。',
-    shop: ['item:qingzhujiu', 'item:tianjiu', 'item:lajiu'],
+    shop: ['item:qingzhujiu', 'item:suanjiu', 'item:tianjiu', 'item:kujiu', 'item:lajiu'],
     services: ['shop', 'rumor']
   },
   jucaifang: {
     id: 'jucaifang', name: '聚财坊', region: '古月山寨', x: 26, y: 78,
     links: { shijie: 30 },
     day: '货架上堆着月兰花瓣、腌肉、蜂王蜜与各色一转炼材。',
-    night: '坊市入夜收摊，伙计正清点白日收来的兽皮与元石。',
-    shop: ['item:yuelanhua', 'item:shourou', 'item:fengmi', 'item:kuangshi', 'item:yuanshi_zha'],
+    night: '柜台亮着油灯，伙计仍在招呼来买口粮和炼材的客人。',
+    shop: ['item:yuelanhua', 'item:shourou', 'item:fengmi', 'item:kuangshi', 'item:yuanshi_zha', 'item:yezhuya'],
     services: ['shop']
   },
   gupu: {
@@ -56,7 +61,7 @@ export const PLACES = {
     links: { shijie: 30 },
     day: '掌柜将蛊虫分转陈列，蛊方收在柜后的木匣里。',
     night: '柜台上点着一盏油灯，掌柜仍在照看蛊虫。',
-    shop: ['gu:xiaoguang', 'gu:shipi', 'gu:bingzhen', 'gu:shengjiye', 'gu:yupi', 'gu:xuanfeng', 'gu:jiuchong',
+    shop: ['gu:yueguang', 'gu:xiaoguang', 'gu:shipi', 'gu:bingzhen', 'gu:shengjiye', 'gu:yupi', 'gu:xuanfeng', 'gu:jiuchong', 'gu:baishi',
       'gu:zhuci', 'gu:minghuo', 'gu:zhujia', 'gu:luzhu', 'gu:jiuyecao', 'gu:yunmu', 'gu:xuanjia'],
     services: ['shop', 'recipes']
   },

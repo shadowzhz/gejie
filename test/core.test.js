@@ -126,12 +126,18 @@ test('破壁冲关、三轮控火炼蛊与春秋蝉回溯', () => {
   assert.equal(gs.player.yuanshi, 100);
   assert.equal(gs.player.items.kuangshi, 1);
   gs.player.recipes.push('r_yuemang');
+  assert.equal(createRefineSession(gs, 'r_yuemang').error, '需要 2 只「小光蛊」');
+  assert.equal(gs.player.yuanshi, 100);
+  addGu(gs, 'xiaoguang');
   const ref = createRefineSession(gs, 'r_yuemang');
   assert.ok(!ref.error);
   stepRefineSession(gs, ref, 'steady', () => 0.2);
   stepRefineSession(gs, ref, 'steady', () => 0.2);
   stepRefineSession(gs, ref, 'steady', () => 0.2);
   assert.equal(ref.state, 'done');
+  assert.equal(ref.success, true);
+  assert.equal(gs.player.gu.filter((gu) => gu.id === 'xiaoguang').length, 0);
+  assert.ok(gs.player.gu.some((gu) => gu.id === 'yuemang'));
 
   addGu(gs, 'chunqiuchan');
   assert.equal(saveSpringSnapshot(gs).ok, true);
@@ -140,6 +146,44 @@ test('破壁冲关、三轮控火炼蛊与春秋蝉回溯', () => {
   assert.equal(rw.ok, true);
   assert.equal(rw.state.player.dead, false);
   assert.equal(realmText(rw.state.player).includes('转'), true);
+});
+
+test('月光蛊能升炼成控制或防御蛊，本命蛊成功升炼后保留绑定', () => {
+  for (const [recipeId, aux, out] of [['r_yuexuan', 'xuanfeng', 'yuexuan'], ['r_yueni', 'yupi', 'yueni']]) {
+    const gs = createNewGame();
+    gs.player.yuanshi = 100;
+    gs.player.recipes.push(recipeId);
+    gs.player.benming = addGu(gs, 'yueguang').uid;
+    addGu(gs, aux);
+    const ref = createRefineSession(gs, recipeId);
+    for (let i = 0; i < 3; i++) stepRefineSession(gs, ref, 'steady', () => 0.2);
+    assert.equal(ref.success, true);
+    assert.equal(gs.player.gu.find((gu) => gu.uid === gs.player.benming)?.id, out);
+    assert.ok(!gs.player.gu.some((gu) => gu.id === aux || gu.id === 'yueguang'));
+  }
+});
+
+test('四味酒虫缺任何一种酒都不能开炉，开炉后扣除四种酒', () => {
+  const gs = createNewGame();
+  gs.player.yuanshi = 100;
+  gs.player.recipes.push('r_siwei');
+  addGu(gs, 'jiuchong');
+  addGu(gs, 'jiuchong');
+  const wines = ['suanjiu', 'tianjiu', 'kujiu', 'lajiu'];
+  for (const wine of wines) gs.player.items[wine] = 1;
+  for (const wine of wines) {
+    delete gs.player.items[wine];
+    assert.match(createRefineSession(gs, 'r_siwei').error, /缺少/);
+    assert.equal(gs.player.yuanshi, 100);
+    gs.player.items[wine] = 1;
+  }
+  const ref = createRefineSession(gs, 'r_siwei');
+  assert.ok(!ref.error);
+  assert.ok(wines.every((wine) => !(wine in gs.player.items)));
+  for (let i = 0; i < 3; i++) stepRefineSession(gs, ref, 'steady', () => 0.2);
+  assert.equal(ref.success, true);
+  assert.ok(gs.player.gu.some((gu) => gu.id === 'siwei_jiu'));
+  assert.ok(!gs.player.gu.some((gu) => gu.id === 'jiuchong'));
 });
 
 test('自动喂蛊消耗口粮，同种蛊虫计入升阶，委托只能领赏一次', () => {

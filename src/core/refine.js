@@ -1,20 +1,21 @@
-import { GU_DEFS, REFINE_RECIPES } from '../data/gu.js';
-import { addGu, addLog, hasGu, removeGuByUid, useItem } from './state.js';
+import { GU_DEFS, ITEMS, REFINE_RECIPES } from '../data/gu.js';
+import { addGu, addLog, removeGuByUid, useItem } from './state.js';
 
 export function canStartRefine(gs, recipeId) {
   const rc = REFINE_RECIPES.find((r) => r.id === recipeId);
   if (!rc) return { ok: false, reason: '未知蛊方' };
   if (!gs.player.recipes?.includes(recipeId)) return { ok: false, reason: '尚未习得此蛊方' };
   if (gs.player.yuanshi < rc.cost) return { ok: false, reason: `元石不足（需 ${rc.cost}）` };
-  if ((gs.player.items[rc.mat] || 0) < 1) return { ok: false, reason: '缺少炼制辅材' };
-  const mainCount = gs.player.gu.filter((g) => g.id === rc.main).length;
-  const auxCount = gs.player.gu.filter((g) => g.id === rc.aux).length;
-  if (rc.main === rc.aux) {
-    if (mainCount < 2) return { ok: false, reason: `需要两只「${GU_DEFS[rc.main].name}」` };
-  } else {
-    if (mainCount < 1 || auxCount < 1) return { ok: false, reason: '缺少所需主蛊或辅蛊' };
+  const guUids = [];
+  for (const [id, count] of Object.entries(rc.gu)) {
+    const matches = gs.player.gu.filter((g) => g.id === id);
+    if (matches.length < count) return { ok: false, reason: `需要 ${count} 只「${GU_DEFS[id].name}」` };
+    guUids.push(...matches.slice(0, count).map((g) => g.uid));
   }
-  return { ok: true, rc };
+  for (const [id, count] of Object.entries(rc.materials)) {
+    if ((gs.player.items[id] || 0) < count) return { ok: false, reason: `缺少「${ITEMS[id].name}」×${count}` };
+  }
+  return { ok: true, rc, guUids };
 }
 
 export function createRefineSession(gs, recipeId) {
@@ -22,9 +23,10 @@ export function createRefineSession(gs, recipeId) {
   if (!chk.ok) return { error: chk.reason };
   const rc = chk.rc;
   gs.player.yuanshi -= rc.cost;
-  useItem(gs, rc.mat, 1);
+  for (const [id, count] of Object.entries(rc.materials)) useItem(gs, id, count);
   return {
-    recipeId: rc.id,
+    outId: rc.out,
+    guUids: chk.guUids,
     outName: GU_DEFS[rc.out].name,
     round: 1,
     maxRounds: 3,
@@ -33,19 +35,21 @@ export function createRefineSession(gs, recipeId) {
     baseRate: rc.rate,
     state: 'ongoing', // ongoing | done | aborted
     success: false,
-    lines: [`地火燃起，投入「${GU_DEFS[rc.main].name}」与辅材，共守三轮火候。`]
+    lines: ['地火燃起，投入合炼所需蛊虫，共守三轮火候。']
   };
 }
 
 export function stepRefineSession(gs, sess, mode, rng = Math.random) {
   if (!sess || sess.state !== 'ongoing') return sess;
-  const rc = REFINE_RECIPES.find((r) => r.id === sess.recipeId);
-  if (!rc) return sess;
-
   if (mode === 'abort') {
     sess.state = 'aborted';
     sess.lines.push('你果断撤去地火开炉，主蛊虽未升炼，却安然保住。');
     addLog(gs, `【停炉】炼制「${sess.outName}」中途撤火，保住了主蛊。`, 'log-warn');
+    return sess;
+  }
+  if (!sess.guUids.every((uid) => gs.player.gu.some((g) => g.uid === uid))) {
+    sess.state = 'aborted';
+    sess.lines.push('入炉的蛊虫已不齐，合炼中止。');
     return sess;
   }
 
@@ -66,8 +70,7 @@ export function stepRefineSession(gs, sess, mode, rng = Math.random) {
   if (sess.heat > 96 || sess.heat < 15) {
     sess.state = 'done';
     sess.success = false;
-    const auxInst = gs.player.gu.find((g) => g.id === rc.aux);
-    if (auxInst) removeGuByUid(gs, auxInst.uid);
+    removeGuByUid(gs, sess.guUids[1]);
     sess.lines.push('炉温失控炸炉！辅蛊损毁，好在保住了主蛊。');
     addLog(gs, `【炼蛊炸炉】「${sess.outName}」合炼失控，损毁了一只辅蛊。`, 'log-bad');
     return sess;
@@ -77,14 +80,13 @@ export function stepRefineSession(gs, sess, mode, rng = Math.random) {
     sess.state = 'done';
     const sweetBonus = (sess.heat >= 45 && sess.heat <= 75) ? 0.10 : 0;
     const finalRate = Math.min(0.95, sess.baseRate + sess.rateBonus + sweetBonus);
-    const mainInst = gs.player.gu.find((g) => g.id === rc.main);
-    const auxInst = gs.player.gu.find((g) => g.id === rc.aux && (!mainInst || g.uid !== mainInst.uid));
-    if (mainInst) removeGuByUid(gs, mainInst.uid);
-    if (auxInst) removeGuByUid(gs, auxInst.uid);
+    const usesBenming = sess.guUids.includes(gs.player.benming);
+    for (const uid of sess.guUids) removeGuByUid(gs, uid);
 
     if (rng() < finalRate) {
       sess.success = true;
-      addGu(gs, rc.out, 100);
+      const result = addGu(gs, sess.outId, 100);
+      if (usesBenming) gs.player.benming = result.uid;
       sess.lines.push(`成算 ${Math.round(finalRate * 100)}% —— 炉盖掀开，一只「${sess.outName}」振翼而出！`);
       addLog(gs, `【炼蛊大成】成功合炼出「${sess.outName}」！`, 'log-gold');
     } else {

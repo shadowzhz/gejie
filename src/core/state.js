@@ -137,7 +137,9 @@ export function hasGu(gs, id) {
 export function addGu(gs, id, satiety = 100) {
   const def = GU_DEFS[id];
   if (!def) return null;
-  const inst = { uid: Date.now() + Math.floor(Math.random() * 10000), id, satiety };
+  let uid = Date.now() + Math.floor(Math.random() * 10000);
+  while (gs.player.gu.some((gu) => gu.uid === uid)) uid++;
+  const inst = { uid, id, satiety };
   gs.player.gu.push(inst);
   if (gs.player.equipped.length < 6 && ['攻击', '防御', '治疗', '增益', '控制', '探知', '隐匿'].includes(def.kind)) {
     gs.player.equipped.push(inst.uid);
