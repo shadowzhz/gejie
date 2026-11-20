@@ -3,6 +3,7 @@ import { MERCHANT_GU, PLACES, placeShopEntries } from '../data/places.js';
 import { formatDateTime, isNight } from '../core/calendar.js';
 import { esc, questBoard, SHOP_BATCH_LIMIT } from '../core/state.js';
 import { evalCond } from '../core/story-engine.js';
+import { isRecipeSold } from '../core/refine.js';
 import { STORY_EVENTS } from '../data/story.js';
 
 export function renderPlaceView(gs) {
@@ -59,7 +60,7 @@ export function renderPlaceView(gs) {
       if (!def) return '';
       const limited = MERCHANT_GU.includes(id);
       const affordable = gs.player.yuanshi >= def.price;
-      const recipes = sellsRecipes ? REFINE_RECIPES
+      const recipes = sellsRecipes ? REFINE_RECIPES.filter(isRecipeSold)
         .filter((recipe) => kind === 'gu' ? recipe.gu[id] : recipe.materials[id])
         .map(recipeOutputText) : [];
       const usage = recipes.length ? `<br><small class="muted">蛊方材料 · ${esc(recipes.join('、'))}</small>` : '';
@@ -92,10 +93,10 @@ export function renderPlaceView(gs) {
           </button></div>`;
       }).join('')}</div>` : ''}
     ${shopHtml}
-    ${sellsRecipes ? `<div class="card"><h3>蛊方</h3>${REFINE_RECIPES.map((r) => {
+    ${sellsRecipes ? `<div class="card"><h3>蛊方</h3>${REFINE_RECIPES.filter(isRecipeSold).map((r) => {
       const owned = gs.player.recipes?.includes(r.id);
-      const out = GU_DEFS[r.out];
-      return `<div class="kv"><span>${esc(recipeOutputText(r))}${r.method ?? ''}蛊方 · ${out.rank}转<br><small class="muted">${esc(recipeIngredientsText(r))}</small></span>
+      const out = GU_DEFS[r.out] || ITEMS[r.out];
+      return `<div class="kv"><span>${esc(recipeOutputText(r))}${r.method ?? ''}蛊方${out.rank ? ` · ${out.rank}转` : ''}<br><small class="muted">${esc(recipeIngredientsText(r))}</small></span>
         <button class="sm" ${owned || gs.player.yuanshi < r.price ? 'disabled' : ''} data-action="buyRecipe" data-id="${r.id}">${owned ? '已习得' : `买 · ${r.price} 元石`}</button></div>`;
     }).join('')}</div>` : ''}`;
 }

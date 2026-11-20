@@ -1,11 +1,52 @@
 import { GU_DEFS, ITEMS, REFINE_RECIPES, recipeIngredientsText, recipeOutputText } from '../data/gu.js';
 import { isNight } from './calendar.js';
-import { addGu, addLog, removeGuByUid, useItem } from './state.js';
+import { addGu, addItem, addLog, hasGu, removeGuByUid, useItem } from './state.js';
+
+const REFINE_REALMS = [
+  [0, '普通', 0], [3, '大师', .10], [12, '宗师', .20],
+  [25, '大宗师', .33], [50, '无上大宗师', .50]
+];
+
+const RECIPE_SOURCES = {
+  r_yueguang: 'kaike',
+  r_xiaoguang: 'kaike',
+  r_yuemang: 'nianmo_done',
+  r_yuexuan: 'nianmo_done',
+  r_yuehen: 'nianmo_done',
+  r_yueni: 'nianmo_done',
+  r_yupi: 'looted:huajiu',
+  r_baishi: 'looted:huajiu',
+  r_baiyu: 'looted:huajiu',
+  r_chunqiuchan: 'looted:huajiu',
+  r_shengjiye: 'event_done:jiuyecao_inheritance',
+  r_jiuyecao: 'event_done:jiuyecao_inheritance',
+  r_qingtong_sheli: 'nianmo_done',
+  r_chitie_sheli: 'clear:langchao',
+  r_dianlang_gu: 'clear:langchao',
+  r_xuefu_gu: 'clear:xuefu'
+};
+
+export function isRecipeSold(recipe) {
+  return !Object.hasOwn(RECIPE_SOURCES, recipe.id);
+}
+
+export function knowsRefineRecipe(gs, recipe) {
+  return gs.player.recipes?.includes(recipe.id) || Boolean(gs.flags[RECIPE_SOURCES[recipe.id]]);
+}
+
+export function refineRealm(player) {
+  const insight = player.refineInsight ?? 0;
+  const index = REFINE_REALMS.findLastIndex(([threshold]) => insight >= threshold);
+  const [, name, bonus] = REFINE_REALMS[index];
+  return { name, bonus, insight, next: REFINE_REALMS[index + 1]?.[0] };
+}
 
 export function canStartRefine(gs, recipeId) {
   const rc = REFINE_RECIPES.find((r) => r.id === recipeId);
   if (!rc) return { ok: false, reason: '未知蛊方' };
-  if (!gs.player.recipes?.includes(recipeId)) return { ok: false, reason: '尚未习得此蛊方' };
+  if (!knowsRefineRecipe(gs, rc)) return { ok: false, reason: '尚未习得此蛊方' };
+  if (rc.minRank && gs.player.rank < rc.minRank) return { ok: false, reason: `须晋入 ${rc.minRank} 转` };
+  if (rc.unique && hasGu(gs, rc.out)) return { ok: false, reason: '已持有此蛊' };
   if (gs.player.yuanshi < rc.cost) return { ok: false, reason: `元石不足（需 ${rc.cost}）` };
   const guUids = [];
   for (const [id, count] of Object.entries(rc.gu)) {
@@ -68,6 +109,7 @@ export function createRefineSession(gs, recipeId) {
     materials: recipeIngredientsText(rc),
     cost: rc.cost,
     baseRate: rc.rate,
+    realmBonus: refineRealm(gs.player).bonus,
     progress: 0,
     pressure: 0,
     turns: flow.turns,
@@ -80,12 +122,21 @@ export function createRefineSession(gs, recipeId) {
   };
 }
 
+export function refineReady(sess) {
+  return !sess.pending.length && sess.progress >= sess.flow.target && sess.pressure <= sess.flow.safePressure;
+}
+
+export function refineSuccessRate(rate, bonus, ready) {
+  const base = rate + (ready ? .15 : 0);
+  return base + (1 - base) * bonus;
+}
+
 export function refineChance(sess) {
   if (sess.pending.length) return 0;
   const { flow, progress, pressure } = sess;
-  if (progress >= flow.target && pressure <= flow.safePressure) return 1;
+  const trained = refineSuccessRate(sess.baseRate, sess.realmBonus ?? 0, refineReady(sess));
   const excess = Math.max(0, pressure - flow.safePressure);
-  return Math.max(0, Math.min(0.85, sess.baseRate * Math.min(1, progress / flow.target) - excess * 0.12));
+  return Math.max(0, trained * Math.min(1, progress / flow.target) - excess * 0.12);
 }
 
 export function refineTechniques(sess) {
@@ -108,12 +159,20 @@ function finishRefining(gs, sess, rc, success, message) {
   const usesBenming = sess.ingredients.some(({ uid }) => uid === benming);
   sess.state = 'done';
   sess.success = success;
+  const previousRealm = refineRealm(gs.player).name;
+  gs.player.refineInsight = (gs.player.refineInsight ?? 0) + Number(success || sess.progress > 0);
+  const nextRealm = refineRealm(gs.player).name;
+  if (nextRealm !== previousRealm) addLog(gs, `【炼道】境界提升为${nextRealm}。`, 'log-gold');
   sess.lines.push(message);
   if (success) {
-    for (const gu of sess.ingredients) removeGuByUid(gs, gu.uid);
-    const first = addGu(gs, rc.out);
-    if (usesBenming) gs.player.benming = first.uid;
-    for (let count = 1; count < (rc.outCount ?? 1); count++) addGu(gs, rc.out);
+    if (!rc.preserveGu) for (const gu of sess.ingredients) removeGuByUid(gs, gu.uid);
+    if (GU_DEFS[rc.out]) {
+      const first = addGu(gs, rc.out);
+      if (usesBenming) gs.player.benming = first.uid;
+      for (let count = 1; count < (rc.outCount ?? 1); count++) addGu(gs, rc.out);
+    } else {
+      addItem(gs, rc.out, rc.outCount ?? 1);
+    }
     sess.lines.push(`得「${sess.outName}」。`);
     if (usesBenming) sess.lines.push('成蛊已继承本命绑定。');
     addLog(gs, `【炼蛊大成】成功${sess.method}出「${sess.outName}」。`, 'log-gold');
@@ -123,7 +182,7 @@ function finishRefining(gs, sess, rc, success, message) {
   const spared = [];
   const lost = [];
   for (const gu of sess.ingredients) {
-    if (gu.uid === benming || gu.uid === sess.protectedUid) {
+    if (rc.preserveGu || gu.uid === benming || gu.uid === sess.protectedUid) {
       spared.push(gu.benming ? `${gu.name}（本命蛊）` : gu.name);
     } else {
       removeGuByUid(gs, gu.uid);
@@ -190,8 +249,8 @@ export function stepRefineSession(gs, sess, action, rng = Math.random, timing) {
   }
   if (action === 'seal' && refineChance(sess) > 0) {
     const chance = refineChance(sess);
-    const success = chance === 1 || rng() < chance;
-    finishRefining(gs, sess, rc, success, chance === 1 ? '蛊性成形，稳稳收炉。' : `强行收炉，成算 ${Math.round(chance * 100)}%，${success ? '成了！' : '炉中蛊性散去。'}`);
+    const success = rng() < chance;
+    finishRefining(gs, sess, rc, success, success ? '炉中蛊性凝实，收炉成蛊。' : '合盖后蛊性散去，未能成蛊。');
     return sess;
   }
 

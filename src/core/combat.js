@@ -1,7 +1,7 @@
 import { GU_DEFS } from '../data/gu.js';
 import { ENEMIES } from '../data/enemies.js';
 import { addGu, addItem, addLog, hasGu, recalcStats, recordQuestProgress } from './state.js';
-import { killerMoveBlock, recordKillerSequence } from './killer.js';
+import { killerMoveBlock, recordGuUsage } from './killer.js';
 
 function pickIntent(enemy, rng = Math.random) {
   const pool = enemy.moves.filter((m) => (enemy.cds[m.name] || 0) <= 0);
@@ -243,7 +243,7 @@ export function battleAct(gs, action, arg = '', rng = Math.random) {
       fired.push(gu.def.id);
       if (foe.hp <= 0) break;
     }
-    recordKillerSequence(gs, fired);
+    recordGuUsage(gs, fired);
   } else if (action === 'move') {
     p.zy -= mv.cost;
     b.cds[mv.id] = mv.cd;

@@ -142,8 +142,9 @@ export function recalcStats(gs) {
   const r = p.rank;
   const x = p.xiao;
   const haiMul = 0.65 + p.hai * 0.08;
-  const passiveHp = (hasGu(gs, 'heishi') ? 20 : 0) + (p.whiteBoarStrength ?? 0) * 35 + (hasGu(gs, 'tongpi') ? 25 : 0);
-  const passivePower = (hasGu(gs, 'heishi') ? 6 : 0) + (p.whiteBoarStrength ?? 0) * 12;
+  const boarStrength = (p.whiteBoarStrength ?? 0) + (p.blackBoarStrength ?? 0);
+  const passiveHp = boarStrength * 35 + (hasGu(gs, 'tongpi') ? 25 : 0);
+  const passivePower = boarStrength * 12;
   p.hpMax = Math.round((85 + r * 35 + x * 14) * (1 + (r - 1) * 0.18) + passiveHp);
   p.zyMax = Math.round((28 + r * 18 + x * 6) * haiMul);
   p.speed = 6 + r * 3 + x;
@@ -252,12 +253,28 @@ export function purchaseShopEntry(gs, entry, count) {
   return { ok: true, message };
 }
 
-export function useWhiteBoarGu(gs, uid) {
-  if (!gs.player.gu.some((gu) => gu.uid === uid && gu.id === 'baishi')) return false;
+export function useHealingGu(gs, uid) {
+  const p = gs.player;
+  const gu = p.gu.find((entry) => entry.uid === uid);
+  const def = GU_DEFS[gu?.id];
+  if (gs.battle || p.dead || def?.kind !== '治疗' || p.hp >= p.hpMax || p.zy < def.cost) return false;
+  const healed = Math.min(def.power, p.hpMax - p.hp);
+  p.zy -= def.cost;
+  p.hp += healed;
+  addLog(gs, `【${def.name}】催动疗伤，回复 ${Math.round(healed)} 点气血。`, 'log-good');
+  return true;
+}
+
+export function useBoarGu(gs, uid) {
+  const { player } = gs;
+  const gu = player.gu.find((entry) => entry.uid === uid);
+  if (gs.battle || !gu || !['heishi', 'baishi'].includes(gu.id)) return false;
+  const strength = gu.id === 'heishi' ? 'blackBoarStrength' : 'whiteBoarStrength';
+  if (player[strength]) return false;
   removeGuByUid(gs, uid);
-  gs.player.whiteBoarStrength = (gs.player.whiteBoarStrength ?? 0) + 1;
+  player[strength] = 1;
   recalcStats(gs);
-  addLog(gs, '【白豕蛊】蛊虫消散，你添了一猪之力。', 'log-good');
+  addLog(gs, `【${GU_DEFS[gu.id].name}】蛊虫消散，你添了一猪之力。`, 'log-good');
   return true;
 }
 

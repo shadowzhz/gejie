@@ -2,7 +2,7 @@ import { GU_DEFS, ITEMS, guEffectText } from '../data/gu.js';
 import { BENMING_ZY_COST, esc, minorXpNeed, realmText } from '../core/state.js';
 
 import { realmGuRequirement } from '../core/breakthrough.js';
-import { killerMoveBlock } from '../core/killer.js';
+import { discoveredKillerPatterns, killerMoveBlock } from '../core/killer.js';
 
 export function renderApertureView(gs) {
   const p = gs.player;
@@ -32,14 +32,17 @@ export function renderApertureView(gs) {
       </div>
       <div class="muted" style="margin-bottom:8px">
         ${esc(def.desc)}${effect ? `<br>${esc(effect)}` : ''}
-        <br>${food ? `食物 <b>${esc(food.name)}</b> · 行囊 ${foodCount} 份` : def.foodUnknown ? '食物未核实 · 暂不消耗口粮' : '无需喂食'}
+        <br>${food ? `食物 <b>${esc(food.name)}</b> · 行囊 ${foodCount} 份` : '无需喂食'}
         ${isBm ? '<br>合炼失败时保留，炼成后由成蛊继承本命绑定。' : ''}
       </div>
       <div class="row">
         ${food ? `<button class="sm" ${foodCount <= 0 || g.satiety >= 100 ? 'disabled' : ''} data-action="feedGu" data-id="${g.uid}">喂食</button>` : ''}
-        ${['攻击', '防御', '治疗', '增益', '控制', '探知', '隐匿'].includes(def.kind) ? `<button class="sm ${eq ? 'primary' : ''}" data-action="toggleEquip" data-id="${g.uid}">${eq ? '已出战' : '设出战'}</button>` : ''}
+        ${['攻击', '防御', '治疗', '增益', '控制', '探知', '隐匿'].includes(def.kind) ? `<button class="sm ${eq ? 'primary' : ''}" data-action="toggleEquip" data-id="${g.uid}">${eq ? '已出战 · 战中催动' : '设为出战蛊'}</button>` : ''}
         ${isSheli ? `<button class="sm gold" data-action="useSheli" data-id="${g.uid}">炼化破境</button>` : ''}
-        ${g.id === 'baishi' ? `<button class="sm gold" data-action="useWhiteBoarGu" data-id="${g.uid}">消耗蛊虫 · 增一猪之力</button>` : ''}
+        ${def.kind === '治疗' ? `<button class="sm gold" data-action="useHealingGu" data-id="${g.uid}">催动疗伤 · ${def.cost} 真元</button>` : ''}
+        ${['heishi', 'baishi'].includes(g.id) ? (p[g.id === 'heishi' ? 'blackBoarStrength' : 'whiteBoarStrength']
+          ? '<span class="muted">已得此蛊的一猪之力</span>'
+          : `<button class="sm gold" data-action="useBoarGu" data-id="${g.uid}">催动 · 消耗此蛊，增一猪之力</button>`) : ''}
       </div>
     </div>`;
   }).join('');
@@ -67,7 +70,7 @@ export function renderApertureView(gs) {
         <button data-action="feedAll">一键喂饱</button>
         <button data-action="toggleAutoFeed" aria-pressed="${!!p.autoFeed}">自动喂蛊：${p.autoFeed ? '开' : '关'}</button>
         <span class="muted">饱食降至 50% 或以下时，使用行囊口粮。</span>
-        <button class="gold" ${p.rank >= 2 ? '' : 'disabled'} data-action="openCustomKiller">自创杀招${p.rank < 2 ? '（需二转）' : ''}</button>
+        ${discoveredKillerPatterns(p).length ? '<button class="gold" data-action="openCustomKiller">自创杀招</button>' : ''}
       </div>
     </div>
     ${p.unrefinedBenming ? `<div class="card">

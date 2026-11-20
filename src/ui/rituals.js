@@ -1,6 +1,6 @@
 import { STORY_EVENTS } from '../data/story.js';
-import { KILLER_PATTERNS, killerCraftBlock, killerPatternSequence } from '../core/killer.js';
-import { OVERLOAD_PRESSURE, refineChance, refineTechniques } from '../core/refine.js';
+import { discoveredKillerPatterns, killerCraftBlock, killerPatternSequence } from '../core/killer.js';
+import { OVERLOAD_PRESSURE, refineChance, refineReady, refineTechniques } from '../core/refine.js';
 import { esc } from '../core/state.js';
 
 export function renderStartScreen(startState) {
@@ -138,14 +138,15 @@ export function renderRefineModal(sess, effect) {
   </div>`;
 
   const chance = refineChance(sess);
+  const ready = refineReady(sess);
   const techniques = refineTechniques(sess);
   const signature = techniques.find(({ id, enabled }) => id === 'signature' && enabled);
   return `<div class="refine-ritual">${scene}
     <div class="row">
-      ${sess.turns && chance !== 1 ? '<button class="gold" data-action="refineAct" data-id="pulse">按下风箱</button>' : ''}
-      ${techniques.some(({ id, enabled }) => id === 'vent' && enabled) && chance !== 1 ? '<button data-action="refineAct" data-id="vent">掀盖放火</button>' : ''}
-      ${signature && chance !== 1 ? `<button data-action="refineAct" data-id="signature">${esc(signature.name)}</button>` : ''}
-      ${chance ? `<button class="${chance === 1 ? 'primary' : 'blood'}" data-action="refineAct" data-id="seal">${chance === 1 ? '合盖收炉' : '冒险合盖'}</button>` : ''}
+      ${sess.turns && !ready ? '<button class="gold" data-action="refineAct" data-id="pulse">按下风箱</button>' : ''}
+      ${techniques.some(({ id, enabled }) => id === 'vent' && enabled) && !ready ? '<button data-action="refineAct" data-id="vent">掀盖放火</button>' : ''}
+      ${signature && !ready ? `<button data-action="refineAct" data-id="signature">${esc(signature.name)}</button>` : ''}
+      ${chance ? `<button class="${ready ? 'primary' : 'blood'}" data-action="refineAct" data-id="seal">${ready ? '合盖收炉' : '冒险合盖'} · ${Math.round(chance * 100)}%</button>` : ''}
       <button class="ghost" data-action="refineAct" data-id="abort">撤火</button>
     </div>
   </div>`;
@@ -160,7 +161,7 @@ export function renderEventModal(eventId) {
 }
 
 export function renderCustomKillerModal(gs) {
-  const rows = KILLER_PATTERNS.map((pattern) => {
+  const rows = discoveredKillerPatterns(gs.player).map((pattern) => {
     const blocked = killerCraftBlock(gs, pattern);
     return `<div class="card">
       <div class="kv"><b>${esc(pattern.name)}</b><span class="badge">${pattern.kind} · 耗 ${pattern.cost} 真元</span></div>
@@ -170,7 +171,6 @@ export function renderCustomKillerModal(gs) {
     </div>`;
   }).join('');
   return `<h2>自创杀招</h2>
-    <div class="muted">二转后，在同一回合按所示顺序完整催动这组蛊虫，即可通过试阵。对练也算，胜负都记进度。未形成搭配的蛊虫仍可逐只催动。</div>
     <input id="kmName" type="text" maxlength="10" aria-label="自定杀招名称" placeholder="自定杀招名称（可留空）">
     ${rows}
     <div class="row"><button class="ghost" data-action="closeModal">返回空窍</button></div>`;

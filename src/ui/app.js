@@ -1,12 +1,12 @@
 import { GU_DEFS, ITEMS, REFINE_RECIPES, recipeOutputText } from '../data/gu.js';
 import { hasPlaceActions, PLACES } from '../data/places.js';
 import { formatDateTime, isNight, MIN_PER_DAY, MIN_PER_MONTH, MIN_PER_SHICHEN } from '../core/calendar.js';
-import { addGu, addItem, addLog, claimBenming, createAptitude, createNewGame, esc, feedGu, handleQuest, loadGame, minorXpNeed, purchaseShopEntry, RANK_NAMES, realmText, recalcStats, recordQuestProgress, refineBenming, saveGame, useHealItem, useWhiteBoarGu, XIAO_NAMES } from '../core/state.js';
-import { createKillerMove, forgetKillerMove } from '../core/killer.js';
+import { addGu, addItem, addLog, claimBenming, createAptitude, createNewGame, esc, feedGu, handleQuest, loadGame, minorXpNeed, purchaseShopEntry, RANK_NAMES, realmText, recalcStats, recordQuestProgress, refineBenming, saveGame, useHealItem, useHealingGu, useBoarGu, XIAO_NAMES } from '../core/state.js';
+import { createKillerMove, discoveredKillerPatterns, forgetKillerMove, recordGuUsage } from '../core/killer.js';
 import { battleAct, startBattle } from '../core/combat.js';
 import { applyEventChoice, checkStoryTriggers } from '../core/story-engine.js';
 import { advanceMinutes, moveToPlace, rewindSpringCicada, saveSpringSnapshot } from '../core/clock.js';
-import { createRefineSession, stepRefineSession } from '../core/refine.js';
+import { createRefineSession, isRecipeSold, stepRefineSession } from '../core/refine.js';
 import { createBreakSession, realmGrowthText, realmGuRequirement, stepBreakSession, washMinorWall } from '../core/breakthrough.js';
 import { renderBreakModal, renderCustomKillerModal, renderEventModal, renderRefineModal, renderStartScreen } from './rituals.js';
 import { renderBattleView } from './battle-view.js';
@@ -393,7 +393,8 @@ function handleAction(el) {
   } else if (act === 'buyRecipe') {
     const recipe = REFINE_RECIPES.find((r) => r.id === id);
     const p = G.player;
-    if (!PLACES[G.location]?.services.includes('recipes') || !recipe || p.recipes?.includes(id) || p.yuanshi < recipe.price) return;
+    if (!PLACES[G.location]?.services.includes('recipes') || !recipe || !isRecipeSold(recipe)
+      || p.recipes?.includes(id) || p.yuanshi < recipe.price) return;
     p.yuanshi -= recipe.price;
     (p.recipes ??= []).push(id);
     const message = `已习得「${recipeOutputText(recipe)}」${recipe.method ?? ''}蛊方，花费 ${recipe.price} 元石`;
@@ -456,7 +457,7 @@ function handleAction(el) {
     saveGame(G);
     render();
   } else if (act === 'openCustomKiller') {
-    if (!G.battle && G.player.rank >= 2) openModal('killer');
+    if (!G.battle && discoveredKillerPatterns(G.player).length) openModal('killer');
   } else if (act === 'kmCreate' && MODAL?.kind === 'killer') {
     const nm = document.getElementById('kmName')?.value || '';
     const res = createKillerMove(G, id, nm);
@@ -494,8 +495,17 @@ function handleAction(el) {
     else showToast('至多同时出战 6 只蛊');
     saveGame(G);
     render();
-  } else if (act === 'useWhiteBoarGu') {
-    if (!useWhiteBoarGu(G, Number(id))) return;
+  } else if (act === 'useHealingGu') {
+    const uid = Number(id);
+    if (!useHealingGu(G, uid)) {
+      showToast(G.player.hp >= G.player.hpMax ? '气血已满' : '无法催动治疗蛊，请检查真元');
+      return;
+    }
+    recordGuUsage(G, [G.player.gu.find((gu) => gu.uid === uid).id]);
+    saveGame(G);
+    render();
+  } else if (act === 'useBoarGu') {
+    if (!useBoarGu(G, Number(id))) return;
     saveGame(G);
     render();
   } else if (act === 'useSheli') {

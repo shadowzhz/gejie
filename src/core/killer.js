@@ -17,26 +17,47 @@ export const KILLER_PATTERNS = [
     id: 'bristle_armor', name: '青丝黑鬃甲', sequence: ['qingsi', 'heizong'],
     desc: '先以青丝护身，再催黑鬃覆住薄弱处，结成双层护甲。',
     fee: 36, kind: '防御', power: 76, cost: 20, cd: 3
-  }
+  },
+  { id: 'wind_moon', name: '回风掠月', sequence: ['xuanfeng', 'yuexuan'],
+    desc: '先以山风扰乱身法，再以弧形月刃追击。', fee: 28, kind: '攻击', power: 49, cost: 12, cd: 2 },
+  { id: 'sighted_moon', name: '照隙月刃', sequence: ['nianxi', 'yuehen'],
+    desc: '念息辨出破绽，由月痕蛊在远处补上一刀。', fee: 22, kind: '攻击', power: 28, cost: 8, cd: 2 },
+  { id: 'jade_moon', name: '玉甲藏月', sequence: ['yupi', 'yuemang'],
+    desc: '玉皮先护身，月芒紧随其后。', fee: 28, kind: '攻击', power: 36, bonusShield: 22, cost: 13, cd: 2 },
+  { id: 'stone_hide', name: '石甲兽衣', sequence: ['shoupi', 'shipi'],
+    desc: '兽皮卸力，石皮在外挡下重击。', fee: 20, kind: '防御', power: 38, cost: 7, cd: 2 },
+  { id: 'bronze_jade', name: '铜胎白玉甲', sequence: ['tongpi', 'baiyu'],
+    desc: '铜皮为底，白玉覆面。', fee: 40, kind: '防御', power: 90, cost: 16, cd: 3 },
+  { id: 'thunder_wind', name: '风裹惊雷', sequence: ['xuanfeng', 'dianlang_gu'],
+    desc: '借旋风开路，再催电狼蛊放出雷击。', fee: 36, kind: '攻击', power: 56, cost: 14, cd: 3 },
+  { id: 'hidden_bat', name: '伏影蝠袭', sequence: ['yinshi', 'xuefu_gu'],
+    desc: '隐去身形，趁敌手失去目标时放出血蝠。', fee: 32, kind: '攻击', power: 42, bonusShield: 8, cost: 12, cd: 3 }
 ];
 
-export function killerPatternSequence(pattern) {
-  return pattern.sequence.map((id) => GU_DEFS[id].name).join(' → ');
+export function discoveredKillerPatterns(player) {
+  return player.rank < 2 ? [] : KILLER_PATTERNS.filter((pattern) => hasUsedKillerGu(player, pattern));
 }
 
-export function recordKillerSequence(gs, guIds) {
-  if (gs.player.rank < 2 || guIds.length < 2) return;
-  for (const pattern of KILLER_PATTERNS) {
-    const { sequence, id } = pattern;
-    if (guIds.length !== sequence.length || !sequence.every((gu, index) => gu === guIds[index])) continue;
-    const practiced = (gs.player.killerPractice ??= []);
-    if (practiced.includes(id)) return;
-    practiced.push(id);
-    gs.battle.logs.push(`搭配试阵通过：「${pattern.name}」可回空窍推演。`);
-    addLog(gs, `【试阵】「${pattern.name}」搭配已验证。`, 'log-good');
-    return;
+function hasUsedKillerGu(player, pattern) {
+  return pattern.sequence.every((id) => player.usedGu?.includes(id));
+}
+export function killerPatternSequence(pattern) {
+  return pattern.sequence.map((id) => GU_DEFS[id].name).join('、');
+}
+
+export function recordGuUsage(gs, guIds) {
+  const player = gs.player;
+  const used = new Set(player.usedGu);
+  if (guIds.every((id) => used.has(id))) return;
+  const known = discoveredKillerPatterns(player);
+  for (const id of guIds) used.add(id);
+  player.usedGu = [...used];
+  for (const pattern of discoveredKillerPatterns(player)) {
+    if (known.includes(pattern)) continue;
+    const message = `「${pattern.name}」所需蛊虫均已催动过，可回空窍推演。`;
+    gs.battle?.logs.push(message);
+    addLog(gs, `【杀招】${message}`, 'log-good');
   }
-  gs.battle.logs.push('这组蛊虫已逐只催动，当前搭配或顺序未形成可推演的杀招。');
 }
 
 function killerPatternBlock(gs, pattern) {
@@ -59,7 +80,7 @@ export function killerCraftBlock(gs, pattern) {
   if (gs.player.moves.some((move) => move.patternId === pattern.id)) return '已推演';
   const blocked = killerPatternBlock(gs, pattern);
   if (blocked) return blocked;
-  if (!gs.player.killerPractice?.includes(pattern.id)) return '须按所示顺序完成试阵';
+  if (!hasUsedKillerGu(gs.player, pattern)) return '须分别催动过所需蛊虫';
   if (gs.player.yuanshi < pattern.fee) return `元石不足（需 ${pattern.fee}）`;
   return '';
 }

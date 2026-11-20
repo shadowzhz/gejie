@@ -581,7 +581,7 @@ const PLACES = {
     links: { shijie: 30 },
     day: '货架上堆着月兰花瓣、腌肉、蜂王蜜与各色一转炼材。',
     night: '柜台亮着油灯，伙计仍在招呼来买口粮和炼材的客人。',
-    shop: ['item:yuelanhua', 'item:shourou', 'item:fengmi', 'item:yushi', 'item:kuangshi', 'item:yuanshi_zha', 'item:yezhuya'],
+    shop: ['item:yuelanhua', 'item:shourou', 'item:fengmi', 'item:yushi', 'item:kuangshi', 'item:yuanshi_zha', 'item:yezhuya', 'item:guangyin_water'],
     services: ['shop']
   },
   gupu: {
@@ -671,6 +671,7 @@ function placeShopEntries(gs) {
 
 /* === src/data/gu.js === */
 const ITEMS = {
+  guangyin_water: { id: 'guangyin_water', name: '光阴河水', kind: '口粮', price: 22, desc: '维持残存春秋蝉的生机，也可用于修复其残躯。' },
   fanran: { id: 'fanran', name: '幡然蛊', kind: '炼蛊用蛊', price: 20, desc: '可将四味酒虫逆炼为一只一转酒虫。' },
   langzi: { id: 'langzi', name: '浪子蛊', kind: '炼蛊用蛊', price: 85, desc: '可将四味酒虫逆炼为两只一转酒虫。' },
   shengjiye: { id: 'shengjiye', name: '生机叶', kind: '一转消耗蛊', price: 22, heal: 24, healCooldown: 60, desc: '取自九叶生机草，疗伤后叶片消散。一小时内再次使用无效。' },
@@ -712,43 +713,65 @@ const GU_DEFS = {
   xiaoguang: { id: 'xiaoguang', name: '小光蛊', rank: 1, school: '光道', kind: '增益', cost: 4, cd: 2, power: 12, food: 'yuelanhua', price: 16, desc: '辅助月光蛊，也可与月光蛊合炼。' },
   yuemang: { id: 'yuemang', name: '月芒蛊', rank: 2, school: '月道', kind: '攻击', cost: 8, cd: 1, power: 34, food: 'yuelanhua', price: 45, desc: '将月光聚成威力更强的月刃。' },
   yuexuan: { id: 'yuexuan', name: '月旋蛊', rank: 2, school: '月道', kind: '攻击', cost: 7, cd: 1, power: 34, food: 'yuelanhua', price: 45, desc: '绿色月刃沿弧线斩出。' },
-  henshi: { id: 'henshi', name: '痕石蛊', rank: 1, kind: '炼蛊', cost: 0, cd: 0, power: 0, food: '', price: 15, desc: '可与月光蛊合炼成二转月痕蛊。' },
-  yuehen: { id: 'yuehen', name: '月痕蛊', rank: 2, school: '月道', kind: '攻击', cost: 4, cd: 0, power: 18, food: '', price: 45, desc: '月刃威力与月光蛊相同，设定中的射程从十米延至二十米。' },
+  henshi: { id: 'henshi', name: '痕石蛊', rank: 1, kind: '炼蛊', cost: 0, cd: 0, power: 0, food: 'kuangshi', price: 15, desc: '可与月光蛊合炼成二转月痕蛊。' },
+  yuehen: { id: 'yuehen', name: '月痕蛊', rank: 2, school: '月道', kind: '攻击', cost: 4, cd: 0, power: 18, food: 'yuelanhua', price: 45, desc: '月刃威力与月光蛊相同，设定中的射程从十米延至二十米。' },
   yueni: { id: 'yueni', name: '月霓裳', rank: 2, school: '月道', kind: '防御', cost: 6, cd: 2, power: 36, food: 'yuelanhua', price: 45, desc: '引月光覆于周身，织成轻盈的护身衣。' },
   yupi: { id: 'yupi', name: '玉皮蛊', rank: 1, school: '土道', kind: '防御', cost: 4, cd: 2, power: 22, food: 'yushi', price: 20, desc: '催动后皮肤泛起温润玉光，化作护盾抵挡来袭伤害。' },
   baiyu: { id: 'baiyu', name: '白玉蛊', rank: 2, school: '土道', kind: '防御', cost: 7, cd: 2, power: 44, food: 'yushi', price: 52, desc: '二转防御蛊，凝出厚实白玉光甲护盾，稳固空窍根基。' },
-  shipi: { id: 'shipi', name: '石皮蛊', rank: 1, school: '土道', kind: '防御', cost: 3, cd: 2, power: 18, food: '', foodUnknown: true, price: 15, desc: '以石质硬皮覆体抵挡攻击。' },
-  shoupi: { id: 'shoupi', name: '兽皮蛊', rank: 1, kind: '防御', cost: 3, cd: 2, power: 14, food: '', price: 11, desc: '皮蛊中常见的一种，用于护身，售价低于石皮蛊。' },
-  qingsi: { id: 'qingsi', name: '青丝蛊', rank: 1, kind: '防御', cost: 12, cd: 2, power: 30, food: '', price: 24, desc: '催动时消耗较多真元，能抵御打击。也可与黑豕蛊合炼。' },
-  heizong: { id: 'heizong', name: '黑鬃蛊', rank: 2, kind: '防御', cost: 7, cd: 2, power: 38, food: '', price: 48, desc: '催动后，汗毛化作粗黑长鬃，在身上结成护甲。' },
+  shipi: { id: 'shipi', name: '石皮蛊', rank: 1, school: '土道', kind: '防御', cost: 3, cd: 2, power: 18, food: 'kuangshi', price: 15, desc: '以石质硬皮覆体抵挡攻击。' },
+  shoupi: { id: 'shoupi', name: '兽皮蛊', rank: 1, kind: '防御', cost: 3, cd: 2, power: 14, food: 'shourou', price: 11, desc: '皮蛊中常见的一种，用于护身，售价低于石皮蛊。' },
+  qingsi: { id: 'qingsi', name: '青丝蛊', rank: 1, kind: '防御', cost: 12, cd: 2, power: 30, food: 'fengmi', price: 24, desc: '催动时消耗较多真元，能抵御打击。也可与黑豕蛊合炼。' },
+  heizong: { id: 'heizong', name: '黑鬃蛊', rank: 2, kind: '防御', cost: 7, cd: 2, power: 38, food: 'shourou', price: 48, desc: '催动后，汗毛化作粗黑长鬃，在身上结成护甲。' },
   tongpi: { id: 'tongpi', name: '铜皮蛊', rank: 2, school: '金道', kind: '防御', cost: 7, cd: 2, power: 40, food: 'fengmi', price: 48, desc: '铜皮铁骨，护盾之外更可令自身气血上限微增。' },
   jiuyecao: { id: 'jiuyecao', name: '九叶生机草', rank: 2, school: '木道', kind: '治疗', cost: 8, cd: 2, power: 48, food: 'yuelanhua', price: 58, desc: '二转极品疗伤蛊，生机绵长，是保命续航之宝。' },
   jiuchong: { id: 'jiuchong', name: '酒虫', rank: 1, school: '食道', kind: '奇蛊', cost: 0, cd: 0, power: 10, food: 'qingzhujiu', price: 65, desc: '能提纯一转蛊师的真元，温养时修为增长 +25%。' },
   siwei_jiu: { id: 'siwei_jiu', name: '四味酒虫', rank: 2, school: '食道', kind: '奇蛊', cost: 0, cd: 0, power: 22, food: 'lajiu', price: 160, desc: '能提纯二转蛊师的真元，温养时修为增长 +45%。' },
-  heishi: { id: 'heishi', name: '黑豕蛊', rank: 1, school: '力道', kind: '被动', cost: 0, cd: 0, power: 14, food: 'shourou', price: 26, desc: '增一猪之力：永久提升拳脚与力道攻伐威能。' },
+  heishi: { id: 'heishi', name: '黑豕蛊', rank: 1, school: '力道', kind: '消耗', cost: 0, cd: 0, power: 28, food: 'shourou', price: 26, desc: '在空窍中催动可增一猪之力，也可保留用来合炼黑鬃蛊。' },
   baishi: { id: 'baishi', name: '白豕蛊', rank: 1, school: '力道', kind: '消耗', cost: 0, cd: 0, power: 28, food: 'shourou', price: 64, desc: '消耗后增加一猪之力，也可保留用来合炼白玉蛊。' },
   xuefu_gu: { id: 'xuefu_gu', name: '血蝠蛊', rank: 2, school: '血道', kind: '攻击', cost: 8, cd: 2, power: 32, food: 'shourou', price: 55, desc: '吸食敌手精血，造成伤害的同时将部分血气反哺己身。' },
   dianlang_gu: { id: 'dianlang_gu', name: '电狼蛊', rank: 2, school: '雷道', kind: '攻击', cost: 9, cd: 2, power: 38, food: 'shourou', price: 62, desc: '引动蓝白电弧扑击敌手，疾速暴烈，有概率麻痹对手。' },
   nianxi: { id: 'nianxi', name: '念息蛊', rank: 1, school: '智道', kind: '探知', cost: 3, cd: 2, power: 15, food: 'yuanshi_zha', price: 24, desc: '战中催动可探明敌手确切气血、真元与下回合真意。' },
   yinshi: { id: 'yinshi', name: '隐石蛊', rank: 1, school: '暗道', kind: '隐匿', cost: 3, cd: 2, power: 12, food: 'yuanshi_zha', price: 24, desc: '持有时提高战中脱身成功率，并降低招致追捕的几率。' },
   xuanfeng: { id: 'xuanfeng', name: '旋风蛊', rank: 1, school: '风道', kind: '控制', cost: 4, cd: 2, power: 16, food: 'yuelanhua', price: 22, desc: '卷起山风扰乱敌方身法，造成伤害并有概率打断对手蓄势。' },
-  qingtong_sheli: { id: 'qingtong_sheli', name: '青铜舍利蛊', rank: 1, school: '天道', kind: '消耗', cost: 0, cd: 0, power: 0, food: '', price: 90, desc: '一转破境奇蛊，使用后可直接助一转蛊师连破小境界。' },
-  chitie_sheli: { id: 'chitie_sheli', name: '赤铁舍利蛊', rank: 2, school: '天道', kind: '消耗', cost: 0, cd: 0, power: 0, food: '', price: 210, desc: '二转破境奇蛊，使用后可直接助二转蛊师打破小境界壁垒。' },
-  chunqiuchan: { id: 'chunqiuchan', name: '春秋蝉（残）', rank: 3, school: '宙道', kind: '奇蛊', cost: 0, cd: 0, power: 0, food: '', price: 0, desc: '奇蛊榜第七，可于行纪中留下一道旧影；身殒时消耗它回到那一刻。' }
+  qingtong_sheli: { id: 'qingtong_sheli', name: '青铜舍利蛊', rank: 1, school: '天道', kind: '消耗', cost: 0, cd: 0, power: 0, food: 'kuangshi', price: 90, desc: '一转破境奇蛊，使用后可直接助一转蛊师连破小境界。' },
+  chitie_sheli: { id: 'chitie_sheli', name: '赤铁舍利蛊', rank: 2, school: '天道', kind: '消耗', cost: 0, cd: 0, power: 0, food: 'kuangshi', price: 210, desc: '二转破境奇蛊，使用后可直接助二转蛊师打破小境界壁垒。' },
+  chunqiuchan: { id: 'chunqiuchan', name: '春秋蝉（残）', rank: 3, school: '宙道', kind: '奇蛊', cost: 0, cd: 0, power: 0, food: 'guangyin_water', price: 0, desc: '奇蛊榜第七，可于行纪中留下一道旧影；身殒时消耗它回到那一刻。' }
 };
 const REFINE_RECIPES = [
+  { id: 'r_shengjiye', flow: 'reverse', price: 8, out: 'shengjiye', method: '采制', preserveGu: true, gu: { jiuyecao: 1 }, materials: { yuelanhua: 1 }, rate: 0.81, cost: 4 },
+  { id: 'r_yueguang', flow: 'moon', price: 8, out: 'yueguang', source: '原创', gu: {}, materials: {yuelanhua: 6, yuanshi_zha: 1}, rate: 0.71, cost: 14 },
+  { id: 'r_xiaoguang', flow: 'moon', price: 8, out: 'xiaoguang', source: '原创', gu: {}, materials: {yuelanhua: 3, yuanshi_zha: 1}, rate: 0.80, cost: 14 },
+  { id: 'r_henshi', flow: 'armor', price: 8, out: 'henshi', source: '原创', gu: {}, materials: {kuangshi: 2}, rate: 0.75, cost: 14 },
+  { id: 'r_yupi', flow: 'armor', price: 8, out: 'yupi', source: '原创', gu: {}, materials: {yushi: 3}, rate: 0.73, cost: 14 },
+  { id: 'r_shipi', flow: 'armor', price: 8, out: 'shipi', source: '原创', gu: {}, materials: {kuangshi: 1, yuanshi_zha: 1}, rate: 0.78, cost: 14 },
+  { id: 'r_shoupi', flow: 'armor', price: 8, out: 'shoupi', source: '原创', gu: {}, materials: {shourou: 3}, rate: 0.82, cost: 14 },
+  { id: 'r_qingsi', flow: 'armor', price: 8, out: 'qingsi', source: '原创', gu: {}, materials: {fengmi: 2, yuelanhua: 2}, rate: 0.69, cost: 14 },
+  { id: 'r_tongpi', flow: 'armor', price: 16, out: 'tongpi', source: '原创', gu: {shipi: 1}, materials: {kuangshi: 3, fengmi: 1}, rate: 0.59, cost: 28 },
+  { id: 'r_jiuyecao', flow: 'moon', price: 16, out: 'jiuyecao', source: '原创', gu: {}, materials: {shengjiye: 3, yuelanhua: 4}, rate: 0.55, cost: 28 },
+  { id: 'r_heishi', flow: 'armor', price: 8, out: 'heishi', source: '原创', gu: {}, materials: {shourou: 4, yezhuya: 1}, rate: 0.68, cost: 14 },
+  { id: 'r_baishi', flow: 'armor', price: 8, out: 'baishi', source: '原创', gu: {}, materials: {shourou: 6, yezhuya: 2}, rate: 0.63, cost: 14 },
+  { id: 'r_xuefu_gu', flow: 'armor', price: 16, out: 'xuefu_gu', source: '原创', gu: {}, materials: {shourou: 5, yuanshi_zha: 2}, rate: 0.52, cost: 28 },
+  { id: 'r_dianlang_gu', flow: 'armor', price: 16, out: 'dianlang_gu', source: '原创', gu: {}, materials: {shourou: 4, kuangshi: 3}, rate: 0.50, cost: 28 },
+  { id: 'r_nianxi', flow: 'moon', price: 8, out: 'nianxi', source: '原创', gu: {}, materials: {yuanshi_zha: 3}, rate: 0.72, cost: 14 },
+  { id: 'r_yinshi', flow: 'armor', price: 8, out: 'yinshi', source: '原创', gu: {}, materials: {kuangshi: 2, yuanshi_zha: 2}, rate: 0.66, cost: 14 },
+  { id: 'r_xuanfeng', flow: 'moon', price: 8, out: 'xuanfeng', source: '原创', gu: {}, materials: {yuelanhua: 4, yuanshi_zha: 2}, rate: 0.67, cost: 14 },
+  { id: 'r_qingtong_sheli', flow: 'armor', price: 16, out: 'qingtong_sheli', source: '原创', gu: {}, materials: {kuangshi: 5, yuanshi_zha: 3}, rate: 0.58, cost: 28 },
+  { id: 'r_chitie_sheli', flow: 'armor', price: 24, out: 'chitie_sheli', source: '原创', gu: {qingtong_sheli: 1}, materials: {kuangshi: 6, yuanshi_zha: 4}, rate: 0.49, cost: 42 },
+  { id: 'r_chunqiuchan', flow: 'reverse', price: 24, out: 'chunqiuchan', source: '原创', minRank: 3, unique: true, gu: {}, materials: {guangyin_water: 3, yuanshi_zha: 8}, rate: 0.36, cost: 42 },
+  { id: 'r_fanran', flow: 'wine', price: 8, out: 'fanran', source: '原创', gu: {}, materials: {qingzhujiu: 2, yuanshi_zha: 2}, rate: 0.74, cost: 14 },
+  { id: 'r_langzi', flow: 'wine', price: 16, out: 'langzi', source: '原创', gu: {}, materials: {qingzhujiu: 4, kujiu: 2, yuanshi_zha: 2}, rate: 0.61, cost: 28 },
   { id: 'r_jiuchong_fanran', flow: 'reverse', price: 8, out: 'jiuchong', method: '逆炼', gu: { siwei_jiu: 1 }, materials: { fanran: 1 }, rate: 0.70, cost: 12 },
-  { id: 'r_jiuchong_langzi', flow: 'reverse', price: 12, out: 'jiuchong', outCount: 2, method: '逆炼', gu: { siwei_jiu: 1 }, materials: { langzi: 1 }, rate: 0.70, cost: 12 },
-  { id: 'r_yuemang', flow: 'moon', price: 12, out: 'yuemang', gu: { yueguang: 1, xiaoguang: 2 }, materials: {}, rate: 0.68, cost: 25 },
-  { id: 'r_yuexuan', flow: 'moon', price: 12, out: 'yuexuan', gu: { yueguang: 1, xuanfeng: 1 }, materials: {}, rate: 0.65, cost: 25 },
-  { id: 'r_yuehen', flow: 'moon', price: 12, out: 'yuehen', gu: { yueguang: 1, henshi: 1 }, materials: {}, rate: 0.65, cost: 25 },
-  { id: 'r_yueni', flow: 'moon', price: 12, out: 'yueni', gu: { yueguang: 1, yupi: 1 }, materials: {}, rate: 0.65, cost: 25 },
-  { id: 'r_baiyu', flow: 'armor', price: 12, out: 'baiyu', gu: { yupi: 1, baishi: 1 }, materials: { yezhuya: 1 }, rate: 0.65, cost: 25 },
-  { id: 'r_heizong', flow: 'armor', price: 12, out: 'heizong', gu: { heishi: 1, qingsi: 1 }, materials: {}, rate: 0.65, cost: 25 },
-  { id: 'r_siwei', flow: 'wine', price: 20, out: 'siwei_jiu', gu: { jiuchong: 2 }, materials: { suanjiu: 1, tianjiu: 1, kujiu: 1, lajiu: 1 }, rate: 0.58, cost: 45 }
+  { id: 'r_jiuchong_langzi', flow: 'reverse', price: 12, out: 'jiuchong', outCount: 2, method: '逆炼', gu: { siwei_jiu: 1 }, materials: { langzi: 1 }, rate: 0.64, cost: 12 },
+  { id: 'r_yuemang', flow: 'moon', price: 12, out: 'yuemang', gu: { yueguang: 1, xiaoguang: 2 }, materials: {}, rate: 0.65, cost: 25 },
+  { id: 'r_yuexuan', flow: 'moon', price: 12, out: 'yuexuan', gu: { yueguang: 1, xuanfeng: 1 }, materials: {}, rate: 0.60, cost: 25 },
+  { id: 'r_yuehen', flow: 'moon', price: 12, out: 'yuehen', gu: { yueguang: 1, henshi: 1 }, materials: {}, rate: 0.76, cost: 25 },
+  { id: 'r_yueni', flow: 'moon', price: 12, out: 'yueni', gu: { yueguang: 1, yupi: 1 }, materials: {}, rate: 0.62, cost: 25 },
+  { id: 'r_baiyu', flow: 'armor', price: 12, out: 'baiyu', gu: { yupi: 1, baishi: 1 }, materials: { yezhuya: 1 }, rate: 0.57, cost: 25 },
+  { id: 'r_heizong', flow: 'armor', price: 12, out: 'heizong', gu: { heishi: 1, qingsi: 1 }, materials: {}, rate: 0.56, cost: 25 },
+  { id: 'r_siwei', flow: 'wine', price: 20, out: 'siwei_jiu', gu: { jiuchong: 2 }, materials: { suanjiu: 1, tianjiu: 1, kujiu: 1, lajiu: 1 }, rate: 0.51, cost: 45 }
 ];
 function recipeOutputText(recipe) {
-  const name = GU_DEFS[recipe.out].name;
+  const name = (GU_DEFS[recipe.out] || ITEMS[recipe.out]).name;
   return recipe.outCount > 1 ? `${name} ×${recipe.outCount}` : name;
 }
 function recipeIngredientsText(recipe) {
@@ -1127,8 +1150,9 @@ function recalcStats(gs) {
   const r = p.rank;
   const x = p.xiao;
   const haiMul = 0.65 + p.hai * 0.08;
-  const passiveHp = (hasGu(gs, 'heishi') ? 20 : 0) + (p.whiteBoarStrength ?? 0) * 35 + (hasGu(gs, 'tongpi') ? 25 : 0);
-  const passivePower = (hasGu(gs, 'heishi') ? 6 : 0) + (p.whiteBoarStrength ?? 0) * 12;
+  const boarStrength = (p.whiteBoarStrength ?? 0) + (p.blackBoarStrength ?? 0);
+  const passiveHp = boarStrength * 35 + (hasGu(gs, 'tongpi') ? 25 : 0);
+  const passivePower = boarStrength * 12;
   p.hpMax = Math.round((85 + r * 35 + x * 14) * (1 + (r - 1) * 0.18) + passiveHp);
   p.zyMax = Math.round((28 + r * 18 + x * 6) * haiMul);
   p.speed = 6 + r * 3 + x;
@@ -1224,12 +1248,27 @@ function purchaseShopEntry(gs, entry, count) {
   addLog(gs, `${message}。`);
   return { ok: true, message };
 }
-function useWhiteBoarGu(gs, uid) {
-  if (!gs.player.gu.some((gu) => gu.uid === uid && gu.id === 'baishi')) return false;
+function useHealingGu(gs, uid) {
+  const p = gs.player;
+  const gu = p.gu.find((entry) => entry.uid === uid);
+  const def = GU_DEFS[gu?.id];
+  if (gs.battle || p.dead || def?.kind !== '治疗' || p.hp >= p.hpMax || p.zy < def.cost) return false;
+  const healed = Math.min(def.power, p.hpMax - p.hp);
+  p.zy -= def.cost;
+  p.hp += healed;
+  addLog(gs, `【${def.name}】催动疗伤，回复 ${Math.round(healed)} 点气血。`, 'log-good');
+  return true;
+}
+function useBoarGu(gs, uid) {
+  const { player } = gs;
+  const gu = player.gu.find((entry) => entry.uid === uid);
+  if (gs.battle || !gu || !['heishi', 'baishi'].includes(gu.id)) return false;
+  const strength = gu.id === 'heishi' ? 'blackBoarStrength' : 'whiteBoarStrength';
+  if (player[strength]) return false;
   removeGuByUid(gs, uid);
-  gs.player.whiteBoarStrength = (gs.player.whiteBoarStrength ?? 0) + 1;
+  player[strength] = 1;
   recalcStats(gs);
-  addLog(gs, '【白豕蛊】蛊虫消散，你添了一猪之力。', 'log-good');
+  addLog(gs, `【${GU_DEFS[gu.id].name}】蛊虫消散，你添了一猪之力。`, 'log-good');
   return true;
 }
 function feedGu(gs, gu, threshold = 100) {
@@ -1300,24 +1339,45 @@ const KILLER_PATTERNS = [
     id: 'bristle_armor', name: '青丝黑鬃甲', sequence: ['qingsi', 'heizong'],
     desc: '先以青丝护身，再催黑鬃覆住薄弱处，结成双层护甲。',
     fee: 36, kind: '防御', power: 76, cost: 20, cd: 3
-  }
+  },
+  { id: 'wind_moon', name: '回风掠月', sequence: ['xuanfeng', 'yuexuan'],
+    desc: '先以山风扰乱身法，再以弧形月刃追击。', fee: 28, kind: '攻击', power: 49, cost: 12, cd: 2 },
+  { id: 'sighted_moon', name: '照隙月刃', sequence: ['nianxi', 'yuehen'],
+    desc: '念息辨出破绽，由月痕蛊在远处补上一刀。', fee: 22, kind: '攻击', power: 28, cost: 8, cd: 2 },
+  { id: 'jade_moon', name: '玉甲藏月', sequence: ['yupi', 'yuemang'],
+    desc: '玉皮先护身，月芒紧随其后。', fee: 28, kind: '攻击', power: 36, bonusShield: 22, cost: 13, cd: 2 },
+  { id: 'stone_hide', name: '石甲兽衣', sequence: ['shoupi', 'shipi'],
+    desc: '兽皮卸力，石皮在外挡下重击。', fee: 20, kind: '防御', power: 38, cost: 7, cd: 2 },
+  { id: 'bronze_jade', name: '铜胎白玉甲', sequence: ['tongpi', 'baiyu'],
+    desc: '铜皮为底，白玉覆面。', fee: 40, kind: '防御', power: 90, cost: 16, cd: 3 },
+  { id: 'thunder_wind', name: '风裹惊雷', sequence: ['xuanfeng', 'dianlang_gu'],
+    desc: '借旋风开路，再催电狼蛊放出雷击。', fee: 36, kind: '攻击', power: 56, cost: 14, cd: 3 },
+  { id: 'hidden_bat', name: '伏影蝠袭', sequence: ['yinshi', 'xuefu_gu'],
+    desc: '隐去身形，趁敌手失去目标时放出血蝠。', fee: 32, kind: '攻击', power: 42, bonusShield: 8, cost: 12, cd: 3 }
 ];
-function killerPatternSequence(pattern) {
-  return pattern.sequence.map((id) => GU_DEFS[id].name).join(' → ');
+function discoveredKillerPatterns(player) {
+  return player.rank < 2 ? [] : KILLER_PATTERNS.filter((pattern) => hasUsedKillerGu(player, pattern));
 }
-function recordKillerSequence(gs, guIds) {
-  if (gs.player.rank < 2 || guIds.length < 2) return;
-  for (const pattern of KILLER_PATTERNS) {
-    const { sequence, id } = pattern;
-    if (guIds.length !== sequence.length || !sequence.every((gu, index) => gu === guIds[index])) continue;
-    const practiced = (gs.player.killerPractice ??= []);
-    if (practiced.includes(id)) return;
-    practiced.push(id);
-    gs.battle.logs.push(`搭配试阵通过：「${pattern.name}」可回空窍推演。`);
-    addLog(gs, `【试阵】「${pattern.name}」搭配已验证。`, 'log-good');
-    return;
+
+function hasUsedKillerGu(player, pattern) {
+  return pattern.sequence.every((id) => player.usedGu?.includes(id));
+}
+function killerPatternSequence(pattern) {
+  return pattern.sequence.map((id) => GU_DEFS[id].name).join('、');
+}
+function recordGuUsage(gs, guIds) {
+  const player = gs.player;
+  const used = new Set(player.usedGu);
+  if (guIds.every((id) => used.has(id))) return;
+  const known = discoveredKillerPatterns(player);
+  for (const id of guIds) used.add(id);
+  player.usedGu = [...used];
+  for (const pattern of discoveredKillerPatterns(player)) {
+    if (known.includes(pattern)) continue;
+    const message = `「${pattern.name}」所需蛊虫均已催动过，可回空窍推演。`;
+    gs.battle?.logs.push(message);
+    addLog(gs, `【杀招】${message}`, 'log-good');
   }
-  gs.battle.logs.push('这组蛊虫已逐只催动，当前搭配或顺序未形成可推演的杀招。');
 }
 
 function killerPatternBlock(gs, pattern) {
@@ -1338,7 +1398,7 @@ function killerCraftBlock(gs, pattern) {
   if (gs.player.moves.some((move) => move.patternId === pattern.id)) return '已推演';
   const blocked = killerPatternBlock(gs, pattern);
   if (blocked) return blocked;
-  if (!gs.player.killerPractice?.includes(pattern.id)) return '须按所示顺序完成试阵';
+  if (!hasUsedKillerGu(gs.player, pattern)) return '须分别催动过所需蛊虫';
   if (gs.player.yuanshi < pattern.fee) return `元石不足（需 ${pattern.fee}）`;
   return '';
 }
@@ -1613,7 +1673,7 @@ function battleAct(gs, action, arg = '', rng = Math.random) {
       fired.push(gu.def.id);
       if (foe.hp <= 0) break;
     }
-    recordKillerSequence(gs, fired);
+    recordGuUsage(gs, fired);
   } else if (action === 'move') {
     p.zy -= mv.cost;
     b.cds[mv.id] = mv.cd;
@@ -1868,10 +1928,50 @@ function rewindSpringCicada(gs) {
 
 
 /* === src/core/refine.js === */
+
+
+
+const REFINE_REALMS = [
+  [0, '普通', 0], [3, '大师', .10], [12, '宗师', .20],
+  [25, '大宗师', .33], [50, '无上大宗师', .50]
+];
+
+const RECIPE_SOURCES = {
+  r_yueguang: 'kaike',
+  r_xiaoguang: 'kaike',
+  r_yuemang: 'nianmo_done',
+  r_yuexuan: 'nianmo_done',
+  r_yuehen: 'nianmo_done',
+  r_yueni: 'nianmo_done',
+  r_yupi: 'looted:huajiu',
+  r_baishi: 'looted:huajiu',
+  r_baiyu: 'looted:huajiu',
+  r_chunqiuchan: 'looted:huajiu',
+  r_shengjiye: 'event_done:jiuyecao_inheritance',
+  r_jiuyecao: 'event_done:jiuyecao_inheritance',
+  r_qingtong_sheli: 'nianmo_done',
+  r_chitie_sheli: 'clear:langchao',
+  r_dianlang_gu: 'clear:langchao',
+  r_xuefu_gu: 'clear:xuefu'
+};
+function isRecipeSold(recipe) {
+  return !Object.hasOwn(RECIPE_SOURCES, recipe.id);
+}
+function knowsRefineRecipe(gs, recipe) {
+  return gs.player.recipes?.includes(recipe.id) || Boolean(gs.flags[RECIPE_SOURCES[recipe.id]]);
+}
+function refineRealm(player) {
+  const insight = player.refineInsight ?? 0;
+  const index = REFINE_REALMS.findLastIndex(([threshold]) => insight >= threshold);
+  const [, name, bonus] = REFINE_REALMS[index];
+  return { name, bonus, insight, next: REFINE_REALMS[index + 1]?.[0] };
+}
 function canStartRefine(gs, recipeId) {
   const rc = REFINE_RECIPES.find((r) => r.id === recipeId);
   if (!rc) return { ok: false, reason: '未知蛊方' };
-  if (!gs.player.recipes?.includes(recipeId)) return { ok: false, reason: '尚未习得此蛊方' };
+  if (!knowsRefineRecipe(gs, rc)) return { ok: false, reason: '尚未习得此蛊方' };
+  if (rc.minRank && gs.player.rank < rc.minRank) return { ok: false, reason: `须晋入 ${rc.minRank} 转` };
+  if (rc.unique && hasGu(gs, rc.out)) return { ok: false, reason: '已持有此蛊' };
   if (gs.player.yuanshi < rc.cost) return { ok: false, reason: `元石不足（需 ${rc.cost}）` };
   const guUids = [];
   for (const [id, count] of Object.entries(rc.gu)) {
@@ -1932,6 +2032,7 @@ function createRefineSession(gs, recipeId) {
     materials: recipeIngredientsText(rc),
     cost: rc.cost,
     baseRate: rc.rate,
+    realmBonus: refineRealm(gs.player).bonus,
     progress: 0,
     pressure: 0,
     turns: flow.turns,
@@ -1943,12 +2044,19 @@ function createRefineSession(gs, recipeId) {
     lines: []
   };
 }
+function refineReady(sess) {
+  return !sess.pending.length && sess.progress >= sess.flow.target && sess.pressure <= sess.flow.safePressure;
+}
+function refineSuccessRate(rate, bonus, ready) {
+  const base = rate + (ready ? .15 : 0);
+  return base + (1 - base) * bonus;
+}
 function refineChance(sess) {
   if (sess.pending.length) return 0;
   const { flow, progress, pressure } = sess;
-  if (progress >= flow.target && pressure <= flow.safePressure) return 1;
+  const trained = refineSuccessRate(sess.baseRate, sess.realmBonus ?? 0, refineReady(sess));
   const excess = Math.max(0, pressure - flow.safePressure);
-  return Math.max(0, Math.min(0.85, sess.baseRate * Math.min(1, progress / flow.target) - excess * 0.12));
+  return Math.max(0, trained * Math.min(1, progress / flow.target) - excess * 0.12);
 }
 function refineTechniques(sess) {
   const { flow, pressure, progress } = sess;
@@ -1970,12 +2078,20 @@ function finishRefining(gs, sess, rc, success, message) {
   const usesBenming = sess.ingredients.some(({ uid }) => uid === benming);
   sess.state = 'done';
   sess.success = success;
+  const previousRealm = refineRealm(gs.player).name;
+  gs.player.refineInsight = (gs.player.refineInsight ?? 0) + Number(success || sess.progress > 0);
+  const nextRealm = refineRealm(gs.player).name;
+  if (nextRealm !== previousRealm) addLog(gs, `【炼道】境界提升为${nextRealm}。`, 'log-gold');
   sess.lines.push(message);
   if (success) {
-    for (const gu of sess.ingredients) removeGuByUid(gs, gu.uid);
-    const first = addGu(gs, rc.out);
-    if (usesBenming) gs.player.benming = first.uid;
-    for (let count = 1; count < (rc.outCount ?? 1); count++) addGu(gs, rc.out);
+    if (!rc.preserveGu) for (const gu of sess.ingredients) removeGuByUid(gs, gu.uid);
+    if (GU_DEFS[rc.out]) {
+      const first = addGu(gs, rc.out);
+      if (usesBenming) gs.player.benming = first.uid;
+      for (let count = 1; count < (rc.outCount ?? 1); count++) addGu(gs, rc.out);
+    } else {
+      addItem(gs, rc.out, rc.outCount ?? 1);
+    }
     sess.lines.push(`得「${sess.outName}」。`);
     if (usesBenming) sess.lines.push('成蛊已继承本命绑定。');
     addLog(gs, `【炼蛊大成】成功${sess.method}出「${sess.outName}」。`, 'log-gold');
@@ -1985,7 +2101,7 @@ function finishRefining(gs, sess, rc, success, message) {
   const spared = [];
   const lost = [];
   for (const gu of sess.ingredients) {
-    if (gu.uid === benming || gu.uid === sess.protectedUid) {
+    if (rc.preserveGu || gu.uid === benming || gu.uid === sess.protectedUid) {
       spared.push(gu.benming ? `${gu.name}（本命蛊）` : gu.name);
     } else {
       removeGuByUid(gs, gu.uid);
@@ -2051,8 +2167,8 @@ function stepRefineSession(gs, sess, action, rng = Math.random, timing) {
   }
   if (action === 'seal' && refineChance(sess) > 0) {
     const chance = refineChance(sess);
-    const success = chance === 1 || rng() < chance;
-    finishRefining(gs, sess, rc, success, chance === 1 ? '蛊性成形，稳稳收炉。' : `强行收炉，成算 ${Math.round(chance * 100)}%，${success ? '成了！' : '炉中蛊性散去。'}`);
+    const success = rng() < chance;
+    finishRefining(gs, sess, rc, success, success ? '炉中蛊性凝实，收炉成蛊。' : '合盖后蛊性散去，未能成蛊。');
     return sess;
   }
 
@@ -2372,14 +2488,15 @@ function renderRefineModal(sess, effect) {
   </div>`;
 
   const chance = refineChance(sess);
+  const ready = refineReady(sess);
   const techniques = refineTechniques(sess);
   const signature = techniques.find(({ id, enabled }) => id === 'signature' && enabled);
   return `<div class="refine-ritual">${scene}
     <div class="row">
-      ${sess.turns && chance !== 1 ? '<button class="gold" data-action="refineAct" data-id="pulse">按下风箱</button>' : ''}
-      ${techniques.some(({ id, enabled }) => id === 'vent' && enabled) && chance !== 1 ? '<button data-action="refineAct" data-id="vent">掀盖放火</button>' : ''}
-      ${signature && chance !== 1 ? `<button data-action="refineAct" data-id="signature">${esc(signature.name)}</button>` : ''}
-      ${chance ? `<button class="${chance === 1 ? 'primary' : 'blood'}" data-action="refineAct" data-id="seal">${chance === 1 ? '合盖收炉' : '冒险合盖'}</button>` : ''}
+      ${sess.turns && !ready ? '<button class="gold" data-action="refineAct" data-id="pulse">按下风箱</button>' : ''}
+      ${techniques.some(({ id, enabled }) => id === 'vent' && enabled) && !ready ? '<button data-action="refineAct" data-id="vent">掀盖放火</button>' : ''}
+      ${signature && !ready ? `<button data-action="refineAct" data-id="signature">${esc(signature.name)}</button>` : ''}
+      ${chance ? `<button class="${ready ? 'primary' : 'blood'}" data-action="refineAct" data-id="seal">${ready ? '合盖收炉' : '冒险合盖'} · ${Math.round(chance * 100)}%</button>` : ''}
       <button class="ghost" data-action="refineAct" data-id="abort">撤火</button>
     </div>
   </div>`;
@@ -2392,7 +2509,7 @@ function renderEventModal(eventId) {
     <div class="row">${ev.choices.map((c, idx) => `<button class="primary" data-action="chooseEvent" data-id="${esc(ev.id)}" data-idx="${idx}">${esc(c.text)}</button>`).join('')}</div>`;
 }
 function renderCustomKillerModal(gs) {
-  const rows = KILLER_PATTERNS.map((pattern) => {
+  const rows = discoveredKillerPatterns(gs.player).map((pattern) => {
     const blocked = killerCraftBlock(gs, pattern);
     return `<div class="card">
       <div class="kv"><b>${esc(pattern.name)}</b><span class="badge">${pattern.kind} · 耗 ${pattern.cost} 真元</span></div>
@@ -2402,7 +2519,6 @@ function renderCustomKillerModal(gs) {
     </div>`;
   }).join('');
   return `<h2>自创杀招</h2>
-    <div class="muted">二转后，在同一回合按所示顺序完整催动这组蛊虫，即可通过试阵。对练也算，胜负都记进度。未形成搭配的蛊虫仍可逐只催动。</div>
     <input id="kmName" type="text" maxlength="10" aria-label="自定杀招名称" placeholder="自定杀招名称（可留空）">
     ${rows}
     <div class="row"><button class="ghost" data-action="closeModal">返回空窍</button></div>`;
@@ -2581,7 +2697,7 @@ function renderPlaceView(gs) {
       if (!def) return '';
       const limited = MERCHANT_GU.includes(id);
       const affordable = gs.player.yuanshi >= def.price;
-      const recipes = sellsRecipes ? REFINE_RECIPES
+      const recipes = sellsRecipes ? REFINE_RECIPES.filter(isRecipeSold)
         .filter((recipe) => kind === 'gu' ? recipe.gu[id] : recipe.materials[id])
         .map(recipeOutputText) : [];
       const usage = recipes.length ? `<br><small class="muted">蛊方材料 · ${esc(recipes.join('、'))}</small>` : '';
@@ -2614,10 +2730,10 @@ function renderPlaceView(gs) {
           </button></div>`;
       }).join('')}</div>` : ''}
     ${shopHtml}
-    ${sellsRecipes ? `<div class="card"><h3>蛊方</h3>${REFINE_RECIPES.map((r) => {
+    ${sellsRecipes ? `<div class="card"><h3>蛊方</h3>${REFINE_RECIPES.filter(isRecipeSold).map((r) => {
       const owned = gs.player.recipes?.includes(r.id);
-      const out = GU_DEFS[r.out];
-      return `<div class="kv"><span>${esc(recipeOutputText(r))}${r.method ?? ''}蛊方 · ${out.rank}转<br><small class="muted">${esc(recipeIngredientsText(r))}</small></span>
+      const out = GU_DEFS[r.out] || ITEMS[r.out];
+      return `<div class="kv"><span>${esc(recipeOutputText(r))}${r.method ?? ''}蛊方${out.rank ? ` · ${out.rank}转` : ''}<br><small class="muted">${esc(recipeIngredientsText(r))}</small></span>
         <button class="sm" ${owned || gs.player.yuanshi < r.price ? 'disabled' : ''} data-action="buyRecipe" data-id="${r.id}">${owned ? '已习得' : `买 · ${r.price} 元石`}</button></div>`;
     }).join('')}</div>` : ''}`;
 }
@@ -2652,14 +2768,17 @@ function renderApertureView(gs) {
       </div>
       <div class="muted" style="margin-bottom:8px">
         ${esc(def.desc)}${effect ? `<br>${esc(effect)}` : ''}
-        <br>${food ? `食物 <b>${esc(food.name)}</b> · 行囊 ${foodCount} 份` : def.foodUnknown ? '食物未核实 · 暂不消耗口粮' : '无需喂食'}
+        <br>${food ? `食物 <b>${esc(food.name)}</b> · 行囊 ${foodCount} 份` : '无需喂食'}
         ${isBm ? '<br>合炼失败时保留，炼成后由成蛊继承本命绑定。' : ''}
       </div>
       <div class="row">
         ${food ? `<button class="sm" ${foodCount <= 0 || g.satiety >= 100 ? 'disabled' : ''} data-action="feedGu" data-id="${g.uid}">喂食</button>` : ''}
-        ${['攻击', '防御', '治疗', '增益', '控制', '探知', '隐匿'].includes(def.kind) ? `<button class="sm ${eq ? 'primary' : ''}" data-action="toggleEquip" data-id="${g.uid}">${eq ? '已出战' : '设出战'}</button>` : ''}
+        ${['攻击', '防御', '治疗', '增益', '控制', '探知', '隐匿'].includes(def.kind) ? `<button class="sm ${eq ? 'primary' : ''}" data-action="toggleEquip" data-id="${g.uid}">${eq ? '已出战 · 战中催动' : '设为出战蛊'}</button>` : ''}
         ${isSheli ? `<button class="sm gold" data-action="useSheli" data-id="${g.uid}">炼化破境</button>` : ''}
-        ${g.id === 'baishi' ? `<button class="sm gold" data-action="useWhiteBoarGu" data-id="${g.uid}">消耗蛊虫 · 增一猪之力</button>` : ''}
+        ${def.kind === '治疗' ? `<button class="sm gold" data-action="useHealingGu" data-id="${g.uid}">催动疗伤 · ${def.cost} 真元</button>` : ''}
+        ${['heishi', 'baishi'].includes(g.id) ? (p[g.id === 'heishi' ? 'blackBoarStrength' : 'whiteBoarStrength']
+          ? '<span class="muted">已得此蛊的一猪之力</span>'
+          : `<button class="sm gold" data-action="useBoarGu" data-id="${g.uid}">催动 · 消耗此蛊，增一猪之力</button>`) : ''}
       </div>
     </div>`;
   }).join('');
@@ -2687,7 +2806,7 @@ function renderApertureView(gs) {
         <button data-action="feedAll">一键喂饱</button>
         <button data-action="toggleAutoFeed" aria-pressed="${!!p.autoFeed}">自动喂蛊：${p.autoFeed ? '开' : '关'}</button>
         <span class="muted">饱食降至 50% 或以下时，使用行囊口粮。</span>
-        <button class="gold" ${p.rank >= 2 ? '' : 'disabled'} data-action="openCustomKiller">自创杀招${p.rank < 2 ? '（需二转）' : ''}</button>
+        ${discoveredKillerPatterns(p).length ? '<button class="gold" data-action="openCustomKiller">自创杀招</button>' : ''}
       </div>
     </div>
     ${p.unrefinedBenming ? `<div class="card">
@@ -2702,12 +2821,13 @@ function renderApertureView(gs) {
 
 /* === src/ui/refine-view.js === */
 function renderRefineView(gs) {
-  const cards = REFINE_RECIPES.filter((r) => gs.player.recipes?.includes(r.id)).map((r) => {
+  const realm = refineRealm(gs.player);
+  const cards = REFINE_RECIPES.filter((r) => knowsRefineRecipe(gs, r)).map((r) => {
     const chk = canStartRefine(gs, r.id);
-    const out = GU_DEFS[r.out];
+    const out = GU_DEFS[r.out] || ITEMS[r.out];
     return `<div class="card">
-      <div class="kv"><b>${esc(recipeOutputText(r))}</b><span class="badge">${out.rank}转 · ${r.method ?? '合炼'}</span></div>
-      <div class="muted">${esc(recipeIngredientsText(r))} · 费用 ${r.cost} 元石</div>
+      <div class="kv"><b>${esc(recipeOutputText(r))}</b><span class="badge">${out.rank ? `${out.rank}转 · ` : ''}${r.method ?? '合炼'}</span></div>
+      <div class="muted">${esc(recipeIngredientsText(r))} · 费用 ${r.cost} 元石 · 稳炉成算 ${Math.round(refineSuccessRate(r.rate, realm.bonus, true) * 100)}%</div>
       <div class="muted" style="margin-bottom:8px">${esc(out.desc)}${guEffectText(out) ? `<br>${esc(guEffectText(out))}` : ''}</div>
       <button class="primary" ${!chk.ok ? 'disabled' : ''} data-action="startRefine" data-id="${r.id}">
         ${chk.ok ? '查看炉方' : esc(chk.reason)}
@@ -2717,7 +2837,9 @@ function renderRefineView(gs) {
 
   return `<div class="card">
       <h3>炼蛊</h3>
-      <div class="muted">${cards ? "看准时机逐份投料，再调火候、收炉成蛊。" : "尚未习得蛊方，可前往蛊铺购买。"}</div>
+      <div>炼道 · ${realm.name}</div>
+      <div class="muted">炼道心得 ${realm.insight}${realm.next ? ` / ${realm.next}` : ''}</div>
+      <div class="muted">${cards ? "看准时机逐份投料，再调火候、收炉成蛊。" : "尚未习得蛊方。蛊铺出售常见蛊方，传承蛊方随剧情或历练习得。"}</div>
     </div>
     <div class="grid2">${cards}</div>`;
 }
@@ -3196,7 +3318,8 @@ function handleAction(el) {
   } else if (act === 'buyRecipe') {
     const recipe = REFINE_RECIPES.find((r) => r.id === id);
     const p = G.player;
-    if (!PLACES[G.location]?.services.includes('recipes') || !recipe || p.recipes?.includes(id) || p.yuanshi < recipe.price) return;
+    if (!PLACES[G.location]?.services.includes('recipes') || !recipe || !isRecipeSold(recipe)
+      || p.recipes?.includes(id) || p.yuanshi < recipe.price) return;
     p.yuanshi -= recipe.price;
     (p.recipes ??= []).push(id);
     const message = `已习得「${recipeOutputText(recipe)}」${recipe.method ?? ''}蛊方，花费 ${recipe.price} 元石`;
@@ -3259,7 +3382,7 @@ function handleAction(el) {
     saveGame(G);
     render();
   } else if (act === 'openCustomKiller') {
-    if (!G.battle && G.player.rank >= 2) openModal('killer');
+    if (!G.battle && discoveredKillerPatterns(G.player).length) openModal('killer');
   } else if (act === 'kmCreate' && MODAL?.kind === 'killer') {
     const nm = document.getElementById('kmName')?.value || '';
     const res = createKillerMove(G, id, nm);
@@ -3297,8 +3420,17 @@ function handleAction(el) {
     else showToast('至多同时出战 6 只蛊');
     saveGame(G);
     render();
-  } else if (act === 'useWhiteBoarGu') {
-    if (!useWhiteBoarGu(G, Number(id))) return;
+  } else if (act === 'useHealingGu') {
+    const uid = Number(id);
+    if (!useHealingGu(G, uid)) {
+      showToast(G.player.hp >= G.player.hpMax ? '气血已满' : '无法催动治疗蛊，请检查真元');
+      return;
+    }
+    recordGuUsage(G, [G.player.gu.find((gu) => gu.uid === uid).id]);
+    saveGame(G);
+    render();
+  } else if (act === 'useBoarGu') {
+    if (!useBoarGu(G, Number(id))) return;
     saveGame(G);
     render();
   } else if (act === 'useSheli') {

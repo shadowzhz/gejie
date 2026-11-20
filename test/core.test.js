@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createNewGame, addGu, BENMING_ZY_COST, claimBenming, handleQuest, purchaseShopEntry, questBoard, refineBenming, realmText, recordQuestProgress, removeGuByUid, useHealItem, useWhiteBoarGu } from '../src/core/state.js';
+import { createNewGame, addGu, BENMING_ZY_COST, claimBenming, handleQuest, purchaseShopEntry, questBoard, refineBenming, realmText, recordQuestProgress, removeGuByUid, useHealItem, useHealingGu, useBoarGu } from '../src/core/state.js';
 import { placeShopEntries } from '../src/data/places.js';
 import { advanceMinutes, moveToPlace, rewindSpringCicada, saveSpringSnapshot } from '../src/core/clock.js';
 import { makeTime } from '../src/core/calendar.js';
@@ -8,7 +8,10 @@ import { applyEventChoice, checkStoryTriggers } from '../src/core/story-engine.j
 import { createKillerMove, forgetKillerMove } from '../src/core/killer.js';
 import { battleAct, battleGuPlan, startBattle } from '../src/core/combat.js';
 import { createBreakSession, stepBreakSession, washMinorWall } from '../src/core/breakthrough.js';
-import { createRefineSession, refineChance, refineTechniques, stepRefineSession } from '../src/core/refine.js';
+import { canStartRefine, createRefineSession, isRecipeSold, knowsRefineRecipe, refineChance, refineReady, refineRealm, refineTechniques, stepRefineSession } from '../src/core/refine.js';
+import { renderCustomKillerModal } from '../src/ui/rituals.js';
+import { renderPlaceView } from '../src/ui/place-view.js';
+import { GU_DEFS, ITEMS, REFINE_RECIPES } from '../src/data/gu.js';
 
 function loadFurnace(gs, session) {
   stepRefineSession(gs, session, 'ignite');
@@ -21,19 +24,22 @@ function loadFurnace(gs, session) {
 function runRefining(gs, session, actions = ['force', 'force', 'gentle', 'gentle']) {
   loadFurnace(gs, session);
   for (const action of actions) stepRefineSession(gs, session, action);
-  assert.equal(refineChance(session), 1);
-  stepRefineSession(gs, session, 'seal', () => 0.99);
+  assert.ok(refineReady(session));
+  stepRefineSession(gs, session, 'seal', () => 0);
 }
 
 test('豕蛊加伤只作用于拳脚和力道攻伐', () => {
   const gs = createNewGame();
   gs.player.rank = 2;
-  for (const id of ['yueguang', 'xiaoguang', 'heishi']) addGu(gs, id);
+  for (const id of ['yueguang', 'xiaoguang']) addGu(gs, id);
+  const blackBoar = addGu(gs, 'heishi');
   const whiteBoar = addGu(gs, 'baishi');
-  assert.equal(gs.player.powerBonus, 6);
-  assert.equal(useWhiteBoarGu(gs, whiteBoar.uid), true);
-  assert.equal(useWhiteBoarGu(gs, whiteBoar.uid), false);
-  gs.player.killerPractice = ['light_moon'];
+  assert.equal(gs.player.powerBonus, 0);
+  assert.equal(useBoarGu(gs, blackBoar.uid), true);
+  assert.equal(useBoarGu(gs, addGu(gs, 'heishi').uid), false);
+  assert.equal(useBoarGu(gs, whiteBoar.uid), true);
+  assert.equal(useBoarGu(gs, whiteBoar.uid), false);
+  gs.player.usedGu = ['xiaoguang', 'yueguang'];
   gs.player.yuanshi = 100;
   const moon = createKillerMove(gs, 'light_moon').move;
   const damage = (action, id) => {
@@ -48,7 +54,8 @@ test('豕蛊加伤只作用于拳脚和力道攻伐', () => {
     }
     return battle.foe.hpMax - battle.foe.hp;
   };
-  assert.equal(damage('attack'), 27);
+  assert.equal(gs.player.powerBonus, 24);
+  assert.equal(damage('attack'), 30);
   assert.equal(damage('gu', 'yueguang'), 18);
   assert.equal(damage('move', moon.id), Math.round(moon.power * 1.01));
 });
@@ -270,7 +277,7 @@ test('同种蛊可分别入列，真元不足时无法追加，击败敌人后�
   assert.deepEqual(b.guQueue, []);
 });
 
-test('杀招试阵不要求获胜，催动时须让组成蛊虫出战，也可删除', () => {
+test('杀招累计不同战斗实际催动过的蛊虫，可以推演、催动与删除', () => {
   const gs = createNewGame('战者');
   const moon = addGu(gs, 'yueguang');
   const light = addGu(gs, 'xiaoguang');
@@ -278,24 +285,25 @@ test('杀招试阵不要求获胜，催动时须让组成蛊虫出战，也可�
   assert.match(createKillerMove(gs, 'yueguang').reason, /搭配/);
 
   gs.player.rank = 2;
+  assert.doesNotMatch(renderCustomKillerModal(gs), /凝光月刃/);
   const cast = (...gu) => {
     for (const { uid } of gu) battleAct(gs, 'gu', uid);
     battleAct(gs, 'resolveGu', '', () => 0.5);
   };
-  const wrongOrder = startBattle(gs, 'caoren', '试阵', () => 0.5);
-  wrongOrder.foe.hp = 24;
+  const first = startBattle(gs, 'caoren', '试阵', () => 0.5);
+  first.foe.hp = 18;
   cast(moon, light);
-  assert.equal(wrongOrder.state, 'ongoing');
-  assert.match(wrongOrder.logs.at(-2), /未形成可推演的杀招/);
-  battleAct(gs, 'attack', '', () => 0.5);
-  assert.equal(wrongOrder.state, 'win');
+  assert.equal(first.state, 'win');
+  assert.deepEqual(gs.player.usedGu, ['yueguang']);
   gs.battle = null;
-  assert.match(createKillerMove(gs, 'light_moon').reason, /试阵/);
+  assert.match(createKillerMove(gs, 'light_moon').reason, /催动/);
 
   gs.player.zy = gs.player.zyMax;
   const fled = startBattle(gs, 'caoren', '试阵', () => 0.5);
-  cast(light, moon);
-  assert.ok(gs.player.killerPractice.includes('light_moon'));
+  cast(light);
+  assert.ok(gs.player.usedGu.includes('xiaoguang'));
+  assert.match(renderCustomKillerModal(gs), /凝光月刃/);
+  assert.doesNotMatch(renderCustomKillerModal(gs), /回风掠月/);
   battleAct(gs, 'flee', '', () => 0);
   assert.equal(fled.state, 'fled');
   gs.battle = null;
@@ -323,7 +331,21 @@ test('杀招试阵不要求获胜，催动时须让组成蛊虫出战，也可�
   gs.battle = null;
   assert.equal(forgetKillerMove(gs, km.move.id)?.name, '映月');
   assert.deepEqual(gs.player.moves, []);
-  assert.ok(gs.player.killerPractice.includes('light_moon'));
+  assert.match(renderCustomKillerModal(gs), /凝光月刃/);
+});
+
+test('治疗蛊可在空窍催动，气血已满或真元不足时不生效', () => {
+  const gs = createNewGame();
+  const { uid } = addGu(gs, 'jiuyecao');
+  gs.player.hp = gs.player.hpMax - 20;
+  gs.player.zy = 7;
+  assert.equal(useHealingGu(gs, uid), false);
+  gs.player.zy = 16;
+  assert.equal(useHealingGu(gs, uid), true);
+  assert.equal(gs.player.hp, gs.player.hpMax);
+  assert.equal(gs.player.zy, 8);
+  assert.equal(useHealingGu(gs, uid), false);
+  assert.equal(gs.player.zy, 8);
 });
 
 test('破壁冲关、炼蛊与春秋蝉回溯', () => {
@@ -427,6 +449,20 @@ test('幡然蛊和浪子蛊分别将四味酒虫逆炼成一只和两只酒虫',
   }
 });
 
+test('蛊铺隐藏传承蛊方，剧情解锁后可用于炼蛊', () => {
+  const gs = createNewGame();
+  gs.location = 'gupu';
+  const recipes = renderPlaceView(gs);
+  assert.match(recipes, /data-id="r_shipi"/);
+  assert.doesNotMatch(recipes, /data-id="r_(?:yueguang|chunqiuchan|chitie_sheli)"|原创/);
+  const moon = REFINE_RECIPES.find(({ id }) => id === 'r_yueguang');
+  assert.equal(isRecipeSold(moon), false);
+  assert.match(canStartRefine(gs, moon.id).reason, /尚未习得/);
+  gs.flags.kaike = true;
+  assert.equal(knowsRefineRecipe(gs, moon), true);
+  assert.doesNotMatch(canStartRefine(gs, moon.id).reason ?? '', /尚未习得/);
+});
+
 test('四味酒虫缺任何一种酒都不能开炉，酒在投入时逐份扣除', () => {
   const gs = createNewGame();
   gs.player.yuanshi = 100;
@@ -499,9 +535,32 @@ test('通用炼炉可踩点鼓风，偏拍后可掀盖降温并合盖', () => {
   stepRefineSession(gs, ref, 'vent');
   assert.equal(ref.pressure, 0);
   stepRefineSession(gs, ref, 'pulse', Math.random, 0.5);
-  assert.equal(refineChance(ref), 1);
-  stepRefineSession(gs, ref, 'seal', () => 0.99);
+  assert.ok(refineReady(ref));
+  stepRefineSession(gs, ref, 'seal', () => 0);
   assert.equal(ref.success, true);
+});
+
+test('炼道心得晋级后提高强行收炉成算，食物和蛊方覆盖全部活蛊', () => {
+  const gs = createNewGame();
+  gs.player.yuanshi = 100;
+  gs.player.recipes.push('r_yuehen');
+  addGu(gs, 'yueguang');
+  addGu(gs, 'henshi');
+  gs.player.refineInsight = 2;
+  const first = createRefineSession(gs, 'r_yuehen');
+  loadFurnace(gs, first);
+  stepRefineSession(gs, first, 'force');
+  const chance = refineChance(first);
+  const ready = { ...first, progress: first.flow.target, pressure: 0 };
+  assert.notEqual(refineChance(ready), refineChance({ ...ready, baseRate: REFINE_RECIPES.find(({ id }) => id === 'r_yuexuan').rate }));
+  assert.ok(refineChance(ready) < 1);
+  stepRefineSession(gs, first, 'seal', () => 0.99);
+  assert.equal(refineRealm(gs.player).name, '大师');
+  assert.ok(refineChance({ ...first, realmBonus: refineRealm(gs.player).bonus }) > chance);
+  for (const { id, food } of Object.values(GU_DEFS)) {
+    assert.ok(ITEMS[food], id);
+    assert.ok(REFINE_RECIPES.some(({ out }) => out === id), id);
+  }
 });
 
 test('护蛊耗一次运炉，强行收炉或炸炉时仍保住本命蛊', () => {
