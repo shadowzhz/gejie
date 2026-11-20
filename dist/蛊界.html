@@ -207,6 +207,44 @@ button.sm { min-height: 32px; padding: 4px 10px; font-size: .85rem; }
 }
 .gu-chip.weak { border-color: var(--blood); color: var(--blood); }
 
+/* 蛊囊列表 */
+.gu-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 4px; }
+.gu-head h3 { margin: 0; }
+.gu-list { list-style: none; margin: 0; padding: 0; }
+.gu-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 16px;
+  padding: 12px 0 12px 12px;
+  border-top: 1px solid rgba(41, 73, 66, .6);
+  border-left: 2px solid transparent;
+}
+.gu-row:first-child { border-top: 0; }
+.gu-row.is-equipped { border-left-color: var(--jade); }
+.gu-main { min-width: 0; }
+.gu-title { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.gu-title b { font-size: 1rem; }
+.gu-meta { font-size: .8rem; color: var(--dim); }
+.gu-tag { font-size: .75rem; color: var(--gold); }
+.gu-tag::before { content: "· "; color: var(--dim); }
+.gu-desc { margin: 2px 0 4px; font-size: .86rem; color: var(--dim); }
+.gu-stats { display: flex; flex-wrap: wrap; gap: 0 12px; font-size: .82rem; color: #cfd9d3; cursor: help; }
+.gu-side { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; min-width: 128px; }
+.gu-hunger { display: flex; align-items: center; gap: 6px; font-size: .78rem; color: var(--dim); font-variant-numeric: tabular-nums; }
+.gu-hunger .bar { width: 64px; height: 4px; }
+.gu-hunger.is-low { color: var(--blood); }
+.gu-hunger.is-low .bar > i { background: var(--blood); }
+.gu-food { font-size: .76rem; color: var(--dim); }
+.gu-food.is-empty { color: var(--warn); }
+.gu-actions { display: flex; gap: 6px; margin-top: 2px; }
+.gu-actions button.sm { min-height: 28px; padding: 2px 10px; }
+.gu-note { font-size: .78rem; color: var(--dim); }
+@media (max-width: 520px) {
+  .gu-row { grid-template-columns: 1fr; gap: 6px; }
+  .gu-side { flex-direction: row; flex-wrap: wrap; align-items: center; min-width: 0; }
+  .gu-actions { margin: 0 0 0 auto; }
+}
+
 /* 底部导航 */
 .nav {
   position: fixed;
@@ -495,6 +533,84 @@ button.sm { min-height: 32px; padding: 4px 10px; font-size: .85rem; }
   padding: 8px 10px;
   font-size: .86rem;
 }
+/* 战斗 */
+.battle-foe { display: flex; flex-direction: column; gap: 8px; }
+.foe-top { display: flex; justify-content: space-between; align-items: baseline; }
+.foe-name { display: flex; align-items: baseline; gap: 8px; }
+.foe-name b { font-size: 1.25rem; font-family: Georgia, "Songti SC", serif; }
+.foe-name span { font-size: .8rem; color: var(--dim); }
+.battle-round { font-size: .82rem; color: var(--gold); }
+.foe-status { display: flex; align-items: center; gap: 12px; font-size: .88rem; }
+.foe-hp { display: flex; align-items: center; gap: 8px; flex: 1; font-variant-numeric: tabular-nums; color: var(--dim); }
+.foe-hp .bar { flex: 1; max-width: 320px; }
+.foe-hp.is-high { color: var(--ink); }
+.foe-hp.is-mid { color: var(--warn); }
+.foe-hp.is-low { color: var(--blood); }
+.foe-shield { color: #9ccbd7; font-size: .82rem; }
+.foe-intent { font-size: .86rem; color: var(--ink); display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.foe-intent > span { font-size: .76rem; color: var(--blood); letter-spacing: .1em; }
+.foe-intent small { color: var(--dim); font-size: .76rem; }
+.foe-intent.is-stunned { color: var(--jade); }
+.battle-log {
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(41, 73, 66, .6);
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 2px;
+  font-size: .84rem;
+  line-height: 1.6;
+  color: var(--dim);
+  height: calc(5 * 1.6em + 4 * 2px + 8px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.battle-log .is-latest { color: var(--ink); }
+
+.battle-actions { display: flex; flex-direction: column; gap: 14px; }
+.skill-group { display: grid; gap: 6px; }
+.skill-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: .8rem; color: var(--dim); }
+.skill-head em { font-style: normal; margin-left: 8px; opacity: .7; }
+.skill-plan { color: var(--gold); }
+.skill-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.skill {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  min-height: 34px;
+  padding: 4px 12px;
+  font-size: .9rem;
+  background: var(--bg2);
+}
+.skill small { font-size: .74rem; color: #5da9c4; font-variant-numeric: tabular-nums; }
+.skill:disabled small { color: var(--dim); }
+.skill.is-picked { border-color: var(--gold); background: #2e2a1b; }
+.skill-order {
+  font-style: normal;
+  font-size: .72rem;
+  width: 16px;
+  height: 16px;
+  line-height: 16px;
+  text-align: center;
+  border-radius: 50%;
+  background: var(--gold);
+  color: #1a1408;
+  align-self: center;
+}
+.skill.is-move { border-color: rgba(216, 191, 135, .45); color: #f2e3bd; }
+.battle-go { justify-self: start; min-width: 96px; min-height: 34px; padding: 4px 16px; }
+.battle-basic {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding-top: 10px;
+  border-top: 1px solid rgba(41, 73, 66, .6);
+}
+.battle-spacer { flex: 1; }
+.battle-basic:first-child { border-top: 0; padding-top: 0; }
+.battle-lethal { font-size: .82rem; color: var(--blood); }
+.battle-finish { align-self: center; min-width: 160px; }
 input[type="text"], input[type="number"], select, textarea {
   width: 100%;
   padding: 8px 10px;
@@ -2529,10 +2645,17 @@ function renderBattleView(gs) {
   const b = gs.battle;
   const p = gs.player;
   const foe = b.foe;
-  const foeHpText = b.scouted ? `${foe.hp} / ${foe.hpMax}` : (foe.hp > foe.hpMax * 0.6 ? '气息强盛' : foe.hp > foe.hpMax * 0.25 ? '已有伤势' : '摇摇欲坠');
+  const hpRatio = foe.hpMax ? Math.max(0, foe.hp / foe.hpMax) : 0;
+  const hpState = hpRatio > 0.6 ? '气息强盛' : hpRatio > 0.25 ? '已有伤势' : '摇摇欲坠';
+  const hpLevel = hpRatio > 0.6 ? 'high' : hpRatio > 0.25 ? 'mid' : 'low';
+  const foeHp = b.scouted
+    ? `<div class="foe-hp"><span class="bar hp"><i style="width:${Math.round(hpRatio * 100)}%"></i></span><span>${foe.hp} / ${foe.hpMax}</span></div>`
+    : `<div class="foe-hp is-${hpLevel}">${hpState}</div>`;
   const intentText = foe.stunned
-    ? '敌方本轮受制，无法出手'
-    : (b.scouted && foe.intent ? `敌方下步：${foe.intent.name}（${foe.intent.kind === 'shield' ? '护盾' : foe.intent.kind === 'heal' ? '疗伤' : `威能约 ${foe.intent.power}`}）` : '敌方意图未明（可用念息蛊探知，或稳扎稳打）');
+    ? '本轮受制，无法出手'
+    : b.scouted && foe.intent
+      ? `${foe.intent.name}（${foe.intent.kind === 'shield' ? '护盾' : foe.intent.kind === 'heal' ? '疗伤' : `威能约 ${foe.intent.power}`}）`
+      : '未明';
 
   const { choices, queued, cost } = battleGuPlan(gs);
   const hasQueue = queued.length > 0;
@@ -2540,8 +2663,8 @@ function renderBattleView(gs) {
     const position = queued.findIndex((choice) => choice.uid === uid) + 1;
     const selected = position > 0;
     const disabled = !selected && (cooldown > 0 || p.zy - cost < def.cost);
-    return `<button class="sm${selected ? ' gold' : ''}" aria-pressed="${selected}" title="${esc(guEffectText(def))}" ${disabled ? 'disabled' : ''} data-action="battleAct" data-kind="gu" data-id="${uid}">
-      ${selected ? `${position}. ` : ''}${esc(def.name)} <span class="muted">${cooldown > 0 ? `冷却${cooldown}` : `耗${def.cost}`}</span>
+    return `<button class="skill${selected ? ' is-picked' : ''}" aria-pressed="${selected}" title="${esc(guEffectText(def))}" ${disabled ? 'disabled' : ''} data-action="battleAct" data-kind="gu" data-id="${uid}">
+      ${selected ? `<i class="skill-order">${position}</i>` : ''}${esc(def.name)}<small>${cooldown > 0 ? `冷却 ${cooldown}` : def.cost}</small>
     </button>`;
   }).join('');
 
@@ -2549,42 +2672,54 @@ function renderBattleView(gs) {
     const cd = Math.max(0, (b.cds[m.id] || 0) - 1);
     const blocked = killerMoveBlock(gs, m);
     const disabled = hasQueue || blocked || cd > 0 || p.zy < m.cost;
-    return `<button class="sm gold" ${disabled ? 'disabled' : ''} data-action="battleAct" data-kind="move" data-id="${esc(m.id)}">
-      ${esc(m.name)} <span class="muted">${esc(blocked || (cd > 0 ? `冷却${cd}` : `耗${m.cost}`))}</span>
+    return `<button class="skill is-move" ${disabled ? 'disabled' : ''} ${blocked ? `title="${esc(blocked)}"` : ''} data-action="battleAct" data-kind="move" data-id="${esc(m.id)}">
+      ${esc(m.name)}<small>${cd > 0 ? `冷却 ${cd}` : blocked ? '不可用' : m.cost}</small>
     </button>`;
   }).join('');
 
-  const footer = b.state === 'ongoing'
-    ? `<div class="card">
-        <h3>第 ${b.round} 回合</h3>
-        <div class="row" style="margin-bottom:8px">
-          <button ${hasQueue ? 'disabled' : ''} data-action="battleAct" data-kind="attack">拳脚试探</button>
-          <button ${hasQueue || p.yuanshi < 2 ? 'disabled' : ''} data-action="battleAct" data-kind="stone">消耗元石回元（-2元石）</button>
-          ${!b.lethal ? '<button class="blood" data-action="battleAct" data-kind="lethal">下死手</button>' : '<span class="badge blood">死斗中 · 不可逃</span>'}
-          ${!b.lethal ? `<button class="ghost" ${hasQueue ? 'disabled' : ''} data-action="battleAct" data-kind="flee">脱身逃走</button>` : ''}
-        </div>
-        ${guButtons ? `
-          <div class="muted" style="margin-bottom:4px">按顺序选择蛊虫，再点一次可取消</div>
-          <div class="row" style="margin-bottom:8px">${guButtons}</div>
-          <div class="row" style="margin-bottom:8px">
-            <button class="primary" ${hasQueue ? '' : 'disabled'} data-action="battleAct" data-kind="resolveGu">催动</button>
-            ${hasQueue ? `<span class="muted">${queued.map(({ def }) => esc(def.name)).join(' → ')} · 耗 ${cost} 真元</span>` : ''}
-          </div>` : ''}
-        ${moveButtons ? `<div class="muted" style="margin-bottom:4px">催动杀招</div><div class="row">${moveButtons}</div>` : ''}
-      </div>`
-    : `<div class="card">
-        <button class="primary" data-action="finishBattle">${b.state === 'win' ? '打扫战场离开' : b.state === 'fled' ? '脱身离开' : '查看结局'}</button>
-      </div>`;
+  // 倒序输出，配合 column-reverse：视觉顺序不变，滚动条始终停在最新一条。
+  const logs = b.logs.slice(-40);
+  const logHtml = logs.map((l, i) => `<div${i === logs.length - 1 ? ' class="is-latest"' : ''}>${esc(l)}</div>`).reverse().join('');
 
-  return `<div class="card">
-      <div class="kv">
-        <strong>${esc(foe.name)} <span class="badge">${foe.rank}转</span></strong>
-        <span>气血：${esc(foeHpText)}${foe.shield > 0 ? ` · 护盾 ${foe.shield}` : ''}</span>
+  const actions = b.state === 'ongoing'
+    ? `<section class="card battle-actions">
+        ${guButtons ? `<div class="skill-group">
+          <div class="skill-head">
+            <span>蛊虫<em>依次点选，再点取消</em></span>
+            <span class="skill-plan">${hasQueue ? `${queued.map(({ def }) => esc(def.name)).join(' → ')} · ${cost} 真元` : ''}</span>
+          </div>
+          <div class="skill-list">${guButtons}</div>
+          <button class="primary battle-go" ${hasQueue ? '' : 'disabled'} data-action="battleAct" data-kind="resolveGu">催动</button>
+        </div>` : ''}
+        ${moveButtons ? `<div class="skill-group">
+          <div class="skill-head"><span>杀招</span></div>
+          <div class="skill-list">${moveButtons}</div>
+        </div>` : ''}
+        <div class="battle-basic">
+          <button class="sm ghost" ${hasQueue ? 'disabled' : ''} data-action="battleAct" data-kind="attack">拳脚试探</button>
+          <button class="sm ghost" ${hasQueue || p.yuanshi < 2 ? 'disabled' : ''} title="消耗 2 元石回复真元" data-action="battleAct" data-kind="stone">元石回元</button>
+          <span class="battle-spacer"></span>
+          ${b.lethal
+            ? '<span class="battle-lethal">死斗中 · 不可逃</span>'
+            : `<button class="sm ghost" ${hasQueue ? 'disabled' : ''} data-action="battleAct" data-kind="flee">逃走</button>
+               <button class="sm blood" title="不留余地，之后无法逃走" data-action="battleAct" data-kind="lethal">下死手</button>`}
+        </div>
+      </section>`
+    : `<button class="primary battle-finish" data-action="finishBattle">${b.state === 'win' ? '打扫战场离开' : b.state === 'fled' ? '脱身离开' : '查看结局'}</button>`;
+
+  return `<section class="card battle-foe">
+      <div class="foe-top">
+        <div class="foe-name"><b>${esc(foe.name)}</b><span>${foe.rank}转</span></div>
+        <span class="battle-round">${b.state === 'ongoing' ? `第 ${b.round} 回合` : ''}</span>
       </div>
-      <div class="intent-box">${esc(intentText)}</div>
-    </div>
-    ${footer}
-    <div class="card loglist">${b.logs.slice(-10).map((l) => `<div>${esc(l)}</div>`).join('')}</div>`;
+      <div class="foe-status">
+        ${foeHp}
+        ${foe.shield > 0 ? `<span class="foe-shield">护盾 ${foe.shield}</span>` : ''}
+      </div>
+      <div class="foe-intent${foe.stunned ? ' is-stunned' : ''}"><span>意图</span>${esc(intentText)}${!b.scouted && !foe.stunned ? '<small>念息蛊可探知</small>' : ''}</div>
+      <div class="battle-log">${logHtml}</div>
+    </section>
+    ${actions}`;
 }
 
 
@@ -2753,7 +2888,16 @@ function renderApertureView(gs) {
     return `<span class="gu-chip ${g.satiety <= 20 ? 'weak' : ''}">${isBm ? '★' : ''}${esc(def.name)} <small>${g.satiety}%</small></span>`;
   }).join('');
 
-  const guRows = p.gu.map((g) => {
+  const order = (g) => (p.benming === g.uid ? 0 : 2) + (p.equipped.includes(g.uid) ? 0 : 1);
+  const sortedGu = p.gu
+    .map((g, i) => ({ g, i }))
+    .sort((a, b) => order(a.g) - order(b.g)
+      || (GU_DEFS[b.g.id]?.rank ?? 0) - (GU_DEFS[a.g.id]?.rank ?? 0)
+      || a.i - b.i)
+    .map(({ g }) => g);
+  const equippedCount = p.gu.filter((g) => p.equipped.includes(g.uid)).length;
+
+  const guRows = sortedGu.map((g) => {
     const def = GU_DEFS[g.id];
     if (!def) return '';
     const eq = p.equipped.includes(g.uid);
@@ -2761,27 +2905,36 @@ function renderApertureView(gs) {
     const isSheli = g.id === 'qingtong_sheli' || g.id === 'chitie_sheli';
     const food = ITEMS[def.food];
     const foodCount = p.items[def.food] ?? 0;
-    const effect = guEffectText(def);
-    return `<div class="card">
-      <div class="kv">
-        <b>${isBm ? '★ ' : ''}${esc(def.name)} <span class="badge">${def.rank}转 · ${esc(def.kind)}${isBm ? ' · 本命蛊' : ''}</span></b>
-        <span class="muted">饱食 ${g.satiety}%</span>
+    const stats = guStats(def);
+    const hungry = g.satiety <= 20;
+    const boarKey = g.id === 'heishi' ? 'blackBoarStrength' : 'whiteBoarStrength';
+    const actions = [
+      food ? `<button class="sm ghost" ${foodCount <= 0 || g.satiety >= 100 ? 'disabled' : ''} data-action="feedGu" data-id="${g.uid}">喂食</button>` : '',
+      EQUIP_KINDS.includes(def.kind) ? `<button class="sm ${eq ? 'primary' : 'ghost'}" aria-pressed="${eq}" title="${eq ? '点击撤下' : '战斗中可催动'}" data-action="toggleEquip" data-id="${g.uid}">${eq ? '出战中' : '出战'}</button>` : '',
+      isSheli ? `<button class="sm gold" data-action="useSheli" data-id="${g.uid}">炼化破境</button>` : '',
+      def.kind === '治疗' ? `<button class="sm gold" data-action="useHealingGu" data-id="${g.uid}">疗伤</button>` : '',
+      ['heishi', 'baishi'].includes(g.id) ? (p[boarKey]
+        ? '<span class="gu-note">已得一猪之力</span>'
+        : `<button class="sm gold" title="消耗此蛊，增一猪之力" data-action="useBoarGu" data-id="${g.uid}">催动</button>`) : ''
+    ].join('');
+    return `<li class="gu-row${eq ? ' is-equipped' : ''}">
+      <div class="gu-main">
+        <div class="gu-title">
+          <b>${esc(def.name)}</b>
+          <span class="gu-meta">${def.rank}转 · ${esc(def.kind)}</span>
+          ${isBm ? '<span class="gu-tag" title="合炼失败时保留，炼成后由成蛊继承本命绑定">本命</span>' : ''}
+        </div>
+        <p class="gu-desc">${esc(def.desc)}</p>
+        ${stats.length ? `<div class="gu-stats" title="${esc(guEffectText(def))}">${stats.map((s) => `<span>${esc(s)}</span>`).join('')}</div>` : ''}
       </div>
-      <div class="muted" style="margin-bottom:8px">
-        ${esc(def.desc)}${effect ? `<br>${esc(effect)}` : ''}
-        <br>${food ? `食物 <b>${esc(food.name)}</b> · 行囊 ${foodCount} 份` : '无需喂食'}
-        ${isBm ? '<br>合炼失败时保留，炼成后由成蛊继承本命绑定。' : ''}
+      <div class="gu-side">
+        <div class="gu-hunger${hungry ? ' is-low' : ''}" title="饱食 ${g.satiety}%">
+          <span class="bar"><i style="width:${g.satiety}%"></i></span><span>${g.satiety}%</span>
+        </div>
+        <div class="gu-food${food && foodCount <= 0 ? ' is-empty' : ''}">${food ? `${esc(food.name)} ×${foodCount}` : '无需喂食'}</div>
+        <div class="gu-actions">${actions}</div>
       </div>
-      <div class="row">
-        ${food ? `<button class="sm" ${foodCount <= 0 || g.satiety >= 100 ? 'disabled' : ''} data-action="feedGu" data-id="${g.uid}">喂食</button>` : ''}
-        ${['攻击', '防御', '治疗', '增益', '控制', '探知', '隐匿'].includes(def.kind) ? `<button class="sm ${eq ? 'primary' : ''}" data-action="toggleEquip" data-id="${g.uid}">${eq ? '已出战 · 战中催动' : '设为出战蛊'}</button>` : ''}
-        ${isSheli ? `<button class="sm gold" data-action="useSheli" data-id="${g.uid}">炼化破境</button>` : ''}
-        ${def.kind === '治疗' ? `<button class="sm gold" data-action="useHealingGu" data-id="${g.uid}">催动疗伤 · ${def.cost} 真元</button>` : ''}
-        ${['heishi', 'baishi'].includes(g.id) ? (p[g.id === 'heishi' ? 'blackBoarStrength' : 'whiteBoarStrength']
-          ? '<span class="muted">已得此蛊的一猪之力</span>'
-          : `<button class="sm gold" data-action="useBoarGu" data-id="${g.uid}">催动 · 消耗此蛊，增一猪之力</button>`) : ''}
-      </div>
-    </div>`;
+    </li>`;
   }).join('');
 
   const movesHtml = p.moves.length
@@ -2805,8 +2958,7 @@ function renderApertureView(gs) {
       <div class="row">
         ${p.xiao < 3 ? '<button class="primary" data-action="washMinor">冲刷窍壁</button>' : '<button class="gold" data-action="openBreak">破壁冲关</button>'}
         <button data-action="feedAll">一键喂饱</button>
-        <button data-action="toggleAutoFeed" aria-pressed="${!!p.autoFeed}">自动喂蛊：${p.autoFeed ? '开' : '关'}</button>
-        <span class="muted">饱食降至 50% 或以下时，使用行囊口粮。</span>
+        <button data-action="toggleAutoFeed" aria-pressed="${!!p.autoFeed}" title="饱食降至 50% 或以下时，使用行囊口粮">自动喂蛊：${p.autoFeed ? '开' : '关'}</button>
         ${discoveredKillerPatterns(p).length ? '<button class="gold" data-action="openCustomKiller">自创杀招</button>' : ''}
       </div>
     </div>
@@ -2816,7 +2968,33 @@ function renderApertureView(gs) {
       ${p.zy < BENMING_ZY_COST ? '<span class="muted">真元不足</span>' : ''}
     </div>` : ''}
     <div class="card"><h3>杀招</h3><div class="grid2">${movesHtml}</div></div>
-    <div class="card"><h3>蛊囊（${p.gu.length} 只）</h3><div class="grid2">${guRows || '<span class="muted">暂无蛊虫</span>'}</div></div>`;
+    <div class="card">
+      <div class="gu-head"><h3>蛊囊</h3><span class="muted">${p.gu.length} 只 · 出战 ${equippedCount}</span></div>
+      ${guRows ? `<ul class="gu-list">${guRows}</ul>` : '<span class="muted">暂无蛊虫</span>'}
+    </div>`;
+}
+
+const EQUIP_KINDS = ['攻击', '防御', '治疗', '增益', '控制', '探知', '隐匿'];
+
+// 卡片上只列关键数值，完整说明放在 title 中。
+function guStats(def) {
+  const main = {
+    攻击: `伤害 ${def.power}`,
+    控制: `伤害 ${def.power}`,
+    防御: `护盾 ${def.power}`,
+    隐匿: `护盾 ${Math.round(def.power * 0.6)}`,
+    治疗: `回血 ${def.power}`,
+    增益: '月光蛊伤害 +35%',
+    探知: '看破敌情'
+  }[def.kind];
+  if (!main) return [];
+  const stats = [main];
+  if (def.kind === '控制' || def.id === 'dianlang_gu') stats.push('35% 打断');
+  if (def.id === 'xuefu_gu') stats.push('吸血 35%');
+  stats.push(`真元 ${def.cost}`);
+  const wait = Math.max(0, def.cd - 1);
+  if (wait) stats.push(`冷却 ${wait}`);
+  return stats;
 }
 
 

@@ -16,7 +16,16 @@ export function renderApertureView(gs) {
     return `<span class="gu-chip ${g.satiety <= 20 ? 'weak' : ''}">${isBm ? '★' : ''}${esc(def.name)} <small>${g.satiety}%</small></span>`;
   }).join('');
 
-  const guRows = p.gu.map((g) => {
+  const order = (g) => (p.benming === g.uid ? 0 : 2) + (p.equipped.includes(g.uid) ? 0 : 1);
+  const sortedGu = p.gu
+    .map((g, i) => ({ g, i }))
+    .sort((a, b) => order(a.g) - order(b.g)
+      || (GU_DEFS[b.g.id]?.rank ?? 0) - (GU_DEFS[a.g.id]?.rank ?? 0)
+      || a.i - b.i)
+    .map(({ g }) => g);
+  const equippedCount = p.gu.filter((g) => p.equipped.includes(g.uid)).length;
+
+  const guRows = sortedGu.map((g) => {
     const def = GU_DEFS[g.id];
     if (!def) return '';
     const eq = p.equipped.includes(g.uid);
@@ -24,27 +33,36 @@ export function renderApertureView(gs) {
     const isSheli = g.id === 'qingtong_sheli' || g.id === 'chitie_sheli';
     const food = ITEMS[def.food];
     const foodCount = p.items[def.food] ?? 0;
-    const effect = guEffectText(def);
-    return `<div class="card">
-      <div class="kv">
-        <b>${isBm ? '★ ' : ''}${esc(def.name)} <span class="badge">${def.rank}转 · ${esc(def.kind)}${isBm ? ' · 本命蛊' : ''}</span></b>
-        <span class="muted">饱食 ${g.satiety}%</span>
+    const stats = guStats(def);
+    const hungry = g.satiety <= 20;
+    const boarKey = g.id === 'heishi' ? 'blackBoarStrength' : 'whiteBoarStrength';
+    const actions = [
+      food ? `<button class="sm ghost" ${foodCount <= 0 || g.satiety >= 100 ? 'disabled' : ''} data-action="feedGu" data-id="${g.uid}">喂食</button>` : '',
+      EQUIP_KINDS.includes(def.kind) ? `<button class="sm ${eq ? 'primary' : 'ghost'}" aria-pressed="${eq}" title="${eq ? '点击撤下' : '战斗中可催动'}" data-action="toggleEquip" data-id="${g.uid}">${eq ? '出战中' : '出战'}</button>` : '',
+      isSheli ? `<button class="sm gold" data-action="useSheli" data-id="${g.uid}">炼化破境</button>` : '',
+      def.kind === '治疗' ? `<button class="sm gold" data-action="useHealingGu" data-id="${g.uid}">疗伤</button>` : '',
+      ['heishi', 'baishi'].includes(g.id) ? (p[boarKey]
+        ? '<span class="gu-note">已得一猪之力</span>'
+        : `<button class="sm gold" title="消耗此蛊，增一猪之力" data-action="useBoarGu" data-id="${g.uid}">催动</button>`) : ''
+    ].join('');
+    return `<li class="gu-row${eq ? ' is-equipped' : ''}">
+      <div class="gu-main">
+        <div class="gu-title">
+          <b>${esc(def.name)}</b>
+          <span class="gu-meta">${def.rank}转 · ${esc(def.kind)}</span>
+          ${isBm ? '<span class="gu-tag" title="合炼失败时保留，炼成后由成蛊继承本命绑定">本命</span>' : ''}
+        </div>
+        <p class="gu-desc">${esc(def.desc)}</p>
+        ${stats.length ? `<div class="gu-stats" title="${esc(guEffectText(def))}">${stats.map((s) => `<span>${esc(s)}</span>`).join('')}</div>` : ''}
       </div>
-      <div class="muted" style="margin-bottom:8px">
-        ${esc(def.desc)}${effect ? `<br>${esc(effect)}` : ''}
-        <br>${food ? `食物 <b>${esc(food.name)}</b> · 行囊 ${foodCount} 份` : '无需喂食'}
-        ${isBm ? '<br>合炼失败时保留，炼成后由成蛊继承本命绑定。' : ''}
+      <div class="gu-side">
+        <div class="gu-hunger${hungry ? ' is-low' : ''}" title="饱食 ${g.satiety}%">
+          <span class="bar"><i style="width:${g.satiety}%"></i></span><span>${g.satiety}%</span>
+        </div>
+        <div class="gu-food${food && foodCount <= 0 ? ' is-empty' : ''}">${food ? `${esc(food.name)} ×${foodCount}` : '无需喂食'}</div>
+        <div class="gu-actions">${actions}</div>
       </div>
-      <div class="row">
-        ${food ? `<button class="sm" ${foodCount <= 0 || g.satiety >= 100 ? 'disabled' : ''} data-action="feedGu" data-id="${g.uid}">喂食</button>` : ''}
-        ${['攻击', '防御', '治疗', '增益', '控制', '探知', '隐匿'].includes(def.kind) ? `<button class="sm ${eq ? 'primary' : ''}" data-action="toggleEquip" data-id="${g.uid}">${eq ? '已出战 · 战中催动' : '设为出战蛊'}</button>` : ''}
-        ${isSheli ? `<button class="sm gold" data-action="useSheli" data-id="${g.uid}">炼化破境</button>` : ''}
-        ${def.kind === '治疗' ? `<button class="sm gold" data-action="useHealingGu" data-id="${g.uid}">催动疗伤 · ${def.cost} 真元</button>` : ''}
-        ${['heishi', 'baishi'].includes(g.id) ? (p[g.id === 'heishi' ? 'blackBoarStrength' : 'whiteBoarStrength']
-          ? '<span class="muted">已得此蛊的一猪之力</span>'
-          : `<button class="sm gold" data-action="useBoarGu" data-id="${g.uid}">催动 · 消耗此蛊，增一猪之力</button>`) : ''}
-      </div>
-    </div>`;
+    </li>`;
   }).join('');
 
   const movesHtml = p.moves.length
@@ -68,8 +86,7 @@ export function renderApertureView(gs) {
       <div class="row">
         ${p.xiao < 3 ? '<button class="primary" data-action="washMinor">冲刷窍壁</button>' : '<button class="gold" data-action="openBreak">破壁冲关</button>'}
         <button data-action="feedAll">一键喂饱</button>
-        <button data-action="toggleAutoFeed" aria-pressed="${!!p.autoFeed}">自动喂蛊：${p.autoFeed ? '开' : '关'}</button>
-        <span class="muted">饱食降至 50% 或以下时，使用行囊口粮。</span>
+        <button data-action="toggleAutoFeed" aria-pressed="${!!p.autoFeed}" title="饱食降至 50% 或以下时，使用行囊口粮">自动喂蛊：${p.autoFeed ? '开' : '关'}</button>
         ${discoveredKillerPatterns(p).length ? '<button class="gold" data-action="openCustomKiller">自创杀招</button>' : ''}
       </div>
     </div>
@@ -79,5 +96,31 @@ export function renderApertureView(gs) {
       ${p.zy < BENMING_ZY_COST ? '<span class="muted">真元不足</span>' : ''}
     </div>` : ''}
     <div class="card"><h3>杀招</h3><div class="grid2">${movesHtml}</div></div>
-    <div class="card"><h3>蛊囊（${p.gu.length} 只）</h3><div class="grid2">${guRows || '<span class="muted">暂无蛊虫</span>'}</div></div>`;
+    <div class="card">
+      <div class="gu-head"><h3>蛊囊</h3><span class="muted">${p.gu.length} 只 · 出战 ${equippedCount}</span></div>
+      ${guRows ? `<ul class="gu-list">${guRows}</ul>` : '<span class="muted">暂无蛊虫</span>'}
+    </div>`;
+}
+
+const EQUIP_KINDS = ['攻击', '防御', '治疗', '增益', '控制', '探知', '隐匿'];
+
+// 卡片上只列关键数值，完整说明放在 title 中。
+function guStats(def) {
+  const main = {
+    攻击: `伤害 ${def.power}`,
+    控制: `伤害 ${def.power}`,
+    防御: `护盾 ${def.power}`,
+    隐匿: `护盾 ${Math.round(def.power * 0.6)}`,
+    治疗: `回血 ${def.power}`,
+    增益: '月光蛊伤害 +35%',
+    探知: '看破敌情'
+  }[def.kind];
+  if (!main) return [];
+  const stats = [main];
+  if (def.kind === '控制' || def.id === 'dianlang_gu') stats.push('35% 打断');
+  if (def.id === 'xuefu_gu') stats.push('吸血 35%');
+  stats.push(`真元 ${def.cost}`);
+  const wait = Math.max(0, def.cd - 1);
+  if (wait) stats.push(`冷却 ${wait}`);
+  return stats;
 }

@@ -199,6 +199,44 @@ button.sm { min-height: 32px; padding: 4px 10px; font-size: .85rem; }
 }
 .gu-chip.weak { border-color: var(--blood); color: var(--blood); }
 
+/* 蛊囊列表 */
+.gu-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 4px; }
+.gu-head h3 { margin: 0; }
+.gu-list { list-style: none; margin: 0; padding: 0; }
+.gu-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 16px;
+  padding: 12px 0 12px 12px;
+  border-top: 1px solid rgba(41, 73, 66, .6);
+  border-left: 2px solid transparent;
+}
+.gu-row:first-child { border-top: 0; }
+.gu-row.is-equipped { border-left-color: var(--jade); }
+.gu-main { min-width: 0; }
+.gu-title { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.gu-title b { font-size: 1rem; }
+.gu-meta { font-size: .8rem; color: var(--dim); }
+.gu-tag { font-size: .75rem; color: var(--gold); }
+.gu-tag::before { content: "· "; color: var(--dim); }
+.gu-desc { margin: 2px 0 4px; font-size: .86rem; color: var(--dim); }
+.gu-stats { display: flex; flex-wrap: wrap; gap: 0 12px; font-size: .82rem; color: #cfd9d3; cursor: help; }
+.gu-side { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; min-width: 128px; }
+.gu-hunger { display: flex; align-items: center; gap: 6px; font-size: .78rem; color: var(--dim); font-variant-numeric: tabular-nums; }
+.gu-hunger .bar { width: 64px; height: 4px; }
+.gu-hunger.is-low { color: var(--blood); }
+.gu-hunger.is-low .bar > i { background: var(--blood); }
+.gu-food { font-size: .76rem; color: var(--dim); }
+.gu-food.is-empty { color: var(--warn); }
+.gu-actions { display: flex; gap: 6px; margin-top: 2px; }
+.gu-actions button.sm { min-height: 28px; padding: 2px 10px; }
+.gu-note { font-size: .78rem; color: var(--dim); }
+@media (max-width: 520px) {
+  .gu-row { grid-template-columns: 1fr; gap: 6px; }
+  .gu-side { flex-direction: row; flex-wrap: wrap; align-items: center; min-width: 0; }
+  .gu-actions { margin: 0 0 0 auto; }
+}
+
 /* 底部导航 */
 .nav {
   position: fixed;
@@ -487,6 +525,84 @@ button.sm { min-height: 32px; padding: 4px 10px; font-size: .85rem; }
   padding: 8px 10px;
   font-size: .86rem;
 }
+/* 战斗 */
+.battle-foe { display: flex; flex-direction: column; gap: 8px; }
+.foe-top { display: flex; justify-content: space-between; align-items: baseline; }
+.foe-name { display: flex; align-items: baseline; gap: 8px; }
+.foe-name b { font-size: 1.25rem; font-family: Georgia, "Songti SC", serif; }
+.foe-name span { font-size: .8rem; color: var(--dim); }
+.battle-round { font-size: .82rem; color: var(--gold); }
+.foe-status { display: flex; align-items: center; gap: 12px; font-size: .88rem; }
+.foe-hp { display: flex; align-items: center; gap: 8px; flex: 1; font-variant-numeric: tabular-nums; color: var(--dim); }
+.foe-hp .bar { flex: 1; max-width: 320px; }
+.foe-hp.is-high { color: var(--ink); }
+.foe-hp.is-mid { color: var(--warn); }
+.foe-hp.is-low { color: var(--blood); }
+.foe-shield { color: #9ccbd7; font-size: .82rem; }
+.foe-intent { font-size: .86rem; color: var(--ink); display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.foe-intent > span { font-size: .76rem; color: var(--blood); letter-spacing: .1em; }
+.foe-intent small { color: var(--dim); font-size: .76rem; }
+.foe-intent.is-stunned { color: var(--jade); }
+.battle-log {
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(41, 73, 66, .6);
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 2px;
+  font-size: .84rem;
+  line-height: 1.6;
+  color: var(--dim);
+  height: calc(5 * 1.6em + 4 * 2px + 8px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.battle-log .is-latest { color: var(--ink); }
+
+.battle-actions { display: flex; flex-direction: column; gap: 14px; }
+.skill-group { display: grid; gap: 6px; }
+.skill-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: .8rem; color: var(--dim); }
+.skill-head em { font-style: normal; margin-left: 8px; opacity: .7; }
+.skill-plan { color: var(--gold); }
+.skill-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.skill {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  min-height: 34px;
+  padding: 4px 12px;
+  font-size: .9rem;
+  background: var(--bg2);
+}
+.skill small { font-size: .74rem; color: #5da9c4; font-variant-numeric: tabular-nums; }
+.skill:disabled small { color: var(--dim); }
+.skill.is-picked { border-color: var(--gold); background: #2e2a1b; }
+.skill-order {
+  font-style: normal;
+  font-size: .72rem;
+  width: 16px;
+  height: 16px;
+  line-height: 16px;
+  text-align: center;
+  border-radius: 50%;
+  background: var(--gold);
+  color: #1a1408;
+  align-self: center;
+}
+.skill.is-move { border-color: rgba(216, 191, 135, .45); color: #f2e3bd; }
+.battle-go { justify-self: start; min-width: 96px; min-height: 34px; padding: 4px 16px; }
+.battle-basic {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding-top: 10px;
+  border-top: 1px solid rgba(41, 73, 66, .6);
+}
+.battle-spacer { flex: 1; }
+.battle-basic:first-child { border-top: 0; padding-top: 0; }
+.battle-lethal { font-size: .82rem; color: var(--blood); }
+.battle-finish { align-self: center; min-width: 160px; }
 input[type="text"], input[type="number"], select, textarea {
   width: 100%;
   padding: 8px 10px;

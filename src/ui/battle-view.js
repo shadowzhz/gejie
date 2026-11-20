@@ -7,10 +7,17 @@ export function renderBattleView(gs) {
   const b = gs.battle;
   const p = gs.player;
   const foe = b.foe;
-  const foeHpText = b.scouted ? `${foe.hp} / ${foe.hpMax}` : (foe.hp > foe.hpMax * 0.6 ? '气息强盛' : foe.hp > foe.hpMax * 0.25 ? '已有伤势' : '摇摇欲坠');
+  const hpRatio = foe.hpMax ? Math.max(0, foe.hp / foe.hpMax) : 0;
+  const hpState = hpRatio > 0.6 ? '气息强盛' : hpRatio > 0.25 ? '已有伤势' : '摇摇欲坠';
+  const hpLevel = hpRatio > 0.6 ? 'high' : hpRatio > 0.25 ? 'mid' : 'low';
+  const foeHp = b.scouted
+    ? `<div class="foe-hp"><span class="bar hp"><i style="width:${Math.round(hpRatio * 100)}%"></i></span><span>${foe.hp} / ${foe.hpMax}</span></div>`
+    : `<div class="foe-hp is-${hpLevel}">${hpState}</div>`;
   const intentText = foe.stunned
-    ? '敌方本轮受制，无法出手'
-    : (b.scouted && foe.intent ? `敌方下步：${foe.intent.name}（${foe.intent.kind === 'shield' ? '护盾' : foe.intent.kind === 'heal' ? '疗伤' : `威能约 ${foe.intent.power}`}）` : '敌方意图未明（可用念息蛊探知，或稳扎稳打）');
+    ? '本轮受制，无法出手'
+    : b.scouted && foe.intent
+      ? `${foe.intent.name}（${foe.intent.kind === 'shield' ? '护盾' : foe.intent.kind === 'heal' ? '疗伤' : `威能约 ${foe.intent.power}`}）`
+      : '未明';
 
   const { choices, queued, cost } = battleGuPlan(gs);
   const hasQueue = queued.length > 0;
@@ -18,8 +25,8 @@ export function renderBattleView(gs) {
     const position = queued.findIndex((choice) => choice.uid === uid) + 1;
     const selected = position > 0;
     const disabled = !selected && (cooldown > 0 || p.zy - cost < def.cost);
-    return `<button class="sm${selected ? ' gold' : ''}" aria-pressed="${selected}" title="${esc(guEffectText(def))}" ${disabled ? 'disabled' : ''} data-action="battleAct" data-kind="gu" data-id="${uid}">
-      ${selected ? `${position}. ` : ''}${esc(def.name)} <span class="muted">${cooldown > 0 ? `冷却${cooldown}` : `耗${def.cost}`}</span>
+    return `<button class="skill${selected ? ' is-picked' : ''}" aria-pressed="${selected}" title="${esc(guEffectText(def))}" ${disabled ? 'disabled' : ''} data-action="battleAct" data-kind="gu" data-id="${uid}">
+      ${selected ? `<i class="skill-order">${position}</i>` : ''}${esc(def.name)}<small>${cooldown > 0 ? `冷却 ${cooldown}` : def.cost}</small>
     </button>`;
   }).join('');
 
@@ -27,40 +34,52 @@ export function renderBattleView(gs) {
     const cd = Math.max(0, (b.cds[m.id] || 0) - 1);
     const blocked = killerMoveBlock(gs, m);
     const disabled = hasQueue || blocked || cd > 0 || p.zy < m.cost;
-    return `<button class="sm gold" ${disabled ? 'disabled' : ''} data-action="battleAct" data-kind="move" data-id="${esc(m.id)}">
-      ${esc(m.name)} <span class="muted">${esc(blocked || (cd > 0 ? `冷却${cd}` : `耗${m.cost}`))}</span>
+    return `<button class="skill is-move" ${disabled ? 'disabled' : ''} ${blocked ? `title="${esc(blocked)}"` : ''} data-action="battleAct" data-kind="move" data-id="${esc(m.id)}">
+      ${esc(m.name)}<small>${cd > 0 ? `冷却 ${cd}` : blocked ? '不可用' : m.cost}</small>
     </button>`;
   }).join('');
 
-  const footer = b.state === 'ongoing'
-    ? `<div class="card">
-        <h3>第 ${b.round} 回合</h3>
-        <div class="row" style="margin-bottom:8px">
-          <button ${hasQueue ? 'disabled' : ''} data-action="battleAct" data-kind="attack">拳脚试探</button>
-          <button ${hasQueue || p.yuanshi < 2 ? 'disabled' : ''} data-action="battleAct" data-kind="stone">消耗元石回元（-2元石）</button>
-          ${!b.lethal ? '<button class="blood" data-action="battleAct" data-kind="lethal">下死手</button>' : '<span class="badge blood">死斗中 · 不可逃</span>'}
-          ${!b.lethal ? `<button class="ghost" ${hasQueue ? 'disabled' : ''} data-action="battleAct" data-kind="flee">脱身逃走</button>` : ''}
-        </div>
-        ${guButtons ? `
-          <div class="muted" style="margin-bottom:4px">按顺序选择蛊虫，再点一次可取消</div>
-          <div class="row" style="margin-bottom:8px">${guButtons}</div>
-          <div class="row" style="margin-bottom:8px">
-            <button class="primary" ${hasQueue ? '' : 'disabled'} data-action="battleAct" data-kind="resolveGu">催动</button>
-            ${hasQueue ? `<span class="muted">${queued.map(({ def }) => esc(def.name)).join(' → ')} · 耗 ${cost} 真元</span>` : ''}
-          </div>` : ''}
-        ${moveButtons ? `<div class="muted" style="margin-bottom:4px">催动杀招</div><div class="row">${moveButtons}</div>` : ''}
-      </div>`
-    : `<div class="card">
-        <button class="primary" data-action="finishBattle">${b.state === 'win' ? '打扫战场离开' : b.state === 'fled' ? '脱身离开' : '查看结局'}</button>
-      </div>`;
+  // 倒序输出，配合 column-reverse：视觉顺序不变，滚动条始终停在最新一条。
+  const logs = b.logs.slice(-40);
+  const logHtml = logs.map((l, i) => `<div${i === logs.length - 1 ? ' class="is-latest"' : ''}>${esc(l)}</div>`).reverse().join('');
 
-  return `<div class="card">
-      <div class="kv">
-        <strong>${esc(foe.name)} <span class="badge">${foe.rank}转</span></strong>
-        <span>气血：${esc(foeHpText)}${foe.shield > 0 ? ` · 护盾 ${foe.shield}` : ''}</span>
+  const actions = b.state === 'ongoing'
+    ? `<section class="card battle-actions">
+        ${guButtons ? `<div class="skill-group">
+          <div class="skill-head">
+            <span>蛊虫<em>依次点选，再点取消</em></span>
+            <span class="skill-plan">${hasQueue ? `${queued.map(({ def }) => esc(def.name)).join(' → ')} · ${cost} 真元` : ''}</span>
+          </div>
+          <div class="skill-list">${guButtons}</div>
+          <button class="primary battle-go" ${hasQueue ? '' : 'disabled'} data-action="battleAct" data-kind="resolveGu">催动</button>
+        </div>` : ''}
+        ${moveButtons ? `<div class="skill-group">
+          <div class="skill-head"><span>杀招</span></div>
+          <div class="skill-list">${moveButtons}</div>
+        </div>` : ''}
+        <div class="battle-basic">
+          <button class="sm ghost" ${hasQueue ? 'disabled' : ''} data-action="battleAct" data-kind="attack">拳脚试探</button>
+          <button class="sm ghost" ${hasQueue || p.yuanshi < 2 ? 'disabled' : ''} title="消耗 2 元石回复真元" data-action="battleAct" data-kind="stone">元石回元</button>
+          <span class="battle-spacer"></span>
+          ${b.lethal
+            ? '<span class="battle-lethal">死斗中 · 不可逃</span>'
+            : `<button class="sm ghost" ${hasQueue ? 'disabled' : ''} data-action="battleAct" data-kind="flee">逃走</button>
+               <button class="sm blood" title="不留余地，之后无法逃走" data-action="battleAct" data-kind="lethal">下死手</button>`}
+        </div>
+      </section>`
+    : `<button class="primary battle-finish" data-action="finishBattle">${b.state === 'win' ? '打扫战场离开' : b.state === 'fled' ? '脱身离开' : '查看结局'}</button>`;
+
+  return `<section class="card battle-foe">
+      <div class="foe-top">
+        <div class="foe-name"><b>${esc(foe.name)}</b><span>${foe.rank}转</span></div>
+        <span class="battle-round">${b.state === 'ongoing' ? `第 ${b.round} 回合` : ''}</span>
       </div>
-      <div class="intent-box">${esc(intentText)}</div>
-    </div>
-    ${footer}
-    <div class="card loglist">${b.logs.slice(-10).map((l) => `<div>${esc(l)}</div>`).join('')}</div>`;
+      <div class="foe-status">
+        ${foeHp}
+        ${foe.shield > 0 ? `<span class="foe-shield">护盾 ${foe.shield}</span>` : ''}
+      </div>
+      <div class="foe-intent${foe.stunned ? ' is-stunned' : ''}"><span>意图</span>${esc(intentText)}${!b.scouted && !foe.stunned ? '<small>念息蛊可探知</small>' : ''}</div>
+      <div class="battle-log">${logHtml}</div>
+    </section>
+    ${actions}`;
 }
