@@ -11,13 +11,14 @@ import { createBreakSession, realmGrowthText, realmGuRequirement, stepBreakSessi
 import { renderBreakModal, renderCustomKillerModal, renderEventModal, renderRefineModal, renderStartScreen } from './rituals.js';
 import { renderBattleView } from './battle-view.js';
 import { renderPlaceView } from './place-view.js';
+import { renderMapPanel } from './map-view.js';
 import { renderApertureView } from './aperture-view.js';
 import { renderRefineView } from './refine-view.js';
 import { renderBagView } from './bag-view.js';
 
 let G = null;
 let TAB = 'place';
-let MODAL = null; // { kind: 'break'|'refine'|'killer'|'event'|'dead'|'win', data: ... }
+let MODAL = null; // { kind: 'place'|'break'|'refine'|'killer'|'dead'|'win', data: ... }
 let START = { phase: 'intro', name: '方源', apt: null, step: 0, target: 25, done: false, hasSave: false };
 let KM_DRAFT = { coreId: '', auxIds: [], name: '' };
 
@@ -71,7 +72,15 @@ function renderModal() {
   const sheetEl = document.getElementById('sheet');
   if (!modalEl || !sheetEl) return;
 
-  if (G && G.pendingEventId && !G.battle && !MODAL) {
+  if (MODAL?.kind === 'place' && (G.battle || G.player.dead)) MODAL = null;
+  const placeShown = MODAL?.kind === 'place' && !G.pendingEventId;
+  const samePlaceSheet = sheetEl.classList.contains('place-sheet');
+  const scrollTop = placeShown && samePlaceSheet ? sheetEl.scrollTop : 0;
+  sheetEl.classList.toggle('place-sheet', placeShown);
+  if (placeShown) sheetEl.setAttribute('aria-labelledby', 'place-title');
+  else sheetEl.removeAttribute('aria-labelledby');
+
+  if (G && G.pendingEventId && !G.battle && (!MODAL || MODAL.kind === 'place')) {
     sheetEl.innerHTML = renderEventModal(G.pendingEventId);
     modalEl.hidden = false;
     return;
@@ -82,7 +91,9 @@ function renderModal() {
     return;
   }
   let html = '';
-  if (MODAL.kind === 'break') html = renderBreakModal(MODAL.data);
+  if (MODAL.kind === 'place') {
+    html = `<div class="place-sheet-controls"><button class="sm" data-action="closeModal">返回地图</button></div>${renderPlaceView(G)}`;
+  } else if (MODAL.kind === 'break') html = renderBreakModal(MODAL.data);
   else if (MODAL.kind === 'refine') html = renderRefineModal(MODAL.data);
   else if (MODAL.kind === 'killer') html = renderCustomKillerModal(G, KM_DRAFT);
   else if (MODAL.kind === 'dead') {
@@ -107,6 +118,8 @@ function renderModal() {
   }
   sheetEl.innerHTML = html;
   modalEl.hidden = false;
+  sheetEl.scrollTop = scrollTop;
+  if (placeShown && !samePlaceSheet) sheetEl.querySelector('[data-action="closeModal"]').focus();
 }
 
 export function render() {
@@ -123,7 +136,7 @@ export function render() {
   if (G.battle) {
     body = renderBattleView(G);
   } else if (TAB === 'place') {
-    body = renderPlaceView(G, 'place');
+    body = renderMapPanel(G);
   } else if (TAB === 'aperture') {
     body = renderApertureView(G);
   } else if (TAB === 'refine') {
@@ -249,6 +262,7 @@ function handleAction(el) {
     TAB = 'place';
     render();
   } else if (act === 'navTab') {
+    if (MODAL?.kind === 'place') MODAL = null;
     TAB = el.dataset.tab || 'place';
     render();
   } else if (act === 'togglePause') {
@@ -257,8 +271,11 @@ function handleAction(el) {
   } else if (act === 'walkTo') {
     const res = moveToPlace(G, id);
     if (!res.ok) showToast(res.reason);
+    else if (G.location === id && !G.battle && !G.player.dead) MODAL = { kind: 'place' };
     saveGame(G);
     render();
+  } else if (act === 'openPlace') {
+    if (G && !G.battle && !G.player.dead) openModal('place');
   } else if (act === 'placeAct') {
     handlePlaceAction(id);
   } else if (act === 'quest') {

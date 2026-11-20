@@ -4,7 +4,6 @@ import { formatDateTime, isNight } from '../core/calendar.js';
 import { esc, QUESTS } from '../core/state.js';
 import { evalCond } from '../core/story-engine.js';
 import { STORY_EVENTS } from '../data/story.js';
-import { renderMapPanel } from './map-view.js';
 
 export function renderPlaceView(gs) {
   const place = PLACES[gs.location] || PLACES.zhulou;
@@ -68,7 +67,7 @@ export function renderPlaceView(gs) {
 
   return `<section class="stage ${night ? 'is-night' : ''}">
       <div class="stage-loc">${esc(formatDateTime(gs.minutes))} · ${esc(place.region)}</div>
-      <h1>${esc(place.name)}</h1>
+      <h1 id="place-title">${esc(place.name)}</h1>
       <p class="stage-desc">${esc(night ? place.night : place.day)}</p>
       <div class="row">${actions.join('')}</div>
     </section>
@@ -87,6 +86,5 @@ export function renderPlaceView(gs) {
       const out = GU_DEFS[r.out];
       return `<div class="kv"><span>${esc(out.name)}蛊方 · ${out.rank}转</span>
         <button class="sm" ${owned || gs.player.yuanshi < r.price ? 'disabled' : ''} data-action="buyRecipe" data-id="${r.id}">${owned ? '已习得' : `买 · ${r.price} 元石`}</button></div>`;
-    }).join('')}</div>` : ''}
-    ${renderMapPanel(gs)}`;
+    }).join('')}</div>` : ''}`;
 }

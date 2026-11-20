@@ -27,7 +27,7 @@ export function renderMapPanel(gs, title = '青茅山舆图 · 可去之处') {
     const mv = moveMap[pid];
     const style = `left:${place.x}%;top:${place.y}%`;
     if (pid === gs.location) {
-      nodes += `<div class="map-node is-here" style="${style}"><b>${esc(place.name)}</b><small>在此</small></div>`;
+      nodes += `<button type="button" class="map-node is-here" style="${style}" data-action="openPlace" aria-haspopup="dialog"><b>${esc(place.name)}</b><small>在此</small></button>`;
     } else if (mv) {
       nodes += `<button type="button" class="map-node is-move" style="${style}" data-action="walkTo" data-id="${pid}" ${mv.blocked ? 'disabled title="' + esc(mv.blocked) + '"' : ''}>
         <b>${esc(place.name)}</b><small>${esc(mv.blocked ? '受阻' : formatDuration(mv.minutes))}</small>
@@ -40,7 +40,7 @@ export function renderMapPanel(gs, title = '青茅山舆图 · 可去之处') {
   const blockedHints = moves.filter((m) => m.blocked).map((m) => `<div>· ${esc(m.name)}：${esc(m.blocked)}</div>`).join('');
 
   return `<div class="card">
-    <div class="kv"><h3>${esc(title)}</h3><span class="muted">点击金框相邻地点行脚</span></div>
+    <div class="kv"><h3>${esc(title)}</h3><span class="muted">点击金框行脚，点击当前位置查看详情</span></div>
     <div class="map-scroll">
       <div class="map-canvas ${isNight(gs.minutes) ? 'is-night' : ''}">
         <svg class="map-lines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${edges}</svg>

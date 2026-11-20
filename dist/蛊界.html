@@ -255,6 +255,16 @@ button.sm { min-height: 32px; padding: 4px 10px; font-size: .85rem; }
   flex-direction: column;
   gap: 10px;
 }
+.place-sheet {
+  width: min(860px, 100%);
+}
+.place-sheet-controls {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  justify-content: flex-end;
+}
 .toast {
   position: fixed;
   left: 50%;
@@ -1871,7 +1881,7 @@ function renderMapPanel(gs, title = '青茅山舆图 · 可去之处') {
     const mv = moveMap[pid];
     const style = `left:${place.x}%;top:${place.y}%`;
     if (pid === gs.location) {
-      nodes += `<div class="map-node is-here" style="${style}"><b>${esc(place.name)}</b><small>在此</small></div>`;
+      nodes += `<button type="button" class="map-node is-here" style="${style}" data-action="openPlace" aria-haspopup="dialog"><b>${esc(place.name)}</b><small>在此</small></button>`;
     } else if (mv) {
       nodes += `<button type="button" class="map-node is-move" style="${style}" data-action="walkTo" data-id="${pid}" ${mv.blocked ? 'disabled title="' + esc(mv.blocked) + '"' : ''}>
         <b>${esc(place.name)}</b><small>${esc(mv.blocked ? '受阻' : formatDuration(mv.minutes))}</small>
@@ -1884,7 +1894,7 @@ function renderMapPanel(gs, title = '青茅山舆图 · 可去之处') {
   const blockedHints = moves.filter((m) => m.blocked).map((m) => `<div>· ${esc(m.name)}：${esc(m.blocked)}</div>`).join('');
 
   return `<div class="card">
-    <div class="kv"><h3>${esc(title)}</h3><span class="muted">点击金框相邻地点行脚</span></div>
+    <div class="kv"><h3>${esc(title)}</h3><span class="muted">点击金框行脚，点击当前位置查看详情</span></div>
     <div class="map-scroll">
       <div class="map-canvas ${isNight(gs.minutes) ? 'is-night' : ''}">
         <svg class="map-lines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${edges}</svg>
@@ -1959,7 +1969,7 @@ function renderPlaceView(gs) {
 
   return `<section class="stage ${night ? 'is-night' : ''}">
       <div class="stage-loc">${esc(formatDateTime(gs.minutes))} · ${esc(place.region)}</div>
-      <h1>${esc(place.name)}</h1>
+      <h1 id="place-title">${esc(place.name)}</h1>
       <p class="stage-desc">${esc(night ? place.night : place.day)}</p>
       <div class="row">${actions.join('')}</div>
     </section>
@@ -1978,8 +1988,7 @@ function renderPlaceView(gs) {
       const out = GU_DEFS[r.out];
       return `<div class="kv"><span>${esc(out.name)}蛊方 · ${out.rank}转</span>
         <button class="sm" ${owned || gs.player.yuanshi < r.price ? 'disabled' : ''} data-action="buyRecipe" data-id="${r.id}">${owned ? '已习得' : `买 · ${r.price} 元石`}</button></div>`;
-    }).join('')}</div>` : ''}
-    ${renderMapPanel(gs)}`;
+    }).join('')}</div>` : ''}`;
 }
 
 
@@ -2135,9 +2144,10 @@ function renderBagView(gs, tab) {
 
 
 
+
 let G = null;
 let TAB = 'place';
-let MODAL = null; // { kind: 'break'|'refine'|'killer'|'event'|'dead'|'win', data: ... }
+let MODAL = null; // { kind: 'place'|'break'|'refine'|'killer'|'dead'|'win', data: ... }
 let START = { phase: 'intro', name: '方源', apt: null, step: 0, target: 25, done: false, hasSave: false };
 let KM_DRAFT = { coreId: '', auxIds: [], name: '' };
 
@@ -2191,7 +2201,15 @@ function renderModal() {
   const sheetEl = document.getElementById('sheet');
   if (!modalEl || !sheetEl) return;
 
-  if (G && G.pendingEventId && !G.battle && !MODAL) {
+  if (MODAL?.kind === 'place' && (G.battle || G.player.dead)) MODAL = null;
+  const placeShown = MODAL?.kind === 'place' && !G.pendingEventId;
+  const samePlaceSheet = sheetEl.classList.contains('place-sheet');
+  const scrollTop = placeShown && samePlaceSheet ? sheetEl.scrollTop : 0;
+  sheetEl.classList.toggle('place-sheet', placeShown);
+  if (placeShown) sheetEl.setAttribute('aria-labelledby', 'place-title');
+  else sheetEl.removeAttribute('aria-labelledby');
+
+  if (G && G.pendingEventId && !G.battle && (!MODAL || MODAL.kind === 'place')) {
     sheetEl.innerHTML = renderEventModal(G.pendingEventId);
     modalEl.hidden = false;
     return;
@@ -2202,7 +2220,9 @@ function renderModal() {
     return;
   }
   let html = '';
-  if (MODAL.kind === 'break') html = renderBreakModal(MODAL.data);
+  if (MODAL.kind === 'place') {
+    html = `<div class="place-sheet-controls"><button class="sm" data-action="closeModal">返回地图</button></div>${renderPlaceView(G)}`;
+  } else if (MODAL.kind === 'break') html = renderBreakModal(MODAL.data);
   else if (MODAL.kind === 'refine') html = renderRefineModal(MODAL.data);
   else if (MODAL.kind === 'killer') html = renderCustomKillerModal(G, KM_DRAFT);
   else if (MODAL.kind === 'dead') {
@@ -2227,6 +2247,8 @@ function renderModal() {
   }
   sheetEl.innerHTML = html;
   modalEl.hidden = false;
+  sheetEl.scrollTop = scrollTop;
+  if (placeShown && !samePlaceSheet) sheetEl.querySelector('[data-action="closeModal"]').focus();
 }
 function render() {
   const app = document.getElementById('app');
@@ -2242,7 +2264,7 @@ function render() {
   if (G.battle) {
     body = renderBattleView(G);
   } else if (TAB === 'place') {
-    body = renderPlaceView(G, 'place');
+    body = renderMapPanel(G);
   } else if (TAB === 'aperture') {
     body = renderApertureView(G);
   } else if (TAB === 'refine') {
@@ -2368,6 +2390,7 @@ function handleAction(el) {
     TAB = 'place';
     render();
   } else if (act === 'navTab') {
+    if (MODAL?.kind === 'place') MODAL = null;
     TAB = el.dataset.tab || 'place';
     render();
   } else if (act === 'togglePause') {
@@ -2376,8 +2399,11 @@ function handleAction(el) {
   } else if (act === 'walkTo') {
     const res = moveToPlace(G, id);
     if (!res.ok) showToast(res.reason);
+    else if (G.location === id && !G.battle && !G.player.dead) MODAL = { kind: 'place' };
     saveGame(G);
     render();
+  } else if (act === 'openPlace') {
+    if (G && !G.battle && !G.player.dead) openModal('place');
   } else if (act === 'placeAct') {
     handlePlaceAction(id);
   } else if (act === 'quest') {
