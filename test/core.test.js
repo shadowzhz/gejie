@@ -6,7 +6,7 @@ import { advanceMinutes, moveToPlace, rewindSpringCicada, saveSpringSnapshot } f
 import { makeTime } from '../src/core/calendar.js';
 import { applyEventChoice, checkStoryTriggers } from '../src/core/story-engine.js';
 import { createKillerMove } from '../src/core/killer.js';
-import { battleAct, startBattle } from '../src/core/combat.js';
+import { battleAct, battleGuPlan, startBattle } from '../src/core/combat.js';
 import { createBreakSession, stepBreakSession, washMinorWall } from '../src/core/breakthrough.js';
 import { createRefineSession, stepRefineSession } from '../src/core/refine.js';
 
@@ -24,7 +24,12 @@ test('豕蛊加伤只作用于拳脚和力道攻伐', () => {
     gs.battle = null;
     gs.player.zy = gs.player.zyMax;
     const battle = startBattle(gs, 'caoren', '', () => 0.5);
-    battleAct(gs, action, id, () => 0.5);
+    if (action === 'gu') {
+      battleAct(gs, 'gu', gs.player.gu.find((gu) => gu.id === id).uid);
+      battleAct(gs, 'resolveGu', '', () => 0.5);
+    } else {
+      battleAct(gs, action, id, () => 0.5);
+    }
     return battle.foe.hpMax - battle.foe.hp;
   };
   assert.equal(damage('attack'), 27);
@@ -173,6 +178,58 @@ test('任务堂每三日轮换，已接委托可继续完成和领赏', () => {
   handleQuest(gs, 'yehua');
   assert.equal(gs.player.yuanshi, stones + 32);
   assert.equal(gs.player.items.yuelanhua, undefined);
+});
+
+test('同回合蛊虫按点击顺序结算，敌方只还手一次', () => {
+  for (const [order, expected] of [
+    [['xiaoguang', 'yueguang'], 24],
+    [['yueguang', 'xiaoguang'], 18]
+  ]) {
+    const gs = createNewGame();
+    const gu = Object.fromEntries(order.map((id) => [id, addGu(gs, id).uid]));
+    const b = startBattle(gs, 'caoren', '测试', () => 0.5);
+    gs.player.zy = 8;
+    const hp = gs.player.hp;
+    for (const id of order) battleAct(gs, 'gu', gu[id]);
+    assert.deepEqual(battleGuPlan(gs).queued.map(({ def }) => def.id), order);
+    assert.equal(b.round, 1);
+    assert.equal(gs.player.zy, 8);
+    assert.equal(gs.player.hp, hp);
+    assert.equal(b.foe.hp, b.foe.hpMax);
+
+    battleAct(gs, 'resolveGu', '', () => 0.5);
+    assert.equal(b.foe.hpMax - b.foe.hp, expected);
+    assert.equal(gs.player.zy, 0);
+    assert.equal(gs.player.hp, hp - 8);
+    assert.equal(b.round, 2);
+    assert.deepEqual(b.guQueue, []);
+    gs.player.zy = 8;
+    battleAct(gs, 'gu', gu.xiaoguang);
+    assert.deepEqual(b.guQueue, []);
+  }
+});
+
+test('同种蛊可分别入列，真元不足时无法追加，击败敌人后剩余蛊虫不扣真元', () => {
+  const gs = createNewGame();
+  const first = addGu(gs, 'yueguang').uid;
+  const second = addGu(gs, 'yueguang').uid;
+  const b = startBattle(gs, 'caoren', '测试', () => 0.5);
+  gs.player.zy = 7;
+  battleAct(gs, 'gu', first);
+  battleAct(gs, 'gu', second);
+  assert.deepEqual(b.guQueue, [first]);
+  battleAct(gs, 'gu', first);
+  assert.deepEqual(b.guQueue, []);
+  gs.player.zy = 8;
+  b.foe.hp = 18;
+  battleAct(gs, 'gu', first);
+  battleAct(gs, 'gu', second);
+  assert.deepEqual(b.guQueue, [first, second]);
+  battleAct(gs, 'resolveGu', '', () => 0.5);
+  assert.equal(b.state, 'win');
+  assert.equal(b.round, 1);
+  assert.equal(gs.player.zy, 4);
+  assert.deepEqual(b.guQueue, []);
 });
 
 test('二转自创杀招与常规战斗回合', () => {

@@ -45,6 +45,7 @@ export function startBattle(gs, enemyId, tag = '遭遇战', rng = Math.random) {
     meShield: 0,
     meBoost: 0,
     cds: {},
+    guQueue: [],
     foe,
     logs: [`【${tag}】${foe.name}挡在前方。`]
   };
@@ -118,20 +119,103 @@ function dealDamageToFoe(b, rawDmg) {
   return { dmg, absorbed };
 }
 
+export function battleGuPlan(gs) {
+  const { battle, player } = gs;
+  const queue = battle.guQueue ?? [];
+  const choices = player.equipped.flatMap((uid) => {
+    const gu = player.gu.find((g) => g.uid === uid);
+    const def = GU_DEFS[gu?.id];
+    if (!def || !['攻击', '控制', '防御', '治疗', '增益', '探知', '隐匿'].includes(def.kind)) return [];
+    return [{ uid, def, cooldown: Math.max(0, (battle.cds[uid] ?? 0) - 1) }];
+  });
+  const queued = queue.map((uid) => choices.find((choice) => choice.uid === uid)).filter(Boolean);
+  const cost = queued.reduce((total, choice) => total + choice.def.cost, 0);
+  return { choices, queued, cost };
+}
+
+function applyBattleGu(gs, b, gu, rng) {
+  const p = gs.player;
+  const foe = b.foe;
+  const { def } = gu;
+  p.zy -= def.cost;
+  if (def.cd) b.cds[gu.uid] = def.cd;
+  if (def.kind === '攻击' || def.kind === '控制') {
+    const boosted = def.id === 'yueguang' && b.meBoost > 0;
+    const mul = boosted ? 1.35 : 1;
+    if (boosted) b.meBoost--;
+    const strengthBonus = def.school === '力道' ? p.powerBonus * 0.4 : 0;
+    const raw = Math.round((def.power + strengthBonus) * mul * (0.92 + rng() * 0.16));
+    const res = dealDamageToFoe(b, raw);
+    b.logs.push(`你催动「${def.name}」，${res.absorbed ? `破盾 ${res.absorbed}，` : ''}造成 ${res.dmg} 点伤害。`);
+    if (def.id === 'xuefu_gu' && res.dmg > 0) {
+      const leach = Math.round(res.dmg * 0.35);
+      p.hp = Math.min(p.hpMax, p.hp + leach);
+      b.logs.push(`血蝠蛊反哺气血 +${leach}。`);
+    }
+    if ((def.kind === '控制' || def.id === 'dianlang_gu') && rng() < 0.35) {
+      foe.stunned = true;
+      b.logs.push(`${foe.name}行动受制，本轮无法出手！`);
+    }
+  } else if (def.kind === '防御') {
+    b.meShield += def.power;
+    b.logs.push(`你催动「${def.name}」，获得 ${def.power} 点护盾。`);
+  } else if (def.kind === '治疗') {
+    p.hp = Math.min(p.hpMax, p.hp + def.power);
+    b.logs.push(`你催动「${def.name}」，气血恢复 +${def.power}。`);
+  } else if (def.kind === '增益') {
+    b.meBoost += 1;
+    b.logs.push(`你催动「${def.name}」，下一记月光蛊的月刃威能大增！`);
+  } else if (def.kind === '探知') {
+    b.scouted = true;
+    b.logs.push(`你催动「${def.name}」，看清了${foe.name}的气血真元与下步动向。`);
+  } else if (def.kind === '隐匿') {
+    b.meShield += Math.round(def.power * 0.6);
+    b.logs.push(`你催动「${def.name}」隐去身形，获得 ${Math.round(def.power * 0.6)} 点护盾。`);
+  }
+}
+
 export function battleAct(gs, action, arg = '', rng = Math.random) {
   const b = gs.battle;
   if (!b || b.state !== 'ongoing') return b;
   const p = gs.player;
   const foe = b.foe;
 
-  for (const k of Object.keys(b.cds)) {
-    if (b.cds[k] > 0) b.cds[k]--;
-  }
-
   if (action === 'lethal') {
+    if (b.lethal) return b;
     b.lethal = true;
     b.logs.push('你眼神转冷，彻底下了死手！此战不再留手，也再无退路。');
     return b;
+  }
+
+  const queue = (b.guQueue ??= []);
+  if (action === 'gu') {
+    const uid = Number(arg);
+    const index = queue.indexOf(uid);
+    if (index !== -1) {
+      queue.splice(index, 1);
+    } else {
+      const { choices, cost } = battleGuPlan(gs);
+      const choice = choices.find((entry) => entry.uid === uid);
+      if (choice && !choice.cooldown && cost + choice.def.cost <= p.zy) queue.push(uid);
+    }
+    return b;
+  }
+
+  const mv = action === 'move' ? p.moves.find((m) => m.id === arg) : null;
+  const plan = action === 'resolveGu' ? battleGuPlan(gs) : null;
+  if (plan) {
+    if (!queue.length || plan.queued.length !== queue.length || plan.cost > p.zy
+      || plan.queued.some((choice) => choice.cooldown)) return b;
+    b.guQueue = [];
+  } else {
+    if (queue.length || !['attack', 'stone', 'flee', 'move'].includes(action)) return b;
+    if (action === 'stone' && p.yuanshi < 2) return b;
+    if (action === 'flee' && b.lethal) return b;
+    if (action === 'move' && (!mv || (b.cds[mv.id] ?? 0) > 1 || p.zy < mv.cost)) return b;
+  }
+
+  for (const k of Object.keys(b.cds)) {
+    if (b.cds[k] > 0) b.cds[k]--;
   }
 
   if (action === 'attack') {
@@ -139,13 +223,11 @@ export function battleAct(gs, action, arg = '', rng = Math.random) {
     const res = dealDamageToFoe(b, raw);
     b.logs.push(`你挥拳直击，${res.absorbed ? `削去护盾 ${res.absorbed}，` : ''}造成 ${res.dmg} 点伤害。`);
   } else if (action === 'stone') {
-    if (p.yuanshi < 2) return b;
     p.yuanshi -= 2;
     const gain = Math.min(p.zyMax - p.zy, Math.max(10, Math.round(p.zyMax * 0.4)));
     p.zy += gain;
     b.logs.push(`你消耗 2 块元石补充真元，真元恢复 +${gain}。`);
   } else if (action === 'flee') {
-    if (b.lethal) return b;
     const chance = 0.55 + (p.speed - foe.speed) * 0.04 + (hasGu(gs, 'yinshi') ? 0.25 : 0);
     if (rng() < Math.max(0.2, Math.min(0.95, chance))) {
       b.state = 'fled';
@@ -153,47 +235,12 @@ export function battleAct(gs, action, arg = '', rng = Math.random) {
       return b;
     }
     b.logs.push('你想脱身退走，却被对方死死缠住！');
-  } else if (action === 'gu') {
-    const def = GU_DEFS[arg];
-    if (!def || !hasGu(gs, arg) || (b.cds[arg] || 0) > 0 || p.zy < def.cost) return b;
-    p.zy -= def.cost;
-    if (def.cd) b.cds[arg] = def.cd;
-    if (def.kind === '攻击' || def.kind === '控制') {
-      const boosted = arg === 'yueguang' && b.meBoost > 0;
-      const mul = boosted ? 1.35 : 1;
-      if (boosted) b.meBoost--;
-      const strengthBonus = def.school === '力道' ? p.powerBonus * 0.4 : 0;
-      const raw = Math.round((def.power + strengthBonus) * mul * (0.92 + rng() * 0.16));
-      const res = dealDamageToFoe(b, raw);
-      b.logs.push(`你催动「${def.name}」，${res.absorbed ? `破盾 ${res.absorbed}，` : ''}造成 ${res.dmg} 点伤害。`);
-      if (arg === 'xuefu_gu' && res.dmg > 0) {
-        const leach = Math.round(res.dmg * 0.35);
-        p.hp = Math.min(p.hpMax, p.hp + leach);
-        b.logs.push(`血蝠蛊反哺气血 +${leach}。`);
-      }
-      if ((def.kind === '控制' || arg === 'dianlang_gu') && rng() < 0.35) {
-        foe.stunned = true;
-        b.logs.push(`${foe.name}行动受制，下轮无法出手！`);
-      }
-    } else if (def.kind === '防御') {
-      b.meShield += def.power;
-      b.logs.push(`你催动「${def.name}」，获得 ${def.power} 点护盾。`);
-    } else if (def.kind === '治疗') {
-      p.hp = Math.min(p.hpMax, p.hp + def.power);
-      b.logs.push(`你催动「${def.name}」，气血恢复 +${def.power}。`);
-    } else if (def.kind === '增益') {
-      b.meBoost += 1;
-      b.logs.push(`你催动「${def.name}」，下一记月光蛊的月刃威能大增！`);
-    } else if (def.kind === '探知') {
-      b.scouted = true;
-      b.logs.push(`你催动「${def.name}」，看清了${foe.name}的气血真元与下步动向。`);
-    } else if (def.kind === '隐匿') {
-      b.meShield += Math.round(def.power * 0.6);
-      b.logs.push(`你催动「${def.name}」隐去身形，获得 ${Math.round(def.power * 0.6)} 点护盾。`);
+  } else if (action === 'resolveGu') {
+    for (const gu of plan.queued) {
+      applyBattleGu(gs, b, gu, rng);
+      if (foe.hp <= 0) break;
     }
   } else if (action === 'move') {
-    const mv = p.moves.find((m) => m.id === arg);
-    if (!mv || (b.cds[mv.id] || 0) > 0 || p.zy < mv.cost) return b;
     p.zy -= mv.cost;
     b.cds[mv.id] = mv.cd;
     if (mv.kind === '防御') {
