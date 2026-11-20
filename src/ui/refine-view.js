@@ -8,7 +8,7 @@ export function renderRefineView(gs) {
     const out = GU_DEFS[r.out];
     return `<div class="card">
       <div class="kv"><b>${esc(out.name)}</b><span class="badge">${out.rank}转 · 基础 ${Math.round(r.rate * 100)}%</span></div>
-      <div class="muted">${esc(recipeIngredientsText(r))} · 费用 ${r.cost} 元石${r.adapted ? ' · 游戏改编' : ''}</div>
+      <div class="muted">${esc(recipeIngredientsText(r))} · 费用 ${r.cost} 元石</div>
       <div class="muted" style="margin-bottom:8px">${esc(guEffectText(out) || out.desc)}</div>
       <button class="primary" ${!chk.ok ? 'disabled' : ''} data-action="startRefine" data-id="${r.id}">
         ${chk.ok ? '开炉控火' : esc(chk.reason)}

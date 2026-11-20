@@ -15,6 +15,7 @@ export function renderBattleView(gs) {
   const equippedIds = [...new Set(p.equipped.map((uid) => p.gu.find((g) => g.uid === uid)?.id).filter(Boolean))];
   const guButtons = equippedIds.map((id) => {
     const def = GU_DEFS[id];
+    if (!def) return '';
     const cd = Math.max(0, (b.cds[id] || 0) - 1);
     const disabled = cd > 0 || p.zy < def.cost;
     return `<button class="sm" title="${esc(guEffectText(def))}" ${disabled ? 'disabled' : ''} data-action="battleAct" data-kind="gu" data-id="${id}">

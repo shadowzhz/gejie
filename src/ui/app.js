@@ -1,7 +1,7 @@
 import { GU_DEFS, ITEMS, REFINE_RECIPES } from '../data/gu.js';
-import { hasPlaceActions, PLACES } from '../data/places.js';
+import { hasPlaceActions, placeShopEntries, PLACES } from '../data/places.js';
 import { formatDateTime } from '../core/calendar.js';
-import { addGu, addItem, addLog, claimBenming, createAptitude, createNewGame, esc, feedGu, handleQuest, loadGame, realmText, recalcStats, refineBenming, saveGame, useItem } from '../core/state.js';
+import { addGu, addItem, addLog, claimBenming, createAptitude, createNewGame, esc, feedGu, handleQuest, loadGame, realmText, recalcStats, refineBenming, saveGame, useHealItem, useWhiteBoarGu } from '../core/state.js';
 import { createKillerMove } from '../core/killer.js';
 import { battleAct, startBattle } from '../core/combat.js';
 import { applyEventChoice, checkStoryTriggers } from '../core/story-engine.js';
@@ -192,7 +192,8 @@ function handlePlaceAction(id) {
       G.flags['clan_gift_r2'] = true;
       p.yuanshi += 40;
       addGu(G, 'qingtong_sheli');
-      addLog(G, '【家族赏赐】族长嘉许你晋入二转，赏元石 40、青铜舍利蛊 1 只！', 'log-gold');
+      addGu(G, 'yupi');
+      addLog(G, '【家族赏赐】族长嘉许你晋入二转，赏元石 40、青铜舍利蛊和玉皮蛊各 1 只！', 'log-gold');
     } else {
       showToast('族中近来暂无新赏格');
       return;
@@ -217,9 +218,12 @@ function handlePlaceAction(id) {
     advanceMinutes(G, 60);
     p.yuanshi += 45;
     addGu(G, 'jiuchong', 100);
+    addGu(G, 'baishi');
+    addGu(G, 'yupi');
     addGu(G, 'chunqiuchan', 100);
     addItem(G, 'qingzhujiu', 5);
-    addLog(G, '【遗洞奇遇】你在石室酒坛中觅得「酒虫」、45 元石，以及一只气息微弱的「春秋蝉（残）」！', 'log-gold');
+    addLog(G, '【遗洞奇遇】你从花酒遗藏中取得酒虫、白豕蛊、玉皮蛊与 45 元石。', 'log-gold');
+    addLog(G, '【遗洞奇遇】你还发现一只气息微弱的「春秋蝉（残）」。', 'log-gold');
   } else if (id === 'escapeMountain') {
     p.escapedMountain = true;
     openModal('win', {});
@@ -292,14 +296,14 @@ function handleAction(el) {
     saveGame(G);
     render();
   } else if (act === 'buyItem') {
-    const place = PLACES[G.location];
-    if (!place?.shop?.includes(id)) return;
+    if (!placeShopEntries(G).includes(id)) return;
     const [kind, itemId] = id.split(':');
     const def = kind === 'gu' ? GU_DEFS[itemId] : ITEMS[itemId];
     if (!def || G.player.yuanshi < def.price) { showToast('元石不足'); return; }
     G.player.yuanshi -= def.price;
     if (kind === 'gu') addGu(G, itemId, 100);
     else addItem(G, itemId, 1);
+    if (itemId === 'jiuchong') G.flags.merchant_jiuchong_bought = true;
     addLog(G, `购入「${def.name}」（-${def.price} 元石）。`);
     saveGame(G);
     render();
@@ -379,6 +383,10 @@ function handleAction(el) {
     else showToast('至多同时出战 6 只蛊');
     saveGame(G);
     render();
+  } else if (act === 'useWhiteBoarGu') {
+    if (!useWhiteBoarGu(G, Number(id))) return;
+    saveGame(G);
+    render();
   } else if (act === 'useSheli') {
     const uid = Number(id);
     const g = G.player.gu.find((x) => x.uid === uid);
@@ -401,9 +409,11 @@ function handleAction(el) {
     saveGame(G);
     render();
   } else if (act === 'useHealItem') {
-    const def = ITEMS[id];
-    if (!def?.heal || !useItem(G, id, 1)) return;
-    G.player.hp = Math.min(G.player.hpMax, G.player.hp + def.heal);
+    const result = useHealItem(G, id);
+    if (!result.ok) {
+      if (result.reason) showToast(result.reason);
+      return;
+    }
     saveGame(G);
     render();
   } else if (act === 'battleAct') {

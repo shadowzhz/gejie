@@ -1,4 +1,4 @@
-import { GU_DEFS } from '../data/gu.js';
+import { GU_DEFS, ITEMS } from '../data/gu.js';
 import { PLACES } from '../data/places.js';
 import { makeTime, yearOf } from './calendar.js';
 
@@ -102,8 +102,8 @@ export function recalcStats(gs) {
   const r = p.rank;
   const x = p.xiao;
   const haiMul = 0.65 + p.hai * 0.08;
-  const passiveHp = (hasGu(gs, 'heishi') ? 20 : 0) + (hasGu(gs, 'baishi') ? 35 : 0) + (hasGu(gs, 'tongpi') ? 25 : 0);
-  const passivePower = (hasGu(gs, 'heishi') ? 6 : 0) + (hasGu(gs, 'baishi') ? 12 : 0);
+  const passiveHp = (hasGu(gs, 'heishi') ? 20 : 0) + (p.whiteBoarStrength ?? 0) * 35 + (hasGu(gs, 'tongpi') ? 25 : 0);
+  const passivePower = (hasGu(gs, 'heishi') ? 6 : 0) + (p.whiteBoarStrength ?? 0) * 12;
   p.hpMax = Math.round((85 + r * 35 + x * 14) * (1 + (r - 1) * 0.18) + passiveHp);
   p.zyMax = Math.round((28 + r * 18 + x * 6) * haiMul);
   p.speed = 6 + r * 3 + x;
@@ -184,6 +184,15 @@ export function addItem(gs, id, n = 1) {
   gs.player.items[id] = (gs.player.items[id] || 0) + n;
 }
 
+export function useWhiteBoarGu(gs, uid) {
+  if (!gs.player.gu.some((gu) => gu.uid === uid && gu.id === 'baishi')) return false;
+  removeGuByUid(gs, uid);
+  gs.player.whiteBoarStrength = (gs.player.whiteBoarStrength ?? 0) + 1;
+  recalcStats(gs);
+  addLog(gs, '【白豕蛊】蛊虫消散，你添了一猪之力。', 'log-good');
+  return true;
+}
+
 export function feedGu(gs, gu, threshold = 100) {
   const food = GU_DEFS[gu?.id]?.food;
   if (!food || gu.satiety >= threshold || !useItem(gs, food, 1)) return false;
@@ -196,6 +205,19 @@ export function useItem(gs, id, n = 1) {
   gs.player.items[id] -= n;
   if (gs.player.items[id] <= 0) delete gs.player.items[id];
   return true;
+}
+
+export function useHealItem(gs, id) {
+  const def = ITEMS[id];
+  if (!def?.heal) return { ok: false };
+  const p = gs.player;
+  if (gs.minutes < (p.healReadyAt?.[id] ?? 0)) {
+    return { ok: false, reason: '上一片生机叶的药力未散，请稍候再用' };
+  }
+  if (!useItem(gs, id, 1)) return { ok: false };
+  p.hp = Math.min(p.hpMax, p.hp + def.heal);
+  if (def.healCooldown) (p.healReadyAt ??= {})[id] = gs.minutes + def.healCooldown;
+  return { ok: true };
 }
 
 export function saveGame(gs, storage = typeof localStorage !== 'undefined' ? localStorage : null) {

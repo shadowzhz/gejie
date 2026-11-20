@@ -373,10 +373,9 @@ const PLACES = {
   gupu: {
     id: 'gupu', name: '蛊铺', region: '古月山寨', x: 58, y: 77,
     links: { shijie: 30 },
-    day: '掌柜将蛊虫分转陈列，蛊方收在柜后的木匣里。',
+    day: '掌柜将蛊虫与蛊方分开陈列。贾家商队次年三月初到寨，停留八日。',
     night: '柜台上点着一盏油灯，掌柜仍在照看蛊虫。',
-    shop: ['gu:yueguang', 'gu:xiaoguang', 'gu:shipi', 'gu:bingzhen', 'gu:shengjiye', 'gu:yupi', 'gu:xuanfeng', 'gu:jiuchong', 'gu:baishi',
-      'gu:zhuci', 'gu:minghuo', 'gu:zhujia', 'gu:luzhu', 'gu:jiuyecao', 'gu:yunmu', 'gu:xuanjia'],
+    shop: ['gu:shipi', 'gu:xuanfeng', 'item:shengjiye'],
     services: ['shop', 'recipes']
   },
   renwutang: {
@@ -442,10 +441,20 @@ const PLACES = {
     services: ['huajiu_explore']
   }
 };
+function placeShopEntries(gs) {
+  const shop = PLACES[gs.location]?.shop ?? [];
+  if (gs.location !== 'gupu') return shop;
+  const entries = [...shop];
+  if (gs.flags.kaike) entries.push('gu:yueguang', 'gu:xiaoguang');
+  if (gs.minutes >= makeTime(2, 3, 1) && gs.minutes < makeTime(2, 3, 9)
+    && !gs.flags.merchant_jiuchong_bought) entries.push('gu:jiuchong');
+  return entries;
+}
 
 
 /* === src/data/gu.js === */
 const ITEMS = {
+  shengjiye: { id: 'shengjiye', name: '生机叶', kind: '一转消耗蛊', price: 22, heal: 24, healCooldown: 60, desc: '取自九叶生机草，疗伤后叶片消散。一小时内再次使用无效。' },
   yuelanhua: { id: 'yuelanhua', name: '月兰花瓣', kind: '口粮', price: 2, desc: '月光蛊、月芒蛊、小光蛊的食料。' },
   shourou: { id: 'shourou', name: '兽肉', kind: '口粮', price: 3, desc: '黑豕蛊、白豕蛊、血蝠蛊、电狼蛊的食料。' },
   fengmi: { id: 'fengmi', name: '蜂王蜜', kind: '口粮', price: 4, desc: '玉皮蛊、白玉蛊、石皮蛊、铜皮蛊的食料。' },
@@ -465,14 +474,13 @@ function guEffectText(def) {
     控制: `基础伤害 ${def.power} · 35% 几率使敌方跳过 1 次出手`,
     防御: `护盾 ${def.power} · 持续至耗尽或战斗结束`,
     治疗: `立即恢复 ${def.power} 气血`,
-    增益: '下一次蛊虫或杀招伤害 +35%',
+    增益: '下一次月光蛊伤害 +35%',
     探知: '查看敌方气血、真元和意图，持续至战斗结束',
     隐匿: `护盾 ${Math.round(def.power * 0.6)} · 持续至耗尽或战斗结束`
   };
   const effect = effects[def.kind];
   if (!effect) return '';
   const extra = {
-    bingzhen: ' · 35% 几率使敌方跳过 1 次出手',
     dianlang_gu: ' · 35% 几率使敌方跳过 1 次出手',
     xuefu_gu: ' · 回复实际伤害的 35%'
   }[def.id] || '';
@@ -480,28 +488,20 @@ function guEffectText(def) {
   return `${effect}${extra} · 真元 ${def.cost} · ${wait ? `间隔 ${wait} 回合` : '可连续催动'}`;
 }
 const GU_DEFS = {
-  zhuci: { id: 'zhuci', name: '竹刺蛊', rank: 1, school: '木道', kind: '攻击', cost: 2, cd: 0, power: 14, food: 'yuelanhua', price: 9, desc: '凝出竹刺，催动时消耗的真元较少。' },
-  minghuo: { id: 'minghuo', name: '明火蛊', rank: 1, school: '炎道', kind: '攻击', cost: 6, cd: 2, power: 26, food: 'fengmi', price: 18, desc: '骤然喷出一团明火，焚灼对手。' },
-  zhujia: { id: 'zhujia', name: '竹甲蛊', rank: 1, school: '木道', kind: '防御', cost: 2, cd: 2, power: 13, food: 'yuelanhua', price: 10, desc: '催生一层轻薄的竹甲抵挡攻击。' },
-  luzhu: { id: 'luzhu', name: '露珠蛊', rank: 1, school: '水道', kind: '治疗', cost: 3, cd: 2, power: 14, food: 'yuelanhua', price: 12, desc: '化出一滴清露，即刻缓和伤势。' },
-  yunmu: { id: 'yunmu', name: '云幕蛊', rank: 3, school: '云道', kind: '防御', cost: 12, cd: 2, power: 56, food: 'fengmi', price: 96, desc: '聚起层层云幕，消解来袭的攻势。' },
-  xuanjia: { id: 'xuanjia', name: '玄甲蛊', rank: 4, school: '金道', kind: '防御', cost: 18, cd: 3, power: 82, food: 'fengmi', price: 180, desc: '真元凝成玄甲，可挡重击。' },
   yueguang: { id: 'yueguang', name: '月光蛊', rank: 1, school: '月道', kind: '攻击', cost: 4, cd: 0, power: 18, food: 'yuelanhua', price: 18, desc: '古月一族传承之蛊，催动后掌心发出弯月光刃斩敌。' },
-  xiaoguang: { id: 'xiaoguang', name: '小光蛊', rank: 1, school: '光道', kind: '增益', cost: 4, cd: 2, power: 12, food: 'yuelanhua', price: 16, desc: '增强下一次攻伐招式威能 +35%，常作月光蛊合炼辅材。' },
+  xiaoguang: { id: 'xiaoguang', name: '小光蛊', rank: 1, school: '光道', kind: '增益', cost: 4, cd: 2, power: 12, food: 'yuelanhua', price: 16, desc: '辅助月光蛊，也可与月光蛊合炼。' },
   yuemang: { id: 'yuemang', name: '月芒蛊', rank: 2, school: '月道', kind: '攻击', cost: 8, cd: 1, power: 34, food: 'yuelanhua', price: 45, desc: '将月光聚成威力更强的月刃。' },
-  yuexuan: { id: 'yuexuan', name: '月旋蛊', rank: 2, school: '月道', kind: '控制', cost: 7, cd: 2, power: 26, food: 'yuelanhua', price: 45, desc: '绿色月刃沿弧线斩出，有几率打乱对手的攻势。' },
+  yuexuan: { id: 'yuexuan', name: '月旋蛊', rank: 2, school: '月道', kind: '攻击', cost: 7, cd: 1, power: 34, food: 'yuelanhua', price: 45, desc: '绿色月刃沿弧线斩出。' },
   yueni: { id: 'yueni', name: '月霓裳', rank: 2, school: '月道', kind: '防御', cost: 6, cd: 2, power: 36, food: 'yuelanhua', price: 45, desc: '引月光覆于周身，织成轻盈的护身衣。' },
   yupi: { id: 'yupi', name: '玉皮蛊', rank: 1, school: '土道', kind: '防御', cost: 4, cd: 2, power: 22, food: 'fengmi', price: 20, desc: '催动后皮肤泛起温润玉光，化作护盾抵挡来袭伤害。' },
   baiyu: { id: 'baiyu', name: '白玉蛊', rank: 2, school: '土道', kind: '防御', cost: 7, cd: 2, power: 44, food: 'fengmi', price: 52, desc: '二转防御蛊，凝出厚实白玉光甲护盾，稳固空窍根基。' },
   shipi: { id: 'shipi', name: '石皮蛊', rank: 1, school: '土道', kind: '防御', cost: 3, cd: 2, power: 18, food: 'fengmi', price: 15, desc: '以石质硬皮覆体抵挡攻击。' },
   tongpi: { id: 'tongpi', name: '铜皮蛊', rank: 2, school: '金道', kind: '防御', cost: 7, cd: 2, power: 40, food: 'fengmi', price: 48, desc: '铜皮铁骨，护盾之外更可令自身气血上限微增。' },
-  shengjiye: { id: 'shengjiye', name: '生机叶', rank: 1, school: '木道', kind: '治疗', cost: 5, cd: 2, power: 24, food: 'yuelanhua', price: 22, desc: '一转疗伤常用蛊，一片翠叶化作温和生机愈合伤势。' },
   jiuyecao: { id: 'jiuyecao', name: '九叶生机草', rank: 2, school: '木道', kind: '治疗', cost: 8, cd: 2, power: 48, food: 'yuelanhua', price: 58, desc: '二转极品疗伤蛊，生机绵长，是保命续航之宝。' },
-  jiuchong: { id: 'jiuchong', name: '酒虫', rank: 1, school: '食道', kind: '奇蛊', cost: 0, cd: 0, power: 10, food: 'qingzhujiu', price: 65, desc: '可提纯空窍真元（日进修为 +25%，并助跨小境界温养）。' },
-  siwei_jiu: { id: 'siwei_jiu', name: '四味酒虫', rank: 2, school: '食道', kind: '奇蛊', cost: 0, cd: 0, power: 22, food: 'lajiu', price: 160, desc: '二转奇蛊，饮四味酒可提纯真元，修炼效率大幅提升（+45%）。' },
+  jiuchong: { id: 'jiuchong', name: '酒虫', rank: 1, school: '食道', kind: '奇蛊', cost: 0, cd: 0, power: 10, food: 'qingzhujiu', price: 65, desc: '能提纯一转蛊师的真元，温养时修为增长 +25%。' },
+  siwei_jiu: { id: 'siwei_jiu', name: '四味酒虫', rank: 2, school: '食道', kind: '奇蛊', cost: 0, cd: 0, power: 22, food: 'lajiu', price: 160, desc: '能提纯二转蛊师的真元，温养时修为增长 +45%。' },
   heishi: { id: 'heishi', name: '黑豕蛊', rank: 1, school: '力道', kind: '被动', cost: 0, cd: 0, power: 14, food: 'shourou', price: 26, desc: '增一猪之力：永久提升拳脚与力道攻伐威能。' },
-  baishi: { id: 'baishi', name: '白豕蛊', rank: 1, school: '力道', kind: '被动', cost: 0, cd: 0, power: 28, food: 'shourou', price: 64, desc: '增一猪之力，强化拳脚与抗击打能力，也可合炼白玉蛊。' },
-  bingzhen: { id: 'bingzhen', name: '冰针蛊', rank: 1, school: '冰雪道', kind: '攻击', cost: 4, cd: 1, power: 20, food: 'yuelanhua', price: 20, desc: '射出刺骨寒针，伤害不俗并有几率冻僵敌手使其跳过一轮行动。' },
+  baishi: { id: 'baishi', name: '白豕蛊', rank: 1, school: '力道', kind: '消耗', cost: 0, cd: 0, power: 28, food: 'shourou', price: 64, desc: '消耗后增加一猪之力，也可保留用来合炼白玉蛊。' },
   xuefu_gu: { id: 'xuefu_gu', name: '血蝠蛊', rank: 2, school: '血道', kind: '攻击', cost: 8, cd: 2, power: 32, food: 'shourou', price: 55, desc: '吸食敌手精血，造成伤害的同时将部分血气反哺己身。' },
   dianlang_gu: { id: 'dianlang_gu', name: '电狼蛊', rank: 2, school: '雷道', kind: '攻击', cost: 9, cd: 2, power: 38, food: 'shourou', price: 62, desc: '引动蓝白电弧扑击敌手，疾速暴烈，有概率麻痹对手。' },
   nianxi: { id: 'nianxi', name: '念息蛊', rank: 1, school: '智道', kind: '探知', cost: 3, cd: 2, power: 15, food: 'yuanshi_zha', price: 24, desc: '战中催动可探明敌手确切气血、真元与下回合真意。' },
@@ -516,8 +516,6 @@ const REFINE_RECIPES = [
   { id: 'r_yuexuan', price: 12, out: 'yuexuan', gu: { yueguang: 1, xuanfeng: 1 }, materials: {}, rate: 0.65, cost: 25 },
   { id: 'r_yueni', price: 12, out: 'yueni', gu: { yueguang: 1, yupi: 1 }, materials: {}, rate: 0.65, cost: 25 },
   { id: 'r_baiyu', price: 12, out: 'baiyu', gu: { yupi: 1, baishi: 1 }, materials: { yezhuya: 1 }, rate: 0.65, cost: 25 },
-  // 合集记载生机叶取自九叶生机草，这条反向合炼是青茅山篇的玩法改编。
-  { id: 'r_jiuye', price: 15, out: 'jiuyecao', gu: { shengjiye: 2 }, materials: { yuelanhua: 1 }, rate: 0.62, cost: 30, adapted: true },
   { id: 'r_siwei', price: 20, out: 'siwei_jiu', gu: { jiuchong: 2 }, materials: { suanjiu: 1, tianjiu: 1, kujiu: 1, lajiu: 1 }, rate: 0.58, cost: 45 }
 ];
 function recipeIngredientsText(recipe) {
@@ -666,6 +664,15 @@ const STORY_EVENTS = [
     text: '天刚蒙蒙亮，学堂外便传开了消息：昨夜半夜，古月方源敲开了家老的门，抢先领走了头名赏的二十块元石。\n谁也没想到，丙等资质的他竟比甲等的方正还快一步。',
     choices: [
       { text: '专心眼下修行', effects: ['unflag:toumin_race', 'goal:前往「演武场」练手，尽快攒够实力出寨历练'] }
+    ]
+  },
+  {
+    id: 'jiuyecao_inheritance',
+    title: '家产交割',
+    cond: 'after:1-9-1-0',
+    text: '族中执事送来家产册与一只木匣。匣中草叶青翠，正是遗产中的九叶生机草。',
+    choices: [
+      { text: '收下九叶生机草', effects: ['gu:jiuyecao'] }
     ]
   },
   {
@@ -845,8 +852,8 @@ function recalcStats(gs) {
   const r = p.rank;
   const x = p.xiao;
   const haiMul = 0.65 + p.hai * 0.08;
-  const passiveHp = (hasGu(gs, 'heishi') ? 20 : 0) + (hasGu(gs, 'baishi') ? 35 : 0) + (hasGu(gs, 'tongpi') ? 25 : 0);
-  const passivePower = (hasGu(gs, 'heishi') ? 6 : 0) + (hasGu(gs, 'baishi') ? 12 : 0);
+  const passiveHp = (hasGu(gs, 'heishi') ? 20 : 0) + (p.whiteBoarStrength ?? 0) * 35 + (hasGu(gs, 'tongpi') ? 25 : 0);
+  const passivePower = (hasGu(gs, 'heishi') ? 6 : 0) + (p.whiteBoarStrength ?? 0) * 12;
   p.hpMax = Math.round((85 + r * 35 + x * 14) * (1 + (r - 1) * 0.18) + passiveHp);
   p.zyMax = Math.round((28 + r * 18 + x * 6) * haiMul);
   p.speed = 6 + r * 3 + x;
@@ -916,6 +923,14 @@ function addItem(gs, id, n = 1) {
   if (!id || n <= 0) return;
   gs.player.items[id] = (gs.player.items[id] || 0) + n;
 }
+function useWhiteBoarGu(gs, uid) {
+  if (!gs.player.gu.some((gu) => gu.uid === uid && gu.id === 'baishi')) return false;
+  removeGuByUid(gs, uid);
+  gs.player.whiteBoarStrength = (gs.player.whiteBoarStrength ?? 0) + 1;
+  recalcStats(gs);
+  addLog(gs, '【白豕蛊】蛊虫消散，你添了一猪之力。', 'log-good');
+  return true;
+}
 function feedGu(gs, gu, threshold = 100) {
   const food = GU_DEFS[gu?.id]?.food;
   if (!food || gu.satiety >= threshold || !useItem(gs, food, 1)) return false;
@@ -927,6 +942,18 @@ function useItem(gs, id, n = 1) {
   gs.player.items[id] -= n;
   if (gs.player.items[id] <= 0) delete gs.player.items[id];
   return true;
+}
+function useHealItem(gs, id) {
+  const def = ITEMS[id];
+  if (!def?.heal) return { ok: false };
+  const p = gs.player;
+  if (gs.minutes < (p.healReadyAt?.[id] ?? 0)) {
+    return { ok: false, reason: '上一片生机叶的药力未散，请稍候再用' };
+  }
+  if (!useItem(gs, id, 1)) return { ok: false };
+  p.hp = Math.min(p.hpMax, p.hp + def.heal);
+  if (def.healCooldown) (p.healReadyAt ??= {})[id] = gs.minutes + def.healCooldown;
+  return { ok: true };
 }
 function saveGame(gs, storage = typeof localStorage !== 'undefined' ? localStorage : null) {
   if (!storage || !gs) return false;
@@ -976,7 +1003,7 @@ function buildKillerMove(coreId, auxIds = [], customName = '') {
     if (ag.kind === '攻击') power += ag.power * 0.65;
     else if (ag.kind === '防御') bonusShield += Math.round(ag.power * 0.75);
     else if (ag.kind === '治疗') bonusHeal += Math.round(ag.power * 0.75);
-    else if (ag.kind === '增益') boostMul += 0.22;
+    else if (aid === 'xiaoguang' && coreId === 'yueguang') boostMul += 0.22;
     else if (ag.kind === '控制') stunChance += 0.28;
   }
 
@@ -1169,9 +1196,10 @@ function battleAct(gs, action, arg = '', rng = Math.random) {
     if (!def || !hasGu(gs, arg) || (b.cds[arg] || 0) > 0 || p.zy < def.cost) return b;
     p.zy -= def.cost;
     if (def.cd) b.cds[arg] = def.cd;
-    const mul = 1 + (b.meBoost > 0 ? 0.35 : 0);
     if (def.kind === '攻击' || def.kind === '控制') {
-      if (b.meBoost > 0) b.meBoost--;
+      const boosted = arg === 'yueguang' && b.meBoost > 0;
+      const mul = boosted ? 1.35 : 1;
+      if (boosted) b.meBoost--;
       const strengthBonus = def.school === '力道' ? p.powerBonus * 0.4 : 0;
       const raw = Math.round((def.power + strengthBonus) * mul * (0.92 + rng() * 0.16));
       const res = dealDamageToFoe(b, raw);
@@ -1181,7 +1209,7 @@ function battleAct(gs, action, arg = '', rng = Math.random) {
         p.hp = Math.min(p.hpMax, p.hp + leach);
         b.logs.push(`血蝠蛊反哺气血 +${leach}。`);
       }
-      if ((def.kind === '控制' || arg === 'bingzhen' || arg === 'dianlang_gu') && rng() < 0.35) {
+      if ((def.kind === '控制' || arg === 'dianlang_gu') && rng() < 0.35) {
         foe.stunned = true;
         b.logs.push(`${foe.name}行动受制，下轮无法出手！`);
       }
@@ -1193,7 +1221,7 @@ function battleAct(gs, action, arg = '', rng = Math.random) {
       b.logs.push(`你催动「${def.name}」，气血恢复 +${def.power}。`);
     } else if (def.kind === '增益') {
       b.meBoost += 1;
-      b.logs.push(`你催动「${def.name}」，下一记攻伐威能大增！`);
+      b.logs.push(`你催动「${def.name}」，下一记月光蛊的月刃威能大增！`);
     } else if (def.kind === '探知') {
       b.scouted = true;
       b.logs.push(`你催动「${def.name}」，看清了${foe.name}的气血真元与下步动向。`);
@@ -1213,10 +1241,8 @@ function battleAct(gs, action, arg = '', rng = Math.random) {
       p.hp = Math.min(p.hpMax, p.hp + mv.power);
       b.logs.push(`你催动杀招「${mv.name}」，生机涌动，气血 +${mv.power}！`);
     } else {
-      const mul = 1 + (b.meBoost > 0 ? 0.35 : 0);
-      if (b.meBoost > 0) b.meBoost--;
       const strengthBonus = GU_DEFS[mv.coreId]?.school === '力道' ? p.powerBonus * 0.5 : 0;
-      const raw = Math.round((mv.power + strengthBonus) * mul * (0.94 + rng() * 0.14));
+      const raw = Math.round((mv.power + strengthBonus) * (0.94 + rng() * 0.14));
       const res = dealDamageToFoe(b, raw);
       b.logs.push(`你催动杀招「${mv.name}」，${res.absorbed ? `破盾 ${res.absorbed}，` : ''}重创 ${foe.name} ${res.dmg} 点！`);
       if (mv.bonusShield) { b.meShield += mv.bonusShield; b.logs.push(`辅蛊护体，附加护盾 +${mv.bonusShield}。`); }
@@ -1257,6 +1283,7 @@ function battleAct(gs, action, arg = '', rng = Math.random) {
 
 
 /* === src/core/story-engine.js === */
+
 
 
 
@@ -1321,6 +1348,9 @@ function applyEventChoice(gs, eventId, choiceIdx) {
       else if (score >= 60) { grade = '乙等'; reward = 25; }
       gs.player.yuanshi += reward;
       addLog(gs, `【年末大考】评定为${grade}，获族中赏赐元石 +${reward}。`, 'log-gold');
+    } else if (eff.startsWith('gu:')) {
+      const gu = addGu(gs, eff.slice(3));
+      if (gu) addLog(gs, `【${ev.title}】获得「${GU_DEFS[gu.id].name}」。`, 'log-gold');
     } else if (eff.startsWith('battle:')) {
       startBattle(gs, eff.slice(7), ev.title);
     }
@@ -1377,7 +1407,9 @@ function advanceMinutes(gs, minutes, rng = Math.random) {
 
   // 轻挂机修为缓涨（竹楼或正常时辰自然温养）
   if (p.xiao < 3) {
-    const wineMul = hasGu(gs, 'siwei_jiu') ? 1.45 : (hasGu(gs, 'jiuchong') ? 1.25 : 1.0);
+    let wineMul = 1;
+    if (p.rank === 1 && hasGu(gs, 'jiuchong')) wineMul = 1.25;
+    if (p.rank === 2 && hasGu(gs, 'siwei_jiu')) wineMul = 1.45;
     const xpGain = kes * (0.22 + p.hai * 0.04) * wineMul;
     p.xp = Number((p.xp + xpGain).toFixed(2));
   }
@@ -1827,6 +1859,7 @@ function renderBattleView(gs) {
   const equippedIds = [...new Set(p.equipped.map((uid) => p.gu.find((g) => g.uid === uid)?.id).filter(Boolean))];
   const guButtons = equippedIds.map((id) => {
     const def = GU_DEFS[id];
+    if (!def) return '';
     const cd = Math.max(0, (b.cds[id] || 0) - 1);
     const disabled = cd > 0 || p.zy < def.cost;
     return `<button class="sm" title="${esc(guEffectText(def))}" ${disabled ? 'disabled' : ''} data-action="battleAct" data-kind="gu" data-id="${id}">
@@ -1975,13 +2008,14 @@ function renderPlaceView(gs) {
   actions.push('<button class="ghost" data-action="placeAct" data-id="wait">静候 · 1 时辰</button>');
 
   let shopHtml = '';
-  if (place.shop && place.shop.length) {
-    const rows = place.shop.map((entry) => {
+  const shop = placeShopEntries(gs);
+  if (shop.length) {
+    const rows = shop.map((entry) => {
       const [kind, id] = entry.split(':');
       const def = kind === 'gu' ? GU_DEFS[id] : ITEMS[id];
       if (!def) return '';
       return `<div class="kv">
-        <span><b>${esc(def.name)}</b> ${kind === 'gu' ? `<span class="badge">${def.rank}转</span>` : ''} <span class="muted">${esc(def.desc)}${kind === "gu" && guEffectText(def) ? `<br>${esc(guEffectText(def))}` : ''}</span></span>
+        <span><b>${esc(def.name)}</b> ${kind === 'gu' ? `<span class="badge">${def.rank}转</span>` : ''} ${id === 'jiuchong' ? '<span class="badge">贾家商队 · 限一只</span>' : ''} <span class="muted">${esc(def.desc)}${kind === "gu" && guEffectText(def) ? `<br>${esc(guEffectText(def))}` : ''}</span></span>
         <button class="sm" ${gs.player.yuanshi < def.price ? 'disabled' : ''} data-action="buyItem" data-id="${esc(entry)}">买 · ${def.price}元石</button>
       </div>`;
     }).join('');
@@ -2007,7 +2041,7 @@ function renderPlaceView(gs) {
     ${place.services.includes('recipes') ? `<div class="card"><h3>蛊方</h3>${REFINE_RECIPES.map((r) => {
       const owned = gs.player.recipes?.includes(r.id);
       const out = GU_DEFS[r.out];
-      return `<div class="kv"><span>${esc(out.name)}蛊方 · ${out.rank}转<br><small class="muted">${esc(recipeIngredientsText(r))}${r.adapted ? ' · 游戏改编' : ''}</small></span>
+      return `<div class="kv"><span>${esc(out.name)}蛊方 · ${out.rank}转<br><small class="muted">${esc(recipeIngredientsText(r))}</small></span>
         <button class="sm" ${owned || gs.player.yuanshi < r.price ? 'disabled' : ''} data-action="buyRecipe" data-id="${r.id}">${owned ? '已习得' : `买 · ${r.price} 元石`}</button></div>`;
     }).join('')}</div>` : ''}`;
 }
@@ -2043,6 +2077,7 @@ function renderApertureView(gs) {
         ${def.food ? `<button class="sm" ${foodCount <= 0 || g.satiety >= 100 ? 'disabled' : ''} data-action="feedGu" data-id="${g.uid}">喂食(${foodCount})</button>` : ''}
         ${['攻击', '防御', '治疗', '增益', '控制', '探知', '隐匿'].includes(def.kind) ? `<button class="sm ${eq ? 'primary' : ''}" data-action="toggleEquip" data-id="${g.uid}">${eq ? '已出战' : '设出战'}</button>` : ''}
         ${isSheli ? `<button class="sm gold" data-action="useSheli" data-id="${g.uid}">炼化破境</button>` : ''}
+        ${g.id === 'baishi' ? `<button class="sm gold" data-action="useWhiteBoarGu" data-id="${g.uid}">消耗蛊虫 · 增一猪之力</button>` : ''}
       </div>
     </div>`;
   }).join('');
@@ -2089,7 +2124,7 @@ function renderRefineView(gs) {
     const out = GU_DEFS[r.out];
     return `<div class="card">
       <div class="kv"><b>${esc(out.name)}</b><span class="badge">${out.rank}转 · 基础 ${Math.round(r.rate * 100)}%</span></div>
-      <div class="muted">${esc(recipeIngredientsText(r))} · 费用 ${r.cost} 元石${r.adapted ? ' · 游戏改编' : ''}</div>
+      <div class="muted">${esc(recipeIngredientsText(r))} · 费用 ${r.cost} 元石</div>
       <div class="muted" style="margin-bottom:8px">${esc(guEffectText(out) || out.desc)}</div>
       <button class="primary" ${!chk.ok ? 'disabled' : ''} data-action="startRefine" data-id="${r.id}">
         ${chk.ok ? '开炉控火' : esc(chk.reason)}
@@ -2342,7 +2377,8 @@ function handlePlaceAction(id) {
       G.flags['clan_gift_r2'] = true;
       p.yuanshi += 40;
       addGu(G, 'qingtong_sheli');
-      addLog(G, '【家族赏赐】族长嘉许你晋入二转，赏元石 40、青铜舍利蛊 1 只！', 'log-gold');
+      addGu(G, 'yupi');
+      addLog(G, '【家族赏赐】族长嘉许你晋入二转，赏元石 40、青铜舍利蛊和玉皮蛊各 1 只！', 'log-gold');
     } else {
       showToast('族中近来暂无新赏格');
       return;
@@ -2367,9 +2403,12 @@ function handlePlaceAction(id) {
     advanceMinutes(G, 60);
     p.yuanshi += 45;
     addGu(G, 'jiuchong', 100);
+    addGu(G, 'baishi');
+    addGu(G, 'yupi');
     addGu(G, 'chunqiuchan', 100);
     addItem(G, 'qingzhujiu', 5);
-    addLog(G, '【遗洞奇遇】你在石室酒坛中觅得「酒虫」、45 元石，以及一只气息微弱的「春秋蝉（残）」！', 'log-gold');
+    addLog(G, '【遗洞奇遇】你从花酒遗藏中取得酒虫、白豕蛊、玉皮蛊与 45 元石。', 'log-gold');
+    addLog(G, '【遗洞奇遇】你还发现一只气息微弱的「春秋蝉（残）」。', 'log-gold');
   } else if (id === 'escapeMountain') {
     p.escapedMountain = true;
     openModal('win', {});
@@ -2442,14 +2481,14 @@ function handleAction(el) {
     saveGame(G);
     render();
   } else if (act === 'buyItem') {
-    const place = PLACES[G.location];
-    if (!place?.shop?.includes(id)) return;
+    if (!placeShopEntries(G).includes(id)) return;
     const [kind, itemId] = id.split(':');
     const def = kind === 'gu' ? GU_DEFS[itemId] : ITEMS[itemId];
     if (!def || G.player.yuanshi < def.price) { showToast('元石不足'); return; }
     G.player.yuanshi -= def.price;
     if (kind === 'gu') addGu(G, itemId, 100);
     else addItem(G, itemId, 1);
+    if (itemId === 'jiuchong') G.flags.merchant_jiuchong_bought = true;
     addLog(G, `购入「${def.name}」（-${def.price} 元石）。`);
     saveGame(G);
     render();
@@ -2529,6 +2568,10 @@ function handleAction(el) {
     else showToast('至多同时出战 6 只蛊');
     saveGame(G);
     render();
+  } else if (act === 'useWhiteBoarGu') {
+    if (!useWhiteBoarGu(G, Number(id))) return;
+    saveGame(G);
+    render();
   } else if (act === 'useSheli') {
     const uid = Number(id);
     const g = G.player.gu.find((x) => x.uid === uid);
@@ -2551,9 +2594,11 @@ function handleAction(el) {
     saveGame(G);
     render();
   } else if (act === 'useHealItem') {
-    const def = ITEMS[id];
-    if (!def?.heal || !useItem(G, id, 1)) return;
-    G.player.hp = Math.min(G.player.hpMax, G.player.hp + def.heal);
+    const result = useHealItem(G, id);
+    if (!result.ok) {
+      if (result.reason) showToast(result.reason);
+      return;
+    }
     saveGame(G);
     render();
   } else if (act === 'battleAct') {

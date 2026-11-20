@@ -24,7 +24,7 @@ export function buildKillerMove(coreId, auxIds = [], customName = '') {
     if (ag.kind === '攻击') power += ag.power * 0.65;
     else if (ag.kind === '防御') bonusShield += Math.round(ag.power * 0.75);
     else if (ag.kind === '治疗') bonusHeal += Math.round(ag.power * 0.75);
-    else if (ag.kind === '增益') boostMul += 0.22;
+    else if (aid === 'xiaoguang' && coreId === 'yueguang') boostMul += 0.22;
     else if (ag.kind === '控制') stunChance += 0.28;
   }
 

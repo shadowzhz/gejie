@@ -1,5 +1,5 @@
 import { GU_DEFS, ITEMS, REFINE_RECIPES, guEffectText, recipeIngredientsText } from '../data/gu.js';
-import { PLACES } from '../data/places.js';
+import { PLACES, placeShopEntries } from '../data/places.js';
 import { formatDateTime, isNight } from '../core/calendar.js';
 import { esc, QUESTS } from '../core/state.js';
 import { evalCond } from '../core/story-engine.js';
@@ -51,13 +51,14 @@ export function renderPlaceView(gs) {
   actions.push('<button class="ghost" data-action="placeAct" data-id="wait">静候 · 1 时辰</button>');
 
   let shopHtml = '';
-  if (place.shop && place.shop.length) {
-    const rows = place.shop.map((entry) => {
+  const shop = placeShopEntries(gs);
+  if (shop.length) {
+    const rows = shop.map((entry) => {
       const [kind, id] = entry.split(':');
       const def = kind === 'gu' ? GU_DEFS[id] : ITEMS[id];
       if (!def) return '';
       return `<div class="kv">
-        <span><b>${esc(def.name)}</b> ${kind === 'gu' ? `<span class="badge">${def.rank}转</span>` : ''} <span class="muted">${esc(def.desc)}${kind === "gu" && guEffectText(def) ? `<br>${esc(guEffectText(def))}` : ''}</span></span>
+        <span><b>${esc(def.name)}</b> ${kind === 'gu' ? `<span class="badge">${def.rank}转</span>` : ''} ${id === 'jiuchong' ? '<span class="badge">贾家商队 · 限一只</span>' : ''} <span class="muted">${esc(def.desc)}${kind === "gu" && guEffectText(def) ? `<br>${esc(guEffectText(def))}` : ''}</span></span>
         <button class="sm" ${gs.player.yuanshi < def.price ? 'disabled' : ''} data-action="buyItem" data-id="${esc(entry)}">买 · ${def.price}元石</button>
       </div>`;
     }).join('');
@@ -83,7 +84,7 @@ export function renderPlaceView(gs) {
     ${place.services.includes('recipes') ? `<div class="card"><h3>蛊方</h3>${REFINE_RECIPES.map((r) => {
       const owned = gs.player.recipes?.includes(r.id);
       const out = GU_DEFS[r.out];
-      return `<div class="kv"><span>${esc(out.name)}蛊方 · ${out.rank}转<br><small class="muted">${esc(recipeIngredientsText(r))}${r.adapted ? ' · 游戏改编' : ''}</small></span>
+      return `<div class="kv"><span>${esc(out.name)}蛊方 · ${out.rank}转<br><small class="muted">${esc(recipeIngredientsText(r))}</small></span>
         <button class="sm" ${owned || gs.player.yuanshi < r.price ? 'disabled' : ''} data-action="buyRecipe" data-id="${r.id}">${owned ? '已习得' : `买 · ${r.price} 元石`}</button></div>`;
     }).join('')}</div>` : ''}`;
 }

@@ -28,6 +28,15 @@ export const STORY_EVENTS = [
     ]
   },
   {
+    id: 'jiuyecao_inheritance',
+    title: '家产交割',
+    cond: 'after:1-9-1-0',
+    text: '族中执事送来家产册与一只木匣。匣中草叶青翠，正是遗产中的九叶生机草。',
+    choices: [
+      { text: '收下九叶生机草', effects: ['gu:jiuyecao'] }
+    ]
+  },
+  {
     id: 'nianmo_exam',
     title: '年末大考',
     cond: 'after:1-12-15-0&!flag:nianmo_done',

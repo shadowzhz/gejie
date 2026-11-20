@@ -54,7 +54,9 @@ export function advanceMinutes(gs, minutes, rng = Math.random) {
 
   // 轻挂机修为缓涨（竹楼或正常时辰自然温养）
   if (p.xiao < 3) {
-    const wineMul = hasGu(gs, 'siwei_jiu') ? 1.45 : (hasGu(gs, 'jiuchong') ? 1.25 : 1.0);
+    let wineMul = 1;
+    if (p.rank === 1 && hasGu(gs, 'jiuchong')) wineMul = 1.25;
+    if (p.rank === 2 && hasGu(gs, 'siwei_jiu')) wineMul = 1.45;
     const xpGain = kes * (0.22 + p.hai * 0.04) * wineMul;
     p.xp = Number((p.xp + xpGain).toFixed(2));
   }

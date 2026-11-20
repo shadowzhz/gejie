@@ -1,3 +1,5 @@
+import { makeTime } from '../core/calendar.js';
+
 export function hasPlaceActions(gs) {
   return !!(PLACES[gs.location]?.services.length
     || (gs.location === 'zhaimen' && gs.flags.qingmao_finished));
@@ -59,10 +61,9 @@ export const PLACES = {
   gupu: {
     id: 'gupu', name: '蛊铺', region: '古月山寨', x: 58, y: 77,
     links: { shijie: 30 },
-    day: '掌柜将蛊虫分转陈列，蛊方收在柜后的木匣里。',
+    day: '掌柜将蛊虫与蛊方分开陈列。贾家商队次年三月初到寨，停留八日。',
     night: '柜台上点着一盏油灯，掌柜仍在照看蛊虫。',
-    shop: ['gu:yueguang', 'gu:xiaoguang', 'gu:shipi', 'gu:bingzhen', 'gu:shengjiye', 'gu:yupi', 'gu:xuanfeng', 'gu:jiuchong', 'gu:baishi',
-      'gu:zhuci', 'gu:minghuo', 'gu:zhujia', 'gu:luzhu', 'gu:jiuyecao', 'gu:yunmu', 'gu:xuanjia'],
+    shop: ['gu:shipi', 'gu:xuanfeng', 'item:shengjiye'],
     services: ['shop', 'recipes']
   },
   renwutang: {
@@ -128,3 +129,12 @@ export const PLACES = {
     services: ['huajiu_explore']
   }
 };
+export function placeShopEntries(gs) {
+  const shop = PLACES[gs.location]?.shop ?? [];
+  if (gs.location !== 'gupu') return shop;
+  const entries = [...shop];
+  if (gs.flags.kaike) entries.push('gu:yueguang', 'gu:xiaoguang');
+  if (gs.minutes >= makeTime(2, 3, 1) && gs.minutes < makeTime(2, 3, 9)
+    && !gs.flags.merchant_jiuchong_bought) entries.push('gu:jiuchong');
+  return entries;
+}

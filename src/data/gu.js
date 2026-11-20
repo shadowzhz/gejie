@@ -1,4 +1,5 @@
 export const ITEMS = {
+  shengjiye: { id: 'shengjiye', name: '生机叶', kind: '一转消耗蛊', price: 22, heal: 24, healCooldown: 60, desc: '取自九叶生机草，疗伤后叶片消散。一小时内再次使用无效。' },
   yuelanhua: { id: 'yuelanhua', name: '月兰花瓣', kind: '口粮', price: 2, desc: '月光蛊、月芒蛊、小光蛊的食料。' },
   shourou: { id: 'shourou', name: '兽肉', kind: '口粮', price: 3, desc: '黑豕蛊、白豕蛊、血蝠蛊、电狼蛊的食料。' },
   fengmi: { id: 'fengmi', name: '蜂王蜜', kind: '口粮', price: 4, desc: '玉皮蛊、白玉蛊、石皮蛊、铜皮蛊的食料。' },
@@ -19,14 +20,13 @@ export function guEffectText(def) {
     控制: `基础伤害 ${def.power} · 35% 几率使敌方跳过 1 次出手`,
     防御: `护盾 ${def.power} · 持续至耗尽或战斗结束`,
     治疗: `立即恢复 ${def.power} 气血`,
-    增益: '下一次蛊虫或杀招伤害 +35%',
+    增益: '下一次月光蛊伤害 +35%',
     探知: '查看敌方气血、真元和意图，持续至战斗结束',
     隐匿: `护盾 ${Math.round(def.power * 0.6)} · 持续至耗尽或战斗结束`
   };
   const effect = effects[def.kind];
   if (!effect) return '';
   const extra = {
-    bingzhen: ' · 35% 几率使敌方跳过 1 次出手',
     dianlang_gu: ' · 35% 几率使敌方跳过 1 次出手',
     xuefu_gu: ' · 回复实际伤害的 35%'
   }[def.id] || '';
@@ -35,28 +35,20 @@ export function guEffectText(def) {
 }
 
 export const GU_DEFS = {
-  zhuci: { id: 'zhuci', name: '竹刺蛊', rank: 1, school: '木道', kind: '攻击', cost: 2, cd: 0, power: 14, food: 'yuelanhua', price: 9, desc: '凝出竹刺，催动时消耗的真元较少。' },
-  minghuo: { id: 'minghuo', name: '明火蛊', rank: 1, school: '炎道', kind: '攻击', cost: 6, cd: 2, power: 26, food: 'fengmi', price: 18, desc: '骤然喷出一团明火，焚灼对手。' },
-  zhujia: { id: 'zhujia', name: '竹甲蛊', rank: 1, school: '木道', kind: '防御', cost: 2, cd: 2, power: 13, food: 'yuelanhua', price: 10, desc: '催生一层轻薄的竹甲抵挡攻击。' },
-  luzhu: { id: 'luzhu', name: '露珠蛊', rank: 1, school: '水道', kind: '治疗', cost: 3, cd: 2, power: 14, food: 'yuelanhua', price: 12, desc: '化出一滴清露，即刻缓和伤势。' },
-  yunmu: { id: 'yunmu', name: '云幕蛊', rank: 3, school: '云道', kind: '防御', cost: 12, cd: 2, power: 56, food: 'fengmi', price: 96, desc: '聚起层层云幕，消解来袭的攻势。' },
-  xuanjia: { id: 'xuanjia', name: '玄甲蛊', rank: 4, school: '金道', kind: '防御', cost: 18, cd: 3, power: 82, food: 'fengmi', price: 180, desc: '真元凝成玄甲，可挡重击。' },
   yueguang: { id: 'yueguang', name: '月光蛊', rank: 1, school: '月道', kind: '攻击', cost: 4, cd: 0, power: 18, food: 'yuelanhua', price: 18, desc: '古月一族传承之蛊，催动后掌心发出弯月光刃斩敌。' },
-  xiaoguang: { id: 'xiaoguang', name: '小光蛊', rank: 1, school: '光道', kind: '增益', cost: 4, cd: 2, power: 12, food: 'yuelanhua', price: 16, desc: '增强下一次攻伐招式威能 +35%，常作月光蛊合炼辅材。' },
+  xiaoguang: { id: 'xiaoguang', name: '小光蛊', rank: 1, school: '光道', kind: '增益', cost: 4, cd: 2, power: 12, food: 'yuelanhua', price: 16, desc: '辅助月光蛊，也可与月光蛊合炼。' },
   yuemang: { id: 'yuemang', name: '月芒蛊', rank: 2, school: '月道', kind: '攻击', cost: 8, cd: 1, power: 34, food: 'yuelanhua', price: 45, desc: '将月光聚成威力更强的月刃。' },
-  yuexuan: { id: 'yuexuan', name: '月旋蛊', rank: 2, school: '月道', kind: '控制', cost: 7, cd: 2, power: 26, food: 'yuelanhua', price: 45, desc: '绿色月刃沿弧线斩出，有几率打乱对手的攻势。' },
+  yuexuan: { id: 'yuexuan', name: '月旋蛊', rank: 2, school: '月道', kind: '攻击', cost: 7, cd: 1, power: 34, food: 'yuelanhua', price: 45, desc: '绿色月刃沿弧线斩出。' },
   yueni: { id: 'yueni', name: '月霓裳', rank: 2, school: '月道', kind: '防御', cost: 6, cd: 2, power: 36, food: 'yuelanhua', price: 45, desc: '引月光覆于周身，织成轻盈的护身衣。' },
   yupi: { id: 'yupi', name: '玉皮蛊', rank: 1, school: '土道', kind: '防御', cost: 4, cd: 2, power: 22, food: 'fengmi', price: 20, desc: '催动后皮肤泛起温润玉光，化作护盾抵挡来袭伤害。' },
   baiyu: { id: 'baiyu', name: '白玉蛊', rank: 2, school: '土道', kind: '防御', cost: 7, cd: 2, power: 44, food: 'fengmi', price: 52, desc: '二转防御蛊，凝出厚实白玉光甲护盾，稳固空窍根基。' },
   shipi: { id: 'shipi', name: '石皮蛊', rank: 1, school: '土道', kind: '防御', cost: 3, cd: 2, power: 18, food: 'fengmi', price: 15, desc: '以石质硬皮覆体抵挡攻击。' },
   tongpi: { id: 'tongpi', name: '铜皮蛊', rank: 2, school: '金道', kind: '防御', cost: 7, cd: 2, power: 40, food: 'fengmi', price: 48, desc: '铜皮铁骨，护盾之外更可令自身气血上限微增。' },
-  shengjiye: { id: 'shengjiye', name: '生机叶', rank: 1, school: '木道', kind: '治疗', cost: 5, cd: 2, power: 24, food: 'yuelanhua', price: 22, desc: '一转疗伤常用蛊，一片翠叶化作温和生机愈合伤势。' },
   jiuyecao: { id: 'jiuyecao', name: '九叶生机草', rank: 2, school: '木道', kind: '治疗', cost: 8, cd: 2, power: 48, food: 'yuelanhua', price: 58, desc: '二转极品疗伤蛊，生机绵长，是保命续航之宝。' },
-  jiuchong: { id: 'jiuchong', name: '酒虫', rank: 1, school: '食道', kind: '奇蛊', cost: 0, cd: 0, power: 10, food: 'qingzhujiu', price: 65, desc: '可提纯空窍真元（日进修为 +25%，并助跨小境界温养）。' },
-  siwei_jiu: { id: 'siwei_jiu', name: '四味酒虫', rank: 2, school: '食道', kind: '奇蛊', cost: 0, cd: 0, power: 22, food: 'lajiu', price: 160, desc: '二转奇蛊，饮四味酒可提纯真元，修炼效率大幅提升（+45%）。' },
+  jiuchong: { id: 'jiuchong', name: '酒虫', rank: 1, school: '食道', kind: '奇蛊', cost: 0, cd: 0, power: 10, food: 'qingzhujiu', price: 65, desc: '能提纯一转蛊师的真元，温养时修为增长 +25%。' },
+  siwei_jiu: { id: 'siwei_jiu', name: '四味酒虫', rank: 2, school: '食道', kind: '奇蛊', cost: 0, cd: 0, power: 22, food: 'lajiu', price: 160, desc: '能提纯二转蛊师的真元，温养时修为增长 +45%。' },
   heishi: { id: 'heishi', name: '黑豕蛊', rank: 1, school: '力道', kind: '被动', cost: 0, cd: 0, power: 14, food: 'shourou', price: 26, desc: '增一猪之力：永久提升拳脚与力道攻伐威能。' },
-  baishi: { id: 'baishi', name: '白豕蛊', rank: 1, school: '力道', kind: '被动', cost: 0, cd: 0, power: 28, food: 'shourou', price: 64, desc: '增一猪之力，强化拳脚与抗击打能力，也可合炼白玉蛊。' },
-  bingzhen: { id: 'bingzhen', name: '冰针蛊', rank: 1, school: '冰雪道', kind: '攻击', cost: 4, cd: 1, power: 20, food: 'yuelanhua', price: 20, desc: '射出刺骨寒针，伤害不俗并有几率冻僵敌手使其跳过一轮行动。' },
+  baishi: { id: 'baishi', name: '白豕蛊', rank: 1, school: '力道', kind: '消耗', cost: 0, cd: 0, power: 28, food: 'shourou', price: 64, desc: '消耗后增加一猪之力，也可保留用来合炼白玉蛊。' },
   xuefu_gu: { id: 'xuefu_gu', name: '血蝠蛊', rank: 2, school: '血道', kind: '攻击', cost: 8, cd: 2, power: 32, food: 'shourou', price: 55, desc: '吸食敌手精血，造成伤害的同时将部分血气反哺己身。' },
   dianlang_gu: { id: 'dianlang_gu', name: '电狼蛊', rank: 2, school: '雷道', kind: '攻击', cost: 9, cd: 2, power: 38, food: 'shourou', price: 62, desc: '引动蓝白电弧扑击敌手，疾速暴烈，有概率麻痹对手。' },
   nianxi: { id: 'nianxi', name: '念息蛊', rank: 1, school: '智道', kind: '探知', cost: 3, cd: 2, power: 15, food: 'yuanshi_zha', price: 24, desc: '战中催动可探明敌手确切气血、真元与下回合真意。' },
@@ -72,8 +64,6 @@ export const REFINE_RECIPES = [
   { id: 'r_yuexuan', price: 12, out: 'yuexuan', gu: { yueguang: 1, xuanfeng: 1 }, materials: {}, rate: 0.65, cost: 25 },
   { id: 'r_yueni', price: 12, out: 'yueni', gu: { yueguang: 1, yupi: 1 }, materials: {}, rate: 0.65, cost: 25 },
   { id: 'r_baiyu', price: 12, out: 'baiyu', gu: { yupi: 1, baishi: 1 }, materials: { yezhuya: 1 }, rate: 0.65, cost: 25 },
-  // 合集记载生机叶取自九叶生机草，这条反向合炼是青茅山篇的玩法改编。
-  { id: 'r_jiuye', price: 15, out: 'jiuyecao', gu: { shengjiye: 2 }, materials: { yuelanhua: 1 }, rate: 0.62, cost: 30, adapted: true },
   { id: 'r_siwei', price: 20, out: 'siwei_jiu', gu: { jiuchong: 2 }, materials: { suanjiu: 1, tianjiu: 1, kujiu: 1, lajiu: 1 }, rate: 0.58, cost: 45 }
 ];
 

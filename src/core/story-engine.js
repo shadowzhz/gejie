@@ -1,6 +1,7 @@
 import { STORY_EVENTS } from '../data/story.js';
 import { parseTimeExpr } from './calendar.js';
-import { addLog } from './state.js';
+import { GU_DEFS } from '../data/gu.js';
+import { addGu, addLog } from './state.js';
 import { startBattle } from './combat.js';
 
 function evalToken(gs, token) {
@@ -66,6 +67,9 @@ export function applyEventChoice(gs, eventId, choiceIdx) {
       else if (score >= 60) { grade = '乙等'; reward = 25; }
       gs.player.yuanshi += reward;
       addLog(gs, `【年末大考】评定为${grade}，获族中赏赐元石 +${reward}。`, 'log-gold');
+    } else if (eff.startsWith('gu:')) {
+      const gu = addGu(gs, eff.slice(3));
+      if (gu) addLog(gs, `【${ev.title}】获得「${GU_DEFS[gu.id].name}」。`, 'log-gold');
     } else if (eff.startsWith('battle:')) {
       startBattle(gs, eff.slice(7), ev.title);
     }

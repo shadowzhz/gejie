@@ -158,9 +158,10 @@ export function battleAct(gs, action, arg = '', rng = Math.random) {
     if (!def || !hasGu(gs, arg) || (b.cds[arg] || 0) > 0 || p.zy < def.cost) return b;
     p.zy -= def.cost;
     if (def.cd) b.cds[arg] = def.cd;
-    const mul = 1 + (b.meBoost > 0 ? 0.35 : 0);
     if (def.kind === '攻击' || def.kind === '控制') {
-      if (b.meBoost > 0) b.meBoost--;
+      const boosted = arg === 'yueguang' && b.meBoost > 0;
+      const mul = boosted ? 1.35 : 1;
+      if (boosted) b.meBoost--;
       const strengthBonus = def.school === '力道' ? p.powerBonus * 0.4 : 0;
       const raw = Math.round((def.power + strengthBonus) * mul * (0.92 + rng() * 0.16));
       const res = dealDamageToFoe(b, raw);
@@ -170,7 +171,7 @@ export function battleAct(gs, action, arg = '', rng = Math.random) {
         p.hp = Math.min(p.hpMax, p.hp + leach);
         b.logs.push(`血蝠蛊反哺气血 +${leach}。`);
       }
-      if ((def.kind === '控制' || arg === 'bingzhen' || arg === 'dianlang_gu') && rng() < 0.35) {
+      if ((def.kind === '控制' || arg === 'dianlang_gu') && rng() < 0.35) {
         foe.stunned = true;
         b.logs.push(`${foe.name}行动受制，下轮无法出手！`);
       }
@@ -182,7 +183,7 @@ export function battleAct(gs, action, arg = '', rng = Math.random) {
       b.logs.push(`你催动「${def.name}」，气血恢复 +${def.power}。`);
     } else if (def.kind === '增益') {
       b.meBoost += 1;
-      b.logs.push(`你催动「${def.name}」，下一记攻伐威能大增！`);
+      b.logs.push(`你催动「${def.name}」，下一记月光蛊的月刃威能大增！`);
     } else if (def.kind === '探知') {
       b.scouted = true;
       b.logs.push(`你催动「${def.name}」，看清了${foe.name}的气血真元与下步动向。`);
@@ -202,10 +203,8 @@ export function battleAct(gs, action, arg = '', rng = Math.random) {
       p.hp = Math.min(p.hpMax, p.hp + mv.power);
       b.logs.push(`你催动杀招「${mv.name}」，生机涌动，气血 +${mv.power}！`);
     } else {
-      const mul = 1 + (b.meBoost > 0 ? 0.35 : 0);
-      if (b.meBoost > 0) b.meBoost--;
       const strengthBonus = GU_DEFS[mv.coreId]?.school === '力道' ? p.powerBonus * 0.5 : 0;
-      const raw = Math.round((mv.power + strengthBonus) * mul * (0.94 + rng() * 0.14));
+      const raw = Math.round((mv.power + strengthBonus) * (0.94 + rng() * 0.14));
       const res = dealDamageToFoe(b, raw);
       b.logs.push(`你催动杀招「${mv.name}」，${res.absorbed ? `破盾 ${res.absorbed}，` : ''}重创 ${foe.name} ${res.dmg} 点！`);
       if (mv.bonusShield) { b.meShield += mv.bonusShield; b.logs.push(`辅蛊护体，附加护盾 +${mv.bonusShield}。`); }

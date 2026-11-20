@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createNewGame, addGu, BENMING_ZY_COST, claimBenming, handleQuest, refineBenming, realmText, recordQuestVictory } from '../src/core/state.js';
+import { createNewGame, addGu, BENMING_ZY_COST, claimBenming, handleQuest, refineBenming, realmText, recordQuestVictory, useHealItem, useWhiteBoarGu } from '../src/core/state.js';
+import { placeShopEntries } from '../src/data/places.js';
 import { advanceMinutes, moveToPlace, rewindSpringCicada, saveSpringSnapshot } from '../src/core/clock.js';
 import { makeTime } from '../src/core/calendar.js';
 import { applyEventChoice, checkStoryTriggers } from '../src/core/story-engine.js';
@@ -12,7 +13,11 @@ import { createRefineSession, stepRefineSession } from '../src/core/refine.js';
 test('豕蛊加伤只作用于拳脚和力道攻伐', () => {
   const gs = createNewGame();
   gs.player.rank = 2;
-  for (const id of ['yueguang', 'heishi', 'baishi']) addGu(gs, id);
+  for (const id of ['yueguang', 'heishi']) addGu(gs, id);
+  const whiteBoar = addGu(gs, 'baishi');
+  assert.equal(gs.player.powerBonus, 6);
+  assert.equal(useWhiteBoarGu(gs, whiteBoar.uid), true);
+  assert.equal(useWhiteBoarGu(gs, whiteBoar.uid), false);
   const moon = createKillerMove(gs, 'yueguang', ['heishi']).move;
   const strength = createKillerMove(gs, 'heishi', []).move;
   const damage = (action, id) => {
@@ -26,6 +31,38 @@ test('豕蛊加伤只作用于拳脚和力道攻伐', () => {
   assert.equal(damage('gu', 'yueguang'), 18);
   assert.equal(damage('move', moon.id), Math.round(moon.power * 1.01));
   assert.equal(damage('move', strength.id), Math.round((strength.power + 9) * 1.01));
+});
+
+test('古月蛊开课后供应，商队酒虫限期出售且只卖一只', () => {
+  const gs = createNewGame();
+  gs.location = 'gupu';
+  assert.deepEqual(placeShopEntries(gs), ['gu:shipi', 'gu:xuanfeng', 'item:shengjiye']);
+  gs.flags.kaike = true;
+  assert.ok(placeShopEntries(gs).includes('gu:yueguang'));
+  assert.ok(placeShopEntries(gs).includes('gu:xiaoguang'));
+  gs.minutes = makeTime(2, 3, 1) - 1;
+  assert.ok(!placeShopEntries(gs).includes('gu:jiuchong'));
+  gs.minutes++;
+  assert.ok(placeShopEntries(gs).includes('gu:jiuchong'));
+  gs.flags.merchant_jiuchong_bought = true;
+  assert.ok(!placeShopEntries(gs).includes('gu:jiuchong'));
+  gs.flags.merchant_jiuchong_bought = false;
+  gs.minutes = makeTime(2, 3, 9);
+  assert.ok(!placeShopEntries(gs).includes('gu:jiuchong'));
+});
+
+test('生机叶每次消耗一片，再用须等待一小时', () => {
+  const gs = createNewGame();
+  gs.player.items.shengjiye = 2;
+  gs.player.hp = 1;
+  assert.equal(useHealItem(gs, 'shengjiye').ok, true);
+  assert.equal(gs.player.hp, 25);
+  gs.minutes += 59;
+  assert.equal(useHealItem(gs, 'shengjiye').ok, false);
+  assert.equal(gs.player.items.shengjiye, 1);
+  gs.minutes++;
+  assert.equal(useHealItem(gs, 'shengjiye').ok, true);
+  assert.equal(gs.player.items.shengjiye, undefined);
 });
 
 test('轻实时时钟推进与头名之争死线截胡', () => {
@@ -106,7 +143,7 @@ test('破壁冲关、三轮控火炼蛊与春秋蝉回溯', () => {
   gs.player.zy = gs.player.zyMax;
   gs.player.yuanshi = 100;
   assert.ok(createBreakSession(gs).error);
-  for (const id of ['yupi', 'bingzhen', 'heishi', 'shipi']) addGu(gs, id);
+  for (const id of ['yupi', 'xuanfeng', 'heishi', 'shipi']) addGu(gs, id);
   gs.player.zy = gs.player.zyMax;
   assert.match(createBreakSession(gs).error, /2 转蛊虫/);
   addGu(gs, 'baiyu');
@@ -148,7 +185,7 @@ test('破壁冲关、三轮控火炼蛊与春秋蝉回溯', () => {
   assert.equal(realmText(rw.state.player).includes('转'), true);
 });
 
-test('月光蛊能升炼成控制或防御蛊，本命蛊成功升炼后保留绑定', () => {
+test('月光蛊能升炼成月旋蛊或月霓裳，本命蛊成功升炼后保留绑定', () => {
   for (const [recipeId, aux, out] of [['r_yuexuan', 'xuanfeng', 'yuexuan'], ['r_yueni', 'yupi', 'yueni']]) {
     const gs = createNewGame();
     gs.player.yuanshi = 100;
