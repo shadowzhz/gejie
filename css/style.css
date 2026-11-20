@@ -287,7 +287,7 @@ button.sm { min-height: 32px; padding: 4px 10px; font-size: .85rem; }
   padding: 8px 10px;
   font-size: .86rem;
 }
-input[type="text"], textarea {
+input[type="text"], input[type="number"], select, textarea {
   width: 100%;
   padding: 8px 10px;
   border-radius: 8px;
@@ -295,4 +295,18 @@ input[type="text"], textarea {
   background: var(--bg);
   color: var(--ink);
   font: inherit;
+}
+.shop-purchase {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+}
+.shop-purchase input[type="number"] {
+  width: 4em;
+  padding: 4px;
+}
+.dev-fields select {
+  width: auto;
+  max-width: 100%;
 }

@@ -1,5 +1,5 @@
 import { GU_DEFS, ITEMS } from '../data/gu.js';
-import { PLACES } from '../data/places.js';
+import { MERCHANT_GU, PLACES, placeShopEntries } from '../data/places.js';
 import { MIN_PER_DAY, makeTime, yearOf } from './calendar.js';
 
 const QUEST_ROTATIONS = [
@@ -222,6 +222,34 @@ export function removeGuByUid(gs, uid) {
 export function addItem(gs, id, n = 1) {
   if (!id || n <= 0) return;
   gs.player.items[id] = (gs.player.items[id] || 0) + n;
+}
+
+export const SHOP_BATCH_LIMIT = 99;
+
+export function purchaseShopEntry(gs, entry, count) {
+  if (gs.battle || gs.player.dead || !placeShopEntries(gs).includes(entry)) {
+    return { ok: false, reason: '当前无法购买这件货物' };
+  }
+  const [kind, id] = entry.split(':');
+  const def = kind === 'gu' ? GU_DEFS[id] : ITEMS[id];
+  if (!def) return { ok: false, reason: '当前无法购买这件货物' };
+  const limited = MERCHANT_GU.includes(id);
+  const limit = limited ? 1 : SHOP_BATCH_LIMIT;
+  if (!Number.isSafeInteger(count) || count < 1 || count > limit) {
+    return { ok: false, reason: limited ? '商队限售一只' : `数量须为 1 到 ${limit} 的整数` };
+  }
+  const cost = def.price * count;
+  if (gs.player.yuanshi < cost) return { ok: false, reason: `元石不足，需 ${cost} 块` };
+  gs.player.yuanshi -= cost;
+  if (kind === 'gu') {
+    for (let i = 0; i < count; i++) addGu(gs, id);
+  } else {
+    addItem(gs, id, count);
+  }
+  if (limited) gs.flags[`merchant_${id}_bought`] = true;
+  const message = `已购入「${def.name}」×${count}，花费 ${cost} 元石`;
+  addLog(gs, `${message}。`);
+  return { ok: true, message };
 }
 
 export function useWhiteBoarGu(gs, uid) {

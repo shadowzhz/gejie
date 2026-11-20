@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createNewGame, addGu, BENMING_ZY_COST, claimBenming, handleQuest, questBoard, refineBenming, realmText, recordQuestProgress, useHealItem, useWhiteBoarGu } from '../src/core/state.js';
+import { createNewGame, addGu, BENMING_ZY_COST, claimBenming, handleQuest, purchaseShopEntry, questBoard, refineBenming, realmText, recordQuestProgress, useHealItem, useWhiteBoarGu } from '../src/core/state.js';
 import { placeShopEntries } from '../src/data/places.js';
 import { advanceMinutes, moveToPlace, rewindSpringCicada, saveSpringSnapshot } from '../src/core/clock.js';
 import { makeTime } from '../src/core/calendar.js';
@@ -59,6 +59,29 @@ test('古月蛊开课后供应，商队酒虫与黑豕蛊限期分别出售一�
   gs.flags.merchant_jiuchong_bought = false;
   gs.minutes = makeTime(2, 3, 9);
   assert.ok(!placeShopEntries(gs).includes('gu:jiuchong'));
+});
+
+test('批量购买按总价扣款，商队蛊虫仍限售一只', () => {
+  const gs = createNewGame();
+  gs.location = 'jucaifang';
+  gs.player.yuanshi = 20;
+  assert.equal(purchaseShopEntry(gs, 'item:yuelanhua', 11).ok, false);
+  assert.equal(purchaseShopEntry(gs, 'item:yuelanhua', 1.5).ok, false);
+  assert.equal(gs.player.items.yuelanhua, 6);
+  assert.equal(gs.player.yuanshi, 20);
+  assert.equal(purchaseShopEntry(gs, 'item:yuelanhua', 5).ok, true);
+  assert.equal(gs.player.items.yuelanhua, 11);
+  assert.equal(gs.player.yuanshi, 10);
+
+  gs.location = 'gupu';
+  gs.minutes = makeTime(2, 3, 1);
+  gs.player.yuanshi = 200;
+  assert.equal(purchaseShopEntry(gs, 'gu:shipi', 2).ok, true);
+  assert.equal(gs.player.gu.filter((gu) => gu.id === 'shipi').length, 2);
+  assert.equal(purchaseShopEntry(gs, 'gu:jiuchong', 2).ok, false);
+  assert.equal(purchaseShopEntry(gs, 'gu:jiuchong', 1).ok, true);
+  assert.equal(purchaseShopEntry(gs, 'gu:jiuchong', 1).ok, false);
+  assert.equal(gs.player.yuanshi, 105);
 });
 
 test('生机叶每次消耗一片，再用须等待一小时', () => {

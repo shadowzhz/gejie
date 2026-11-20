@@ -1,7 +1,7 @@
 import { GU_DEFS, ITEMS, REFINE_RECIPES, recipeOutputText } from '../data/gu.js';
-import { hasPlaceActions, MERCHANT_GU, placeShopEntries, PLACES } from '../data/places.js';
-import { formatDateTime } from '../core/calendar.js';
-import { addGu, addItem, addLog, claimBenming, createAptitude, createNewGame, esc, feedGu, handleQuest, loadGame, realmText, recalcStats, recordQuestProgress, refineBenming, saveGame, useHealItem, useWhiteBoarGu } from '../core/state.js';
+import { hasPlaceActions, PLACES } from '../data/places.js';
+import { formatDateTime, MIN_PER_DAY, MIN_PER_MONTH, MIN_PER_SHICHEN } from '../core/calendar.js';
+import { addGu, addItem, addLog, claimBenming, createAptitude, createNewGame, esc, feedGu, handleQuest, loadGame, purchaseShopEntry, RANK_NAMES, realmText, recalcStats, recordQuestProgress, refineBenming, saveGame, useHealItem, useWhiteBoarGu, XIAO_NAMES } from '../core/state.js';
 import { createKillerMove } from '../core/killer.js';
 import { battleAct, startBattle } from '../core/combat.js';
 import { applyEventChoice, checkStoryTriggers } from '../core/story-engine.js';
@@ -14,11 +14,11 @@ import { renderPlaceView } from './place-view.js';
 import { renderMapPanel } from './map-view.js';
 import { renderApertureView } from './aperture-view.js';
 import { renderRefineView } from './refine-view.js';
-import { renderBagView } from './bag-view.js';
+import { renderBagView, renderDeveloperView } from './bag-view.js';
 
 let G = null;
 let TAB = 'place';
-let MODAL = null; // { kind: 'place'|'break'|'refine'|'killer'|'dead'|'win', data: ... }
+let MODAL = null; // { kind: 'place'|'break'|'refine'|'killer'|'developer'|'dead'|'win', data: ... }
 let START = { phase: 'intro', name: '方源', apt: null, step: 0, target: 25, done: false, hasSave: false };
 let KM_DRAFT = { coreId: '', auxIds: [], name: '' };
 
@@ -55,6 +55,7 @@ function renderTopBar() {
       </div>
       <div class="clock-box">
         <span>${esc(formatDateTime(G.minutes))}</span>
+        ${G.developerMode ? '<button class="sm gold" data-action="openDeveloper">开发者</button>' : ''}
         <button class="sm ghost" data-action="togglePause">${G.paused ? '▶ 继续流逝' : '⏸ 暂停'}</button>
       </div>
     </div>
@@ -96,6 +97,7 @@ function renderModal() {
   } else if (MODAL.kind === 'break') html = renderBreakModal(MODAL.data);
   else if (MODAL.kind === 'refine') html = renderRefineModal(MODAL.data);
   else if (MODAL.kind === 'killer') html = renderCustomKillerModal(G, KM_DRAFT);
+  else if (MODAL.kind === 'developer') html = renderDeveloperView(G);
   else if (MODAL.kind === 'dead') {
     html = `<h2>身殒青茅山</h2>
       <p>你的修行止步于${esc(realmText(G.player))}。</p>
@@ -234,6 +236,60 @@ function handlePlaceAction(id) {
   render();
 }
 
+function handleDeveloperAction(action) {
+  if (!G?.developerMode || MODAL?.kind !== 'developer') return;
+  const p = G.player;
+  const durations = { hours: MIN_PER_SHICHEN, day: MIN_PER_DAY, month: MIN_PER_MONTH };
+  let message;
+  if (action === 'stones') {
+    p.yuanshi += 1000;
+    message = '元石 +1000';
+  } else if (action === 'restore') {
+    p.hp = p.hpMax;
+    p.zy = p.zyMax;
+    message = '气血与真元已回满';
+  } else if (action === 'recipes') {
+    p.recipes = [...new Set([...p.recipes, ...REFINE_RECIPES.map((recipe) => recipe.id)])];
+    message = '已习得全部蛊方';
+  } else if (action === 'gu') {
+    const id = document.getElementById('dev-gu')?.value;
+    if (!Object.hasOwn(GU_DEFS, id)) return;
+    addGu(G, id);
+    message = `已获得「${GU_DEFS[id].name}」×1`;
+  } else if (action === 'item') {
+    const id = document.getElementById('dev-item')?.value;
+    if (!Object.hasOwn(ITEMS, id)) return;
+    addItem(G, id, 20);
+    message = `已获得「${ITEMS[id].name}」×20`;
+  } else if (action === 'realm') {
+    const rank = Number(document.getElementById('dev-rank')?.value);
+    const stage = Number(document.getElementById('dev-stage')?.value);
+    if (!RANK_NAMES[rank] || !XIAO_NAMES[stage]) return;
+    p.rank = rank;
+    p.xiao = stage;
+    p.xp = 0;
+    if (rank >= 2) G.flags['open:jiazhuge'] = true;
+    recalcStats(G);
+    message = `境界已设为${realmText(p)}`;
+  } else if (Object.hasOwn(durations, action) && !G.battle && !p.dead) {
+    advanceMinutes(G, durations[action]);
+    message = `时间已推进至${formatDateTime(G.minutes)}`;
+  } else {
+    return;
+  }
+  addLog(G, `【开发者】${message}。`);
+  saveGame(G);
+  if (action === 'gu' || action === 'item') {
+    const select = document.getElementById(`dev-${action}`);
+    const value = select.value;
+    render();
+    document.getElementById(`dev-${action}`).value = value;
+  } else {
+    render();
+  }
+  showToast(message);
+}
+
 function handleAction(el) {
   const act = el.dataset.action;
   if (!act) return;
@@ -274,6 +330,16 @@ function handleAction(el) {
   } else if (act === 'togglePause') {
     G.paused = !G.paused;
     render();
+  } else if (act === 'toggleDeveloper') {
+    if (!G) return;
+    G.developerMode = !G.developerMode;
+    MODAL = G.developerMode ? { kind: 'developer' } : null;
+    saveGame(G);
+    render();
+  } else if (act === 'openDeveloper') {
+    if (G?.developerMode && !MODAL) openModal('developer');
+  } else if (act === 'devAction') {
+    handleDeveloperAction(id);
   } else if (act === 'walkTo') {
     const res = moveToPlace(G, id);
     if (!res.ok) showToast(res.reason);
@@ -304,19 +370,12 @@ function handleAction(el) {
     render();
     showToast(message);
   } else if (act === 'buyItem') {
-    if (!placeShopEntries(G).includes(id)) return;
-    const [kind, itemId] = id.split(':');
-    const def = kind === 'gu' ? GU_DEFS[itemId] : ITEMS[itemId];
-    if (!def || G.player.yuanshi < def.price) { showToast('元石不足'); return; }
-    G.player.yuanshi -= def.price;
-    if (kind === 'gu') addGu(G, itemId, 100);
-    else addItem(G, itemId, 1);
-    if (MERCHANT_GU.includes(itemId)) G.flags[`merchant_${itemId}_bought`] = true;
-    const message = `已购入「${def.name}」，花费 ${def.price} 元石`;
-    addLog(G, `${message}。`);
+    const input = el.closest('.shop-purchase')?.querySelector('input[type="number"]');
+    const result = purchaseShopEntry(G, id, input?.valueAsNumber ?? 1);
+    if (!result.ok) { showToast(result.reason); return; }
     saveGame(G);
     render();
-    showToast(message);
+    showToast(result.message);
   } else if (act === 'checkEvents') {
     checkStoryTriggers(G, id);
     render();

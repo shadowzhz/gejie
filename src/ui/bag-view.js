@@ -1,5 +1,40 @@
-import { ITEMS } from '../data/gu.js';
-import { esc, hasGu, realmText } from '../core/state.js';
+import { GU_DEFS, ITEMS } from '../data/gu.js';
+import { esc, hasGu, realmText, RANK_NAMES, XIAO_NAMES } from '../core/state.js';
+
+export function renderDeveloperView(gs) {
+  const p = gs.player;
+  const options = (defs) => Object.values(defs)
+    .map(({ id, name }) => `<option value="${esc(id)}">${esc(name)}</option>`).join('');
+  return `<h2>开发者模式</h2>
+    <p class="muted">操作会写入当前存档。</p>
+    <div class="row">
+      <button data-action="devAction" data-id="stones">元石 +1000</button>
+      <button data-action="devAction" data-id="restore">补满气血与真元</button>
+      <button data-action="devAction" data-id="recipes">习得全部蛊方</button>
+    </div>
+    <div class="row dev-fields">
+      <select id="dev-gu" aria-label="选择蛊虫">${options(GU_DEFS)}</select>
+      <button data-action="devAction" data-id="gu">获得蛊虫 ×1</button>
+    </div>
+    <div class="row dev-fields">
+      <select id="dev-item" aria-label="选择物品">${options(ITEMS)}</select>
+      <button data-action="devAction" data-id="item">获得物品 ×20</button>
+    </div>
+    <div class="row dev-fields">
+      <select id="dev-rank" aria-label="转数">${RANK_NAMES.slice(1).map((name, index) => `<option value="${index + 1}" ${p.rank === index + 1 ? 'selected' : ''}>${name}</option>`).join('')}</select>
+      <select id="dev-stage" aria-label="小境界">${XIAO_NAMES.map((name, index) => `<option value="${index}" ${p.xiao === index ? 'selected' : ''}>${name}</option>`).join('')}</select>
+      <button data-action="devAction" data-id="realm">设置境界</button>
+    </div>
+    <div class="row">
+      <button ${gs.battle ? 'disabled' : ''} data-action="devAction" data-id="hours">推进 1 时辰</button>
+      <button ${gs.battle ? 'disabled' : ''} data-action="devAction" data-id="day">推进 1 日</button>
+      <button ${gs.battle ? 'disabled' : ''} data-action="devAction" data-id="month">推进 30 日</button>
+    </div>
+    <div class="row">
+      <button data-action="toggleDeveloper">关闭开发者模式</button>
+      <button class="primary" data-action="closeModal">返回游戏</button>
+    </div>`;
+}
 
 export function renderBagView(gs, tab) {
   const p = gs.player;
@@ -35,6 +70,7 @@ export function renderBagView(gs, tab) {
         <button class="primary" data-action="manualSave">保存进度</button>
         <button data-action="exportSave">导出存档</button>
         <button class="blood" data-action="resetGame">重开一世</button>
+        <button data-action="${gs.developerMode ? 'openDeveloper' : 'toggleDeveloper'}">${gs.developerMode ? '开发者面板' : '开启开发者模式'}</button>
       </div>
     </div>
     <div class="card">

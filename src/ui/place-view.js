@@ -1,7 +1,7 @@
 import { GU_DEFS, ITEMS, REFINE_RECIPES, guEffectText, recipeIngredientsText, recipeOutputText } from '../data/gu.js';
 import { MERCHANT_GU, PLACES, placeShopEntries } from '../data/places.js';
 import { formatDateTime, isNight } from '../core/calendar.js';
-import { esc, questBoard } from '../core/state.js';
+import { esc, questBoard, SHOP_BATCH_LIMIT } from '../core/state.js';
 import { evalCond } from '../core/story-engine.js';
 import { STORY_EVENTS } from '../data/story.js';
 
@@ -57,13 +57,18 @@ export function renderPlaceView(gs) {
       const [kind, id] = entry.split(':');
       const def = kind === 'gu' ? GU_DEFS[id] : ITEMS[id];
       if (!def) return '';
+      const limited = MERCHANT_GU.includes(id);
+      const affordable = gs.player.yuanshi >= def.price;
       const recipes = sellsRecipes ? REFINE_RECIPES
         .filter((recipe) => kind === 'gu' ? recipe.gu[id] : recipe.materials[id])
         .map(recipeOutputText) : [];
       const usage = recipes.length ? `<br><small class="muted">蛊方材料 · ${esc(recipes.join('、'))}</small>` : '';
       return `<div class="kv">
         <span><b>${esc(def.name)}</b> ${kind === 'gu' ? `<span class="badge">${def.rank}转</span>` : ''} ${MERCHANT_GU.includes(id) ? '<span class="badge">贾家商队 · 限一只</span>' : ''} <span class="muted">${esc(def.desc)}${kind === "gu" && guEffectText(def) ? `<br>${esc(guEffectText(def))}` : ''}</span>${usage}</span>
-        <button class="sm" ${gs.player.yuanshi < def.price ? 'disabled' : ''} data-action="buyItem" data-id="${esc(entry)}">买 · ${def.price}元石</button>
+        <div class="shop-purchase">
+          ${limited ? '' : `<input type="number" min="1" max="${SHOP_BATCH_LIMIT}" step="1" value="1" aria-label="${esc(def.name)}购买数量" ${affordable ? '' : 'disabled'}>`}
+          <button class="sm" ${affordable ? '' : 'disabled'} data-action="buyItem" data-id="${esc(entry)}">买 · ${def.price} 元石${limited ? '' : kind === 'gu' ? '/只' : '/份'}</button>
+        </div>
       </div>`;
     }).join('');
     shopHtml = `<div class="card"><h3>${esc(place.name)}货架</h3>${rows}</div>`;

@@ -295,7 +295,7 @@ button.sm { min-height: 32px; padding: 4px 10px; font-size: .85rem; }
   padding: 8px 10px;
   font-size: .86rem;
 }
-input[type="text"], textarea {
+input[type="text"], input[type="number"], select, textarea {
   width: 100%;
   padding: 8px 10px;
   border-radius: 8px;
@@ -303,6 +303,20 @@ input[type="text"], textarea {
   background: var(--bg);
   color: var(--ink);
   font: inherit;
+}
+.shop-purchase {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+}
+.shop-purchase input[type="number"] {
+  width: 4em;
+  padding: 4px;
+}
+.dev-fields select {
+  width: auto;
+  max-width: 100%;
 }
 
 </style>
@@ -983,6 +997,32 @@ function removeGuByUid(gs, uid) {
 function addItem(gs, id, n = 1) {
   if (!id || n <= 0) return;
   gs.player.items[id] = (gs.player.items[id] || 0) + n;
+}
+const SHOP_BATCH_LIMIT = 99;
+function purchaseShopEntry(gs, entry, count) {
+  if (gs.battle || gs.player.dead || !placeShopEntries(gs).includes(entry)) {
+    return { ok: false, reason: '当前无法购买这件货物' };
+  }
+  const [kind, id] = entry.split(':');
+  const def = kind === 'gu' ? GU_DEFS[id] : ITEMS[id];
+  if (!def) return { ok: false, reason: '当前无法购买这件货物' };
+  const limited = MERCHANT_GU.includes(id);
+  const limit = limited ? 1 : SHOP_BATCH_LIMIT;
+  if (!Number.isSafeInteger(count) || count < 1 || count > limit) {
+    return { ok: false, reason: limited ? '商队限售一只' : `数量须为 1 到 ${limit} 的整数` };
+  }
+  const cost = def.price * count;
+  if (gs.player.yuanshi < cost) return { ok: false, reason: `元石不足，需 ${cost} 块` };
+  gs.player.yuanshi -= cost;
+  if (kind === 'gu') {
+    for (let i = 0; i < count; i++) addGu(gs, id);
+  } else {
+    addItem(gs, id, count);
+  }
+  if (limited) gs.flags[`merchant_${id}_bought`] = true;
+  const message = `已购入「${def.name}」×${count}，花费 ${cost} 元石`;
+  addLog(gs, `${message}。`);
+  return { ok: true, message };
 }
 function useWhiteBoarGu(gs, uid) {
   if (!gs.player.gu.some((gu) => gu.uid === uid && gu.id === 'baishi')) return false;
@@ -2143,13 +2183,18 @@ function renderPlaceView(gs) {
       const [kind, id] = entry.split(':');
       const def = kind === 'gu' ? GU_DEFS[id] : ITEMS[id];
       if (!def) return '';
+      const limited = MERCHANT_GU.includes(id);
+      const affordable = gs.player.yuanshi >= def.price;
       const recipes = sellsRecipes ? REFINE_RECIPES
         .filter((recipe) => kind === 'gu' ? recipe.gu[id] : recipe.materials[id])
         .map(recipeOutputText) : [];
       const usage = recipes.length ? `<br><small class="muted">蛊方材料 · ${esc(recipes.join('、'))}</small>` : '';
       return `<div class="kv">
         <span><b>${esc(def.name)}</b> ${kind === 'gu' ? `<span class="badge">${def.rank}转</span>` : ''} ${MERCHANT_GU.includes(id) ? '<span class="badge">贾家商队 · 限一只</span>' : ''} <span class="muted">${esc(def.desc)}${kind === "gu" && guEffectText(def) ? `<br>${esc(guEffectText(def))}` : ''}</span>${usage}</span>
-        <button class="sm" ${gs.player.yuanshi < def.price ? 'disabled' : ''} data-action="buyItem" data-id="${esc(entry)}">买 · ${def.price}元石</button>
+        <div class="shop-purchase">
+          ${limited ? '' : `<input type="number" min="1" max="${SHOP_BATCH_LIMIT}" step="1" value="1" aria-label="${esc(def.name)}购买数量" ${affordable ? '' : 'disabled'}>`}
+          <button class="sm" ${affordable ? '' : 'disabled'} data-action="buyItem" data-id="${esc(entry)}">买 · ${def.price} 元石${limited ? '' : kind === 'gu' ? '/只' : '/份'}</button>
+        </div>
       </div>`;
     }).join('');
     shopHtml = `<div class="card"><h3>${esc(place.name)}货架</h3>${rows}</div>`;
@@ -2281,6 +2326,40 @@ function renderRefineView(gs) {
 
 
 /* === src/ui/bag-view.js === */
+function renderDeveloperView(gs) {
+  const p = gs.player;
+  const options = (defs) => Object.values(defs)
+    .map(({ id, name }) => `<option value="${esc(id)}">${esc(name)}</option>`).join('');
+  return `<h2>开发者模式</h2>
+    <p class="muted">操作会写入当前存档。</p>
+    <div class="row">
+      <button data-action="devAction" data-id="stones">元石 +1000</button>
+      <button data-action="devAction" data-id="restore">补满气血与真元</button>
+      <button data-action="devAction" data-id="recipes">习得全部蛊方</button>
+    </div>
+    <div class="row dev-fields">
+      <select id="dev-gu" aria-label="选择蛊虫">${options(GU_DEFS)}</select>
+      <button data-action="devAction" data-id="gu">获得蛊虫 ×1</button>
+    </div>
+    <div class="row dev-fields">
+      <select id="dev-item" aria-label="选择物品">${options(ITEMS)}</select>
+      <button data-action="devAction" data-id="item">获得物品 ×20</button>
+    </div>
+    <div class="row dev-fields">
+      <select id="dev-rank" aria-label="转数">${RANK_NAMES.slice(1).map((name, index) => `<option value="${index + 1}" ${p.rank === index + 1 ? 'selected' : ''}>${name}</option>`).join('')}</select>
+      <select id="dev-stage" aria-label="小境界">${XIAO_NAMES.map((name, index) => `<option value="${index}" ${p.xiao === index ? 'selected' : ''}>${name}</option>`).join('')}</select>
+      <button data-action="devAction" data-id="realm">设置境界</button>
+    </div>
+    <div class="row">
+      <button ${gs.battle ? 'disabled' : ''} data-action="devAction" data-id="hours">推进 1 时辰</button>
+      <button ${gs.battle ? 'disabled' : ''} data-action="devAction" data-id="day">推进 1 日</button>
+      <button ${gs.battle ? 'disabled' : ''} data-action="devAction" data-id="month">推进 30 日</button>
+    </div>
+    <div class="row">
+      <button data-action="toggleDeveloper">关闭开发者模式</button>
+      <button class="primary" data-action="closeModal">返回游戏</button>
+    </div>`;
+}
 function renderBagView(gs, tab) {
   const p = gs.player;
   if (tab === 'bag') {
@@ -2315,6 +2394,7 @@ function renderBagView(gs, tab) {
         <button class="primary" data-action="manualSave">保存进度</button>
         <button data-action="exportSave">导出存档</button>
         <button class="blood" data-action="resetGame">重开一世</button>
+        <button data-action="${gs.developerMode ? 'openDeveloper' : 'toggleDeveloper'}">${gs.developerMode ? '开发者面板' : '开启开发者模式'}</button>
       </div>
     </div>
     <div class="card">
@@ -2344,7 +2424,7 @@ function renderBagView(gs, tab) {
 
 let G = null;
 let TAB = 'place';
-let MODAL = null; // { kind: 'place'|'break'|'refine'|'killer'|'dead'|'win', data: ... }
+let MODAL = null; // { kind: 'place'|'break'|'refine'|'killer'|'developer'|'dead'|'win', data: ... }
 let START = { phase: 'intro', name: '方源', apt: null, step: 0, target: 25, done: false, hasSave: false };
 let KM_DRAFT = { coreId: '', auxIds: [], name: '' };
 
@@ -2381,6 +2461,7 @@ function renderTopBar() {
       </div>
       <div class="clock-box">
         <span>${esc(formatDateTime(G.minutes))}</span>
+        ${G.developerMode ? '<button class="sm gold" data-action="openDeveloper">开发者</button>' : ''}
         <button class="sm ghost" data-action="togglePause">${G.paused ? '▶ 继续流逝' : '⏸ 暂停'}</button>
       </div>
     </div>
@@ -2422,6 +2503,7 @@ function renderModal() {
   } else if (MODAL.kind === 'break') html = renderBreakModal(MODAL.data);
   else if (MODAL.kind === 'refine') html = renderRefineModal(MODAL.data);
   else if (MODAL.kind === 'killer') html = renderCustomKillerModal(G, KM_DRAFT);
+  else if (MODAL.kind === 'developer') html = renderDeveloperView(G);
   else if (MODAL.kind === 'dead') {
     html = `<h2>身殒青茅山</h2>
       <p>你的修行止步于${esc(realmText(G.player))}。</p>
@@ -2559,6 +2641,60 @@ function handlePlaceAction(id) {
   render();
 }
 
+function handleDeveloperAction(action) {
+  if (!G?.developerMode || MODAL?.kind !== 'developer') return;
+  const p = G.player;
+  const durations = { hours: MIN_PER_SHICHEN, day: MIN_PER_DAY, month: MIN_PER_MONTH };
+  let message;
+  if (action === 'stones') {
+    p.yuanshi += 1000;
+    message = '元石 +1000';
+  } else if (action === 'restore') {
+    p.hp = p.hpMax;
+    p.zy = p.zyMax;
+    message = '气血与真元已回满';
+  } else if (action === 'recipes') {
+    p.recipes = [...new Set([...p.recipes, ...REFINE_RECIPES.map((recipe) => recipe.id)])];
+    message = '已习得全部蛊方';
+  } else if (action === 'gu') {
+    const id = document.getElementById('dev-gu')?.value;
+    if (!Object.hasOwn(GU_DEFS, id)) return;
+    addGu(G, id);
+    message = `已获得「${GU_DEFS[id].name}」×1`;
+  } else if (action === 'item') {
+    const id = document.getElementById('dev-item')?.value;
+    if (!Object.hasOwn(ITEMS, id)) return;
+    addItem(G, id, 20);
+    message = `已获得「${ITEMS[id].name}」×20`;
+  } else if (action === 'realm') {
+    const rank = Number(document.getElementById('dev-rank')?.value);
+    const stage = Number(document.getElementById('dev-stage')?.value);
+    if (!RANK_NAMES[rank] || !XIAO_NAMES[stage]) return;
+    p.rank = rank;
+    p.xiao = stage;
+    p.xp = 0;
+    if (rank >= 2) G.flags['open:jiazhuge'] = true;
+    recalcStats(G);
+    message = `境界已设为${realmText(p)}`;
+  } else if (Object.hasOwn(durations, action) && !G.battle && !p.dead) {
+    advanceMinutes(G, durations[action]);
+    message = `时间已推进至${formatDateTime(G.minutes)}`;
+  } else {
+    return;
+  }
+  addLog(G, `【开发者】${message}。`);
+  saveGame(G);
+  if (action === 'gu' || action === 'item') {
+    const select = document.getElementById(`dev-${action}`);
+    const value = select.value;
+    render();
+    document.getElementById(`dev-${action}`).value = value;
+  } else {
+    render();
+  }
+  showToast(message);
+}
+
 function handleAction(el) {
   const act = el.dataset.action;
   if (!act) return;
@@ -2599,6 +2735,16 @@ function handleAction(el) {
   } else if (act === 'togglePause') {
     G.paused = !G.paused;
     render();
+  } else if (act === 'toggleDeveloper') {
+    if (!G) return;
+    G.developerMode = !G.developerMode;
+    MODAL = G.developerMode ? { kind: 'developer' } : null;
+    saveGame(G);
+    render();
+  } else if (act === 'openDeveloper') {
+    if (G?.developerMode && !MODAL) openModal('developer');
+  } else if (act === 'devAction') {
+    handleDeveloperAction(id);
   } else if (act === 'walkTo') {
     const res = moveToPlace(G, id);
     if (!res.ok) showToast(res.reason);
@@ -2629,19 +2775,12 @@ function handleAction(el) {
     render();
     showToast(message);
   } else if (act === 'buyItem') {
-    if (!placeShopEntries(G).includes(id)) return;
-    const [kind, itemId] = id.split(':');
-    const def = kind === 'gu' ? GU_DEFS[itemId] : ITEMS[itemId];
-    if (!def || G.player.yuanshi < def.price) { showToast('元石不足'); return; }
-    G.player.yuanshi -= def.price;
-    if (kind === 'gu') addGu(G, itemId, 100);
-    else addItem(G, itemId, 1);
-    if (MERCHANT_GU.includes(itemId)) G.flags[`merchant_${itemId}_bought`] = true;
-    const message = `已购入「${def.name}」，花费 ${def.price} 元石`;
-    addLog(G, `${message}。`);
+    const input = el.closest('.shop-purchase')?.querySelector('input[type="number"]');
+    const result = purchaseShopEntry(G, id, input?.valueAsNumber ?? 1);
+    if (!result.ok) { showToast(result.reason); return; }
     saveGame(G);
     render();
-    showToast(message);
+    showToast(result.message);
   } else if (act === 'checkEvents') {
     checkStoryTriggers(G, id);
     render();
