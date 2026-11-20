@@ -1,7 +1,7 @@
 import { GU_DEFS } from '../data/gu.js';
 import { PLACES } from '../data/places.js';
 import { MIN_PER_DAY, MIN_PER_KE, dayOf } from './calendar.js';
-import { addLog, feedGu, hasGu, recalcStats, recordQuestProgress } from './state.js';
+import { addLog, feedGu, hasGu, recalcStats, recordQuestProgress, removeGuByUid } from './state.js';
 import { startBattle } from './combat.js';
 import { checkStoryTriggers } from './story-engine.js';
 
@@ -72,23 +72,28 @@ export function advanceMinutes(gs, minutes, rng = Math.random) {
     p.xp = Number((p.xp + xpGain).toFixed(2));
   }
 
-  // 跨日结算蛊虫饱食
+  // 跨日结算蛊虫饱食：饱食归零 2 日后进入虚弱无法出战，归零 5 日后非本命/非春秋蝉损毁
   const daysPassed = newDay - oldDay;
   if (daysPassed > 0) {
     for (let i = gs.player.gu.length - 1; i >= 0; i--) {
       const g = gs.player.gu[i];
       const def = GU_DEFS[g.id];
       if (!def || !def.food) continue;
-      if (p.autoFeed) {
-        for (let day = 0; day < daysPassed; day++) {
-          g.satiety = Math.max(0, g.satiety - 12);
-          if (feedGu(gs, g, 51)) addLog(gs, `【自动喂养】已喂食「${def.name}」。`);
-        }
-      } else {
-        g.satiety = Math.max(0, g.satiety - daysPassed * 12);
+      for (let day = 0; day < daysPassed; day++) {
+        g.satiety = Math.max(0, g.satiety - 12);
+        if (p.autoFeed && feedGu(gs, g, 51)) addLog(gs, `【自动喂养】已喂食「${def.name}」。`);
+        if (g.satiety > 0) g.starveDays = 0;
+        else g.starveDays = (g.starveDays || 0) + 1;
       }
-      if (g.satiety === 0) {
-        addLog(gs, `【饥饿】「${def.name}」腹中空空，气息衰弱，须尽快喂食！`, 'log-warn');
+      if (g.satiety > 0) continue;
+      const canDie = g.uid !== p.benming && g.id !== 'chunqiuchan';
+      if (g.starveDays >= 5 && canDie) {
+        removeGuByUid(gs, g.uid);
+        addLog(gs, `【饥毙】「${def.name}」断粮多日，气息彻底溃散，化作飞灰消散！`, 'log-bad');
+      } else if (g.starveDays >= 2) {
+        addLog(gs, `【虚弱】「${def.name}」饥饿过久已陷入虚弱，无法在战中催动！`, 'log-warn');
+      } else {
+        addLog(gs, `【饥饿】「${def.name}」腹中空空，若再不喂食恐将虚弱损毁！`, 'log-warn');
       }
     }
     // 魔道恶名追捕

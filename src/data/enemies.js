@@ -94,7 +94,7 @@ export const ENEMIES = {
       { name: '血海吸元', kind: 'drain', power: 34, cd: 2, weight: 2 },
       { name: '血煞护身', kind: 'shield', power: 42, cd: 2, weight: 1 }
     ],
-    reward: { yuanshi: 120 }
+    reward: { yuanshi: 120, gu: 'baiyin_sheli' }
   },
   tianhe: {
     id: 'tianhe', name: '天鹤上人', rank: 3, hp: 380, zy: 180, speed: 18,
@@ -103,6 +103,6 @@ export const ENEMIES = {
       { name: '鹤唳震魂', kind: 'stun', power: 30, cd: 3, weight: 1 },
       { name: '仙鹤云障', kind: 'shield', power: 46, cd: 2, weight: 2 }
     ],
-    reward: { yuanshi: 150 }
+    reward: { yuanshi: 150, gu: 'huangjinyue' }
   }
 };

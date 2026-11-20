@@ -65,40 +65,69 @@ export function renderPlaceView(gs) {
       const recipes = sellsRecipes ? REFINE_RECIPES.filter(isRecipeSold)
         .filter((recipe) => kind === 'gu' ? recipe.gu[id] : recipe.materials[id])
         .map(recipeOutputText) : [];
-      const usage = recipes.length ? `<br><small class="muted">蛊方材料 · ${esc(recipes.join('、'))}</small>` : '';
-      return `<div class="kv">
-        <span><b>${esc(def.name)}</b> ${kind === 'gu' ? `<span class="badge">${def.rank}转</span>` : ''} ${MERCHANT_GU.includes(id) ? '<span class="badge">贾家商队 · 限一只</span>' : ''} <span class="muted">${esc(def.desc)}${kind === "gu" && guEffectText(def) ? `<br>${esc(guEffectText(def))}` : ''}</span>${usage}</span>
+      const effect = kind === 'gu' ? guEffectText(def) : '';
+      return `<li class="list-row">
+        <div class="list-main">
+          <div class="list-title">
+            <b>${esc(def.name)}</b>
+            ${kind === 'gu' ? `<span class="list-meta">${def.rank}转 · ${esc(def.kind)}</span>` : `<span class="list-meta">${esc(def.kind)}</span>`}
+            ${limited ? '<span class="gu-tag">商队限售一只</span>' : ''}
+          </div>
+          <div class="list-sub" ${effect ? `title="${esc(effect)}"` : ''}>${esc(def.desc)}${effect ? ` · ${esc(effect)}` : ''}</div>
+          ${recipes.length ? `<div class="list-hint">蛊方材料：${esc(recipes.join('、'))}</div>` : ''}
+        </div>
         <div class="shop-purchase">
           ${limited ? '' : `<input type="number" min="1" max="${SHOP_BATCH_LIMIT}" step="1" value="1" aria-label="${esc(def.name)}购买数量" ${affordable ? '' : 'disabled'}>`}
-          <button class="sm" ${affordable ? '' : 'disabled'} data-action="buyItem" data-id="${esc(entry)}">买 · ${def.price} 元石${limited ? '' : kind === 'gu' ? '/只' : '/份'}</button>
+          <button class="sm ${affordable ? '' : 'ghost'}" ${affordable ? '' : 'disabled'} data-action="buyItem" data-id="${esc(entry)}">买 · ${def.price}${limited ? '' : kind === 'gu' ? '/只' : '/份'}</button>
         </div>
-      </div>`;
+      </li>`;
     }).join('');
-    shopHtml = `<div class="card"><h3>${esc(place.name)}货架</h3>${rows}</div>`;
+    shopHtml = `<div class="card"><div class="list-head"><h3>${esc(place.name)}货架</h3><span class="muted">余额 ${gs.player.yuanshi} 元石</span></div><ul class="list-rows">${rows}</ul></div>`;
   }
 
   const board = place.services.includes('quests') ? questBoard(gs) : null;
+  const questHtml = board ? `<div class="card">
+      <div class="list-head"><h3>族中委托</h3><span class="muted">轮换 · ${esc(formatDateTime(gs.minutes + board.remaining))}</span></div>
+      <ul class="list-rows">${board.entries.map((q) => {
+        const ready = q.progress === q.target;
+        return `<li class="list-row">
+          <div class="list-main">
+            <div class="list-title"><b>${esc(q.name)}</b><span class="list-meta">赏 ${q.reward} 元石${q.accepted ? ` · ${q.progress}/${q.target}` : ''}</span></div>
+            <div class="list-sub">${esc(q.desc)}</div>
+          </div>
+          <div class="list-side">
+            <button class="sm ${ready && q.accepted && !q.claimed ? 'primary' : ''}" ${q.claimed || (q.accepted && !ready) ? 'disabled' : ''} data-action="quest" data-id="${q.id}">
+              ${q.claimed ? '已交付' : !q.accepted ? '接取' : ready ? '交付领赏' : '进行中'}
+            </button>
+          </div>
+        </li>`;
+      }).join('')}</ul>
+    </div>` : '';
+
+  const recipeHtml = sellsRecipes ? `<div class="card">
+      <div class="list-head"><h3>蛊方</h3></div>
+      <ul class="list-rows">${REFINE_RECIPES.filter(isRecipeSold).map((r) => {
+        const owned = gs.player.recipes?.includes(r.id);
+        const out = GU_DEFS[r.out] || ITEMS[r.out];
+        return `<li class="list-row">
+          <div class="list-main">
+            <div class="list-title"><b>${esc(recipeOutputText(r))}${r.method ?? ''}蛊方</b>${out.rank ? `<span class="list-meta">${out.rank}转</span>` : ''}</div>
+            <div class="list-sub">${esc(recipeIngredientsText(r))}</div>
+          </div>
+          <div class="list-side">
+            <button class="sm" ${owned || gs.player.yuanshi < r.price ? 'disabled' : ''} data-action="buyRecipe" data-id="${r.id}">${owned ? '已习得' : `买 · ${r.price} 元石`}</button>
+          </div>
+        </li>`;
+      }).join('')}</ul>
+    </div>` : '';
+
   return `<section class="stage ${night ? 'is-night' : ''}">
       <div class="stage-loc">${esc(formatDateTime(gs.minutes))} · ${esc(place.region)}</div>
       <h1 id="place-title">${esc(place.name)}</h1>
       <p class="stage-desc">${esc(night ? place.night : place.day)}</p>
       <div class="row">${actions.join('')}</div>
     </section>
-    ${board ? `<div class="card"><h3>族中委托</h3>
-      <div class="muted">下次轮换 · ${esc(formatDateTime(gs.minutes + board.remaining))}</div>
-      ${board.entries.map((q) => {
-        const ready = q.progress === q.target;
-        return `<div class="kv"><span><b>${esc(q.name)}</b> · ${esc(q.desc)} · 赏 ${q.reward} 元石
-          ${q.accepted ? ` · ${q.progress}/${q.target}` : ''}</span>
-          <button class="sm" ${q.claimed || (q.accepted && !ready) ? 'disabled' : ''} data-action="quest" data-id="${q.id}">
-            ${q.claimed ? '已交付' : !q.accepted ? '接取' : ready ? '交付领赏' : '进行中'}
-          </button></div>`;
-      }).join('')}</div>` : ''}
+    ${questHtml}
     ${shopHtml}
-    ${sellsRecipes ? `<div class="card"><h3>蛊方</h3>${REFINE_RECIPES.filter(isRecipeSold).map((r) => {
-      const owned = gs.player.recipes?.includes(r.id);
-      const out = GU_DEFS[r.out] || ITEMS[r.out];
-      return `<div class="kv"><span>${esc(recipeOutputText(r))}${r.method ?? ''}蛊方${out.rank ? ` · ${out.rank}转` : ''}<br><small class="muted">${esc(recipeIngredientsText(r))}</small></span>
-        <button class="sm" ${owned || gs.player.yuanshi < r.price ? 'disabled' : ''} data-action="buyRecipe" data-id="${r.id}">${owned ? '已习得' : `买 · ${r.price} 元石`}</button></div>`;
-    }).join('')}</div>` : ''}`;
+    ${recipeHtml}`;
 }

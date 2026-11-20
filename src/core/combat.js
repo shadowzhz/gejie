@@ -1,6 +1,6 @@
 import { GU_DEFS } from '../data/gu.js';
 import { ENEMIES } from '../data/enemies.js';
-import { addGu, addItem, addLog, hasGu, recalcStats, recordQuestProgress } from './state.js';
+import { addGu, addItem, addLog, hasGu, isGuWeak, recalcStats, recordQuestProgress } from './state.js';
 import { killerMoveBlock, recordGuUsage } from './killer.js';
 
 function pickIntent(enemy, rng = Math.random) {
@@ -43,6 +43,7 @@ export function startBattle(gs, enemyId, tag = '遭遇战', rng = Math.random) {
     state: 'ongoing', // ongoing | win | lose | fled
     lethal: false,
     scouted: false,
+    playerStunned: false,
     meShield: 0,
     meBoost: 0,
     cds: {},
@@ -73,6 +74,7 @@ function enemyTurn(gs, b, rng = Math.random) {
   }
   const mv = foe.intent || foe.moves[0];
   if (mv.cd) foe.cds[mv.name] = mv.cd;
+  foe.zy = Math.max(0, foe.zy - (mv.cost ?? foe.rank * 4));
   if (mv.kind === 'attack' || mv.kind === 'drain' || mv.kind === 'stun') {
     const raw = Math.round(mv.power * (0.9 + rng() * 0.2));
     const absorbed = Math.min(b.meShield, raw);
@@ -86,7 +88,8 @@ function enemyTurn(gs, b, rng = Math.random) {
       b.logs.push(`${foe.name}吸取气血，恢复 ${heal} 点。`);
     }
     if (mv.kind === 'stun' && rng() < 0.35) {
-      b.logs.push('你身形微晃，好在强自稳住了心神。');
+      b.playerStunned = true;
+      b.logs.push('你心神受震，下回合只能调息稳神！');
     }
   } else if (mv.kind === 'shield') {
     foe.shield += mv.power;
@@ -111,9 +114,10 @@ function enemyTurn(gs, b, rng = Math.random) {
   }
 }
 
-function dealDamageToFoe(b, rawDmg) {
+function dealDamageToFoe(b, rawDmg, pierce = 0) {
   const foe = b.foe;
-  const absorbed = Math.min(foe.shield, rawDmg);
+  const blockable = Math.round(rawDmg * (1 - pierce));
+  const absorbed = Math.min(foe.shield, blockable);
   foe.shield -= absorbed;
   const dmg = rawDmg - absorbed;
   foe.hp = Math.max(0, foe.hp - dmg);
@@ -127,7 +131,7 @@ export function battleGuPlan(gs) {
     const gu = player.gu.find((g) => g.uid === uid);
     const def = GU_DEFS[gu?.id];
     if (!def || !['攻击', '控制', '防御', '治疗', '增益', '探知', '隐匿'].includes(def.kind)) return [];
-    return [{ uid, def, cooldown: Math.max(0, (battle.cds[uid] ?? 0) - 1) }];
+    return [{ uid, def, weak: isGuWeak(gu), cooldown: Math.max(0, (battle.cds[uid] ?? 0) - 1) }];
   });
   const queued = queue.map((uid) => choices.find((choice) => choice.uid === uid)).filter(Boolean);
   const cost = queued.reduce((total, choice) => total + choice.def.cost, 0);
@@ -141,12 +145,12 @@ function applyBattleGu(gs, b, gu, rng) {
   p.zy -= def.cost;
   if (def.cd) b.cds[gu.uid] = def.cd;
   if (def.kind === '攻击' || def.kind === '控制') {
-    const boosted = def.id === 'yueguang' && b.meBoost > 0;
+    const boosted = def.school === '月道' && def.kind === '攻击' && b.meBoost > 0;
     const mul = boosted ? 1.35 : 1;
     if (boosted) b.meBoost--;
     const strengthBonus = def.school === '力道' ? p.powerBonus * 0.4 : 0;
     const raw = Math.round((def.power + strengthBonus) * mul * (0.92 + rng() * 0.16));
-    const res = dealDamageToFoe(b, raw);
+    const res = dealDamageToFoe(b, raw, def.id === 'yuehen' ? 0.5 : 0);
     b.logs.push(`你催动「${def.name}」，${res.absorbed ? `破盾 ${res.absorbed}，` : ''}造成 ${res.dmg} 点伤害。`);
     if (def.id === 'xuefu_gu' && res.dmg > 0) {
       const leach = Math.round(res.dmg * 0.35);
@@ -165,7 +169,7 @@ function applyBattleGu(gs, b, gu, rng) {
     b.logs.push(`你催动「${def.name}」，气血恢复 +${def.power}。`);
   } else if (def.kind === '增益') {
     b.meBoost += 1;
-    b.logs.push(`你催动「${def.name}」，下一记月光蛊的月刃威能大增！`);
+    b.logs.push(`你催动「${def.name}」，下一记月道攻击蛊的威能大增！`);
   } else if (def.kind === '探知') {
     b.scouted = true;
     b.logs.push(`你催动「${def.name}」，看清了${foe.name}的气血真元与下步动向。`);
@@ -182,9 +186,23 @@ export function battleAct(gs, action, arg = '', rng = Math.random) {
   const foe = b.foe;
 
   if (action === 'lethal') {
-    if (b.lethal) return b;
+    if (b.lethal || foe.practice) return b;
     b.lethal = true;
     b.logs.push('你眼神转冷，彻底下了死手！此战不再留手，也再无退路。');
+    return b;
+  }
+
+  if (b.playerStunned) {
+    if (action !== 'recover') return b;
+    b.playerStunned = false;
+    b.guQueue = [];
+    for (const k of Object.keys(b.cds)) {
+      if (b.cds[k] > 0) b.cds[k]--;
+    }
+    b.logs.push('你强忍心神震荡，稳住气息。');
+    enemyTurn(gs, b, rng);
+    b.round++;
+    if (b.logs.length > 24) b.logs = b.logs.slice(-24);
     return b;
   }
 
@@ -197,7 +215,7 @@ export function battleAct(gs, action, arg = '', rng = Math.random) {
     } else {
       const { choices, cost } = battleGuPlan(gs);
       const choice = choices.find((entry) => entry.uid === uid);
-      if (choice && !choice.cooldown && cost + choice.def.cost <= p.zy) queue.push(uid);
+      if (choice && !choice.cooldown && !choice.weak && cost + choice.def.cost <= p.zy) queue.push(uid);
     }
     return b;
   }
@@ -206,7 +224,7 @@ export function battleAct(gs, action, arg = '', rng = Math.random) {
   const plan = action === 'resolveGu' ? battleGuPlan(gs) : null;
   if (plan) {
     if (!queue.length || plan.queued.length !== queue.length || plan.cost > p.zy
-      || plan.queued.some((choice) => choice.cooldown)) return b;
+      || plan.queued.some((choice) => choice.cooldown || choice.weak)) return b;
     b.guQueue = [];
   } else {
     if (queue.length || !['attack', 'stone', 'flee', 'move'].includes(action)) return b;

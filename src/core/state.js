@@ -175,12 +175,16 @@ export function hasGu(gs, id) {
   return gs.player.gu.some((g) => g.id === id);
 }
 
+export function isGuWeak(gu) {
+  return (gu?.starveDays ?? 0) >= 2 && gu.satiety <= 0;
+}
+
 export function addGu(gs, id, satiety = 100) {
   const def = GU_DEFS[id];
   if (!def) return null;
   let uid = Date.now() + Math.floor(Math.random() * 10000);
   while (gs.player.gu.some((gu) => gu.uid === uid)) uid++;
-  const inst = { uid, id, satiety };
+  const inst = { uid, id, satiety, starveDays: 0 };
   gs.player.gu.push(inst);
   if (gs.player.equipped.length < 6 && ['攻击', '防御', '治疗', '增益', '控制', '探知', '隐匿'].includes(def.kind)) {
     gs.player.equipped.push(inst.uid);
@@ -282,6 +286,7 @@ export function feedGu(gs, gu, threshold = 100) {
   const food = GU_DEFS[gu?.id]?.food;
   if (!food || gu.satiety >= threshold || !useItem(gs, food, 1)) return false;
   gu.satiety = Math.min(100, gu.satiety + 50);
+  gu.starveDays = 0;
   return true;
 }
 

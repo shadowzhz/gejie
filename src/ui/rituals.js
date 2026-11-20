@@ -142,14 +142,23 @@ export function renderRefineModal(sess, effect) {
   const ready = refineReady(sess);
   const techniques = refineTechniques(sess);
   const signature = techniques.find(({ id, enabled }) => id === 'signature' && enabled);
+  const protectables = sess.turns && !ready && sess.protectedUid === null
+    ? sess.ingredients.filter((gu) => !gu.benming)
+    : [];
+  const protectedGu = sess.protectedUid !== null
+    ? sess.ingredients.find((gu) => gu.uid === sess.protectedUid)
+    : null;
   return `<div class="refine-ritual">${scene}
     <div class="row">
       ${sess.turns && !ready ? '<button class="gold" data-action="refineAct" data-id="pulse">按下风箱</button>' : ''}
+      ${sess.turns && !ready ? '<button data-action="refineAct" data-id="gentle">温养</button>' : ''}
       ${techniques.some(({ id, enabled }) => id === 'vent' && enabled) && !ready ? '<button data-action="refineAct" data-id="vent">掀盖放火</button>' : ''}
       ${signature && !ready ? `<button data-action="refineAct" data-id="signature">${esc(signature.name)}</button>` : ''}
+      ${protectables.map((gu) => `<button class="sm" title="耗一次运炉，失败时保住此蛊" data-action="refineAct" data-id="protect:${gu.uid}">护蛊印 · ${esc(gu.name)}</button>`).join('')}
       ${chance ? `<button class="${ready ? 'primary' : 'blood'}" data-action="refineAct" data-id="seal">${ready ? '合盖收炉' : '冒险合盖'} · ${Math.round(chance * 100)}%</button>` : ''}
       <button class="ghost" data-action="refineAct" data-id="abort">撤火</button>
     </div>
+    ${protectedGu ? `<div class="muted" style="font-size:.82rem">已施护蛊印：失败或炸炉时保住「${esc(protectedGu.name)}」</div>` : ''}
   </div>`;
 }
 

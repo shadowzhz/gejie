@@ -1,5 +1,5 @@
 import { GU_DEFS } from '../data/gu.js';
-import { addLog, hasGu } from './state.js';
+import { addLog, hasGu, isGuWeak } from './state.js';
 
 // 青茅山篇的推演路线，依据蛊虫已有的用途设计。
 export const KILLER_PATTERNS = [
@@ -73,7 +73,9 @@ export function killerMoveBlock(gs, move) {
   if (blocked) return blocked;
   const { gu, equipped } = gs.player;
   const resting = pattern.sequence.find((id) => !gu.some((entry) => entry.id === id && equipped.includes(entry.uid)));
-  return resting ? `「${GU_DEFS[resting].name}」未出战` : '';
+  if (resting) return `「${GU_DEFS[resting].name}」未出战`;
+  const weak = pattern.sequence.find((id) => !gu.some((entry) => entry.id === id && equipped.includes(entry.uid) && !isGuWeak(entry)));
+  return weak ? `「${GU_DEFS[weak].name}」饥饿虚弱` : '';
 }
 
 export function killerCraftBlock(gs, pattern) {

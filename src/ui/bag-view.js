@@ -43,11 +43,15 @@ export function renderBagView(gs, tab) {
     const rows = entries.map(([id, cnt]) => {
       const def = ITEMS[id];
       if (!def) return '';
-      return `<div class="card">
-        <div class="kv"><b>${esc(def.name)} ×${cnt}</b><span class="badge">${esc(def.kind)}</span></div>
-        <div class="muted" style="margin-bottom:6px">${esc(def.desc)}</div>
-        ${def.heal ? `<button class="sm primary" data-action="useHealItem" data-id="${id}">敷药疗伤（+${def.heal}血）</button>` : ''}
-      </div>`;
+      return `<li class="list-row">
+        <div class="list-main">
+          <div class="list-title"><b>${esc(def.name)} ×${cnt}</b><span class="list-meta">${esc(def.kind)}</span></div>
+          <div class="list-sub">${esc(def.desc)}</div>
+        </div>
+        <div class="list-side">
+          ${def.heal ? `<button class="sm primary" data-action="useHealItem" data-id="${id}">疗伤 +${def.heal}</button>` : ''}
+        </div>
+      </li>`;
     }).join('');
     const moDesc = p.mo >= 60 ? '正道公敌（铁血冷随时围捕）' : p.mo >= 30 ? '恶名昭彰（魔道捕手巡查）' : '清白';
     return `<div class="card">
@@ -56,7 +60,10 @@ export function renderBagView(gs, tab) {
         <div class="kv"><span>资质 / 元海</span><b>${esc(p.grade)}等 · ${p.hai} 成</b></div>
         <div class="kv"><span>元石 / 恶名</span><b>${p.yuanshi} 元石 · 恶名 ${p.mo}（${moDesc}）</b></div>
       </div>
-      <div class="card"><h3>行囊物品</h3><div class="grid2">${rows || '<span class="muted">行囊空空如也</span>'}</div></div>`;
+      <div class="card">
+        <div class="list-head"><h3>行囊物品</h3><span class="muted">${entries.length} 种</span></div>
+        ${rows ? `<ul class="list-rows">${rows}</ul>` : '<span class="muted">行囊空空如也</span>'}
+      </div>`;
   }
 
   const hasCicada = hasGu(gs, 'chunqiuchan');
@@ -69,6 +76,7 @@ export function renderBagView(gs, tab) {
       <div class="row">
         <button class="primary" data-action="manualSave">保存进度</button>
         <button data-action="exportSave">导出存档</button>
+        <button data-action="openImport">导入存档</button>
         <button class="blood" data-action="resetGame">重开一世</button>
         <button data-action="${gs.developerMode ? 'openDeveloper' : 'toggleDeveloper'}">${gs.developerMode ? '开发者面板' : '开启开发者模式'}</button>
       </div>

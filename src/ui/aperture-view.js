@@ -1,5 +1,5 @@
 import { GU_DEFS, ITEMS, guEffectText } from '../data/gu.js';
-import { BENMING_ZY_COST, esc, minorXpNeed, realmText } from '../core/state.js';
+import { BENMING_ZY_COST, esc, isGuWeak, minorXpNeed, realmText } from '../core/state.js';
 
 import { realmGuRequirement } from '../core/breakthrough.js';
 import { discoveredKillerPatterns, killerMoveBlock } from '../core/killer.js';
@@ -13,7 +13,7 @@ export function renderApertureView(gs) {
     const def = GU_DEFS[g.id];
     if (!def) return '';
     const isBm = p.benming === g.uid;
-    return `<span class="gu-chip ${g.satiety <= 20 ? 'weak' : ''}">${isBm ? '★' : ''}${esc(def.name)} <small>${g.satiety}%</small></span>`;
+    return `<span class="gu-chip ${g.satiety <= 20 || isGuWeak(g) ? 'weak' : ''}">${isBm ? '★' : ''}${esc(def.name)} <small>${isGuWeak(g) ? '虚弱' : `${g.satiety}%`}</small></span>`;
   }).join('');
 
   const order = (g) => (p.benming === g.uid ? 0 : 2) + (p.equipped.includes(g.uid) ? 0 : 1);
@@ -30,11 +30,12 @@ export function renderApertureView(gs) {
     if (!def) return '';
     const eq = p.equipped.includes(g.uid);
     const isBm = p.benming === g.uid;
-    const isSheli = g.id === 'qingtong_sheli' || g.id === 'chitie_sheli';
+    const isSheli = g.id === 'qingtong_sheli' || g.id === 'chitie_sheli' || g.id === 'baiyin_sheli';
     const food = ITEMS[def.food];
     const foodCount = p.items[def.food] ?? 0;
     const stats = guStats(def);
     const hungry = g.satiety <= 20;
+    const weak = isGuWeak(g);
     const boarKey = g.id === 'heishi' ? 'blackBoarStrength' : 'whiteBoarStrength';
     const actions = [
       food ? `<button class="sm ghost" ${foodCount <= 0 || g.satiety >= 100 ? 'disabled' : ''} data-action="feedGu" data-id="${g.uid}">喂食</button>` : '',
@@ -51,13 +52,14 @@ export function renderApertureView(gs) {
           <b>${esc(def.name)}</b>
           <span class="gu-meta">${def.rank}转 · ${esc(def.kind)}</span>
           ${isBm ? '<span class="gu-tag" title="合炼失败时保留，炼成后由成蛊继承本命绑定">本命</span>' : ''}
+          ${weak ? '<span class="gu-tag is-weak" title="饱食归零多日已虚弱，喂食后恢复">虚弱</span>' : ''}
         </div>
         <p class="gu-desc">${esc(def.desc)}</p>
         ${stats.length ? `<div class="gu-stats" title="${esc(guEffectText(def))}">${stats.map((s) => `<span>${esc(s)}</span>`).join('')}</div>` : ''}
       </div>
       <div class="gu-side">
-        <div class="gu-hunger${hungry ? ' is-low' : ''}" title="饱食 ${g.satiety}%">
-          <span class="bar"><i style="width:${g.satiety}%"></i></span><span>${g.satiety}%</span>
+        <div class="gu-hunger${hungry || weak ? ' is-low' : ''}" title="${weak ? '饥饿虚弱，无法出战' : `饱食 ${g.satiety}%`}">
+          <span class="bar"><i style="width:${g.satiety}%"></i></span><span>${weak ? '虚弱' : `${g.satiety}%`}</span>
         </div>
         <div class="gu-food${food && foodCount <= 0 ? ' is-empty' : ''}">${food ? `${esc(food.name)} ×${foodCount}` : '无需喂食'}</div>
         <div class="gu-actions">${actions}</div>

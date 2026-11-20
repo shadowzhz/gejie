@@ -68,10 +68,10 @@ button.sm { min-height: 32px; padding: 4px 10px; font-size: .85rem; }
   background: rgba(12, 23, 21, .95);
   backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--line);
-  padding: 10px 14px;
+  padding: 8px 14px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 .top-row {
   display: flex;
@@ -97,16 +97,20 @@ button.sm { min-height: 32px; padding: 4px 10px; font-size: .85rem; }
 
 .clock-box { display: flex; align-items: center; gap: 8px; font-size: .86rem; color: var(--dim); }
 .goal-bar {
-  background: rgba(216, 191, 135, .1);
-  border-left: 3px solid var(--gold);
-  padding: 5px 10px;
-  font-size: .88rem;
-  color: #efe3c4;
-  border-radius: 0 6px 6px 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: .82rem;
+  color: #dfd3b4;
+  padding: 2px 0 2px 8px;
+  border-left: 2px solid var(--gold);
 }
-.res-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.res-item { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 5px 8px; }
-.res-head { display: flex; justify-content: space-between; font-size: .78rem; color: var(--dim); margin-bottom: 3px; }
+.goal-bar > span { font-size: .74rem; color: var(--gold); flex-shrink: 0; }
+.res-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 14px; align-items: center; }
+.res-item { min-width: 0; }
+.res-head { display: flex; justify-content: space-between; gap: 10px; font-size: .76rem; color: var(--dim); margin-bottom: 2px; font-variant-numeric: tabular-nums; }
+.res-meta .res-head { margin-bottom: 0; white-space: nowrap; }
+.res-meta b { color: var(--gold); font-weight: 600; }
 .bar { height: 6px; background: #0c1513; border-radius: 999px; overflow: hidden; }
 .bar > i { display: block; height: 100%; background: var(--jade); transition: width .2s; }
 .bar.hp > i { background: #d46b5e; }
@@ -226,6 +230,7 @@ button.sm { min-height: 32px; padding: 4px 10px; font-size: .85rem; }
 .gu-title b { font-size: 1rem; }
 .gu-meta { font-size: .8rem; color: var(--dim); }
 .gu-tag { font-size: .75rem; color: var(--gold); }
+.gu-tag.is-weak { color: var(--blood); }
 .gu-tag::before { content: "· "; color: var(--dim); }
 .gu-desc { margin: 2px 0 4px; font-size: .86rem; color: var(--dim); }
 .gu-stats { display: flex; flex-wrap: wrap; gap: 0 12px; font-size: .82rem; color: #cfd9d3; cursor: help; }
@@ -543,6 +548,7 @@ button.sm { min-height: 32px; padding: 4px 10px; font-size: .85rem; }
 .foe-status { display: flex; align-items: center; gap: 12px; font-size: .88rem; }
 .foe-hp { display: flex; align-items: center; gap: 8px; flex: 1; font-variant-numeric: tabular-nums; color: var(--dim); }
 .foe-hp .bar { flex: 1; max-width: 320px; }
+.foe-zy { font-size: .8rem; color: #5da9c4; margin-left: 4px; }
 .foe-hp.is-high { color: var(--ink); }
 .foe-hp.is-mid { color: var(--warn); }
 .foe-hp.is-low { color: var(--blood); }
@@ -633,6 +639,35 @@ input[type="text"], input[type="number"], select, textarea {
 .dev-fields select {
   width: auto;
   max-width: 100%;
+}
+
+/* 通用紧凑列表 */
+.list-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+.list-head h3 { margin: 0; }
+.list-rows { list-style: none; margin: 0; padding: 0; }
+.list-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 0 10px 10px;
+  border-top: 1px solid rgba(41, 73, 66, .6);
+  border-left: 2px solid transparent;
+}
+.list-row:first-child { border-top: 0; }
+.list-row.is-ready { border-left-color: var(--jade); }
+.list-main { min-width: 0; }
+.list-title { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.list-title b { font-size: .96rem; }
+.list-meta { font-size: .78rem; color: var(--dim); }
+.list-sub { font-size: .84rem; color: var(--dim); margin-top: 2px; }
+.list-hint { font-size: .78rem; color: var(--gold); margin-top: 2px; }
+.is-lack { color: var(--blood); }
+.list-side { display: flex; align-items: center; gap: 8px; }
+.list-note { font-size: .78rem; color: var(--dim); white-space: nowrap; }
+@media (max-width: 520px) {
+  .list-row { grid-template-columns: 1fr; gap: 6px; }
+  .list-side, .shop-purchase { justify-content: flex-end; }
 }
 
 </style>
@@ -811,7 +846,7 @@ function guEffectText(def) {
     控制: `基础伤害 ${def.power} · 35% 几率使敌方跳过 1 次出手`,
     防御: `护盾 ${def.power} · 持续至耗尽或战斗结束`,
     治疗: `立即恢复 ${def.power} 气血`,
-    增益: '下一次月光蛊伤害 +35%',
+    增益: '下一次月道攻击蛊伤害 +35%',
     探知: '查看敌方气血、真元和意图，持续至战斗结束',
     隐匿: `护盾 ${Math.round(def.power * 0.6)} · 持续至耗尽或战斗结束`
   };
@@ -819,7 +854,8 @@ function guEffectText(def) {
   if (!effect) return '';
   const extra = {
     dianlang_gu: ' · 35% 几率使敌方跳过 1 次出手',
-    xuefu_gu: ' · 回复实际伤害的 35%'
+    xuefu_gu: ' · 回复实际伤害的 35%',
+    yuehen: ' · 无视一半护盾'
   }[def.id] || '';
   const wait = Math.max(0, def.cd - 1);
   return `${effect}${extra} · 真元 ${def.cost} · ${wait ? `间隔 ${wait} 回合` : '可连续催动'}`;
@@ -830,10 +866,13 @@ const GU_DEFS = {
   yuemang: { id: 'yuemang', name: '月芒蛊', rank: 2, school: '月道', kind: '攻击', cost: 8, cd: 1, power: 34, food: 'yuelanhua', price: 45, desc: '将月光聚成威力更强的月刃。' },
   yuexuan: { id: 'yuexuan', name: '月旋蛊', rank: 2, school: '月道', kind: '攻击', cost: 7, cd: 1, power: 34, food: 'yuelanhua', price: 45, desc: '绿色月刃沿弧线斩出。' },
   henshi: { id: 'henshi', name: '痕石蛊', rank: 1, kind: '炼蛊', cost: 0, cd: 0, power: 0, food: 'kuangshi', price: 15, desc: '可与月光蛊合炼成二转月痕蛊。' },
-  yuehen: { id: 'yuehen', name: '月痕蛊', rank: 2, school: '月道', kind: '攻击', cost: 4, cd: 0, power: 18, food: 'yuelanhua', price: 45, desc: '月刃威力与月光蛊相同，设定中的射程从十米延至二十米。' },
+  yuehen: { id: 'yuehen', name: '月痕蛊', rank: 2, school: '月道', kind: '攻击', cost: 4, cd: 0, power: 22, food: 'yuelanhua', price: 45, desc: '月刃射程延至二十米，落处留痕，可穿透敌方半数护盾。' },
+  huangjinyue: { id: 'huangjinyue', name: '黄金月', rank: 3, school: '月道', kind: '攻击', cost: 13, cd: 1, power: 58, food: 'yuelanhua', price: 135, desc: '三转月道攻伐之蛊，催动后斩出半人高的金色月牙。' },
   yueni: { id: 'yueni', name: '月霓裳', rank: 2, school: '月道', kind: '防御', cost: 6, cd: 2, power: 36, food: 'yuelanhua', price: 45, desc: '引月光覆于周身，织成轻盈的护身衣。' },
   yupi: { id: 'yupi', name: '玉皮蛊', rank: 1, school: '土道', kind: '防御', cost: 4, cd: 2, power: 22, food: 'yushi', price: 20, desc: '催动后皮肤泛起温润玉光，化作护盾抵挡来袭伤害。' },
   baiyu: { id: 'baiyu', name: '白玉蛊', rank: 2, school: '土道', kind: '防御', cost: 7, cd: 2, power: 44, food: 'yushi', price: 52, desc: '二转防御蛊，凝出厚实白玉光甲护盾，稳固空窍根基。' },
+  shuizhao: { id: 'shuizhao', name: '水罩蛊', rank: 2, school: '水道', kind: '防御', cost: 8, cd: 2, power: 46, food: 'yuanshi_zha', price: 54, desc: '水行防御之蛊，周身化出圆球水罩，以流动水流卸力分散伤害。' },
+  tianpeng: { id: 'tianpeng', name: '天蓬蛊', rank: 3, school: '金道', kind: '防御', cost: 13, cd: 2, power: 72, food: 'kuangshi', price: 140, desc: '三转防御大蛊，浑身浮现厚实白晶之光，隐约可见铠甲雏形。' },
   shipi: { id: 'shipi', name: '石皮蛊', rank: 1, school: '土道', kind: '防御', cost: 3, cd: 2, power: 18, food: 'kuangshi', price: 15, desc: '以石质硬皮覆体抵挡攻击。' },
   shoupi: { id: 'shoupi', name: '兽皮蛊', rank: 1, kind: '防御', cost: 3, cd: 2, power: 14, food: 'shourou', price: 11, desc: '皮蛊中常见的一种，用于护身，售价低于石皮蛊。' },
   qingsi: { id: 'qingsi', name: '青丝蛊', rank: 1, kind: '防御', cost: 12, cd: 2, power: 30, food: 'fengmi', price: 24, desc: '催动时消耗较多真元，能抵御打击。也可与黑豕蛊合炼。' },
@@ -851,6 +890,7 @@ const GU_DEFS = {
   xuanfeng: { id: 'xuanfeng', name: '旋风蛊', rank: 1, school: '风道', kind: '控制', cost: 4, cd: 2, power: 16, food: 'yuelanhua', price: 22, desc: '卷起山风扰乱敌方身法，造成伤害并有概率打断对手蓄势。' },
   qingtong_sheli: { id: 'qingtong_sheli', name: '青铜舍利蛊', rank: 1, school: '天道', kind: '消耗', cost: 0, cd: 0, power: 0, food: 'kuangshi', price: 90, desc: '一转破境奇蛊，使用后可直接助一转蛊师连破小境界。' },
   chitie_sheli: { id: 'chitie_sheli', name: '赤铁舍利蛊', rank: 2, school: '天道', kind: '消耗', cost: 0, cd: 0, power: 0, food: 'kuangshi', price: 210, desc: '二转破境奇蛊，使用后可直接助二转蛊师打破小境界壁垒。' },
+  baiyin_sheli: { id: 'baiyin_sheli', name: '白银舍利蛊', rank: 3, school: '天道', kind: '消耗', cost: 0, cd: 0, power: 0, food: 'kuangshi', price: 420, desc: '三转破境奇蛊，使用后可直接助三转蛊师提升一个小境界。' },
   chunqiuchan: { id: 'chunqiuchan', name: '春秋蝉（残）', rank: 3, school: '宙道', kind: '奇蛊', cost: 0, cd: 0, power: 0, food: 'guangyin_water', price: 0, desc: '奇蛊榜第七，可于行纪中留下一道旧影；身殒时消耗它回到那一刻。' }
 };
 const REFINE_RECIPES = [
@@ -880,6 +920,9 @@ const REFINE_RECIPES = [
   { id: 'r_yuehen', flow: 'moon', price: 12, out: 'yuehen', gu: { yueguang: 1, henshi: 1 }, materials: {}, rate: 0.76, cost: 25 },
   { id: 'r_yueni', flow: 'moon', price: 12, out: 'yueni', gu: { yueguang: 1, yupi: 1 }, materials: {}, rate: 0.62, cost: 25 },
   { id: 'r_baiyu', flow: 'armor', price: 12, out: 'baiyu', gu: { yupi: 1, baishi: 1 }, materials: { yezhuya: 1 }, rate: 0.57, cost: 25 },
+  { id: 'r_shuizhao', flow: 'armor', price: 14, out: 'shuizhao', source: '原创', gu: {}, materials: { yuanshi_zha: 4, kuangshi: 2 }, rate: 0.58, cost: 26 },
+  { id: 'r_tianpeng', flow: 'armor', price: 24, out: 'tianpeng', gu: { baiyu: 1, shuizhao: 1 }, materials: { kuangshi: 2 }, rate: 0.46, cost: 48 },
+  { id: 'r_huangjinyue', flow: 'moon', price: 24, out: 'huangjinyue', gu: { yuemang: 1, yuehen: 1 }, materials: { yuanshi_zha: 2 }, rate: 0.48, cost: 48 },
   { id: 'r_heizong', flow: 'armor', price: 12, out: 'heizong', gu: { heishi: 1, qingsi: 1 }, materials: {}, rate: 0.56, cost: 25 },
   { id: 'r_siwei', flow: 'wine', price: 20, out: 'siwei_jiu', gu: { jiuchong: 2 }, materials: { suanjiu: 1, tianjiu: 1, kujiu: 1, lajiu: 1 }, rate: 0.51, cost: 45 }
 ];
@@ -991,7 +1034,7 @@ const ENEMIES = {
       { name: '血海吸元', kind: 'drain', power: 34, cd: 2, weight: 2 },
       { name: '血煞护身', kind: 'shield', power: 42, cd: 2, weight: 1 }
     ],
-    reward: { yuanshi: 120 }
+    reward: { yuanshi: 120, gu: 'baiyin_sheli' }
   },
   tianhe: {
     id: 'tianhe', name: '天鹤上人', rank: 3, hp: 380, zy: 180, speed: 18,
@@ -1000,7 +1043,7 @@ const ENEMIES = {
       { name: '鹤唳震魂', kind: 'stun', power: 30, cd: 3, weight: 1 },
       { name: '仙鹤云障', kind: 'shield', power: 46, cd: 2, weight: 2 }
     ],
-    reward: { yuanshi: 150 }
+    reward: { yuanshi: 150, gu: 'huangjinyue' }
   }
 };
 
@@ -1290,12 +1333,15 @@ function addLog(gs, text, cls = '') {
 function hasGu(gs, id) {
   return gs.player.gu.some((g) => g.id === id);
 }
+function isGuWeak(gu) {
+  return (gu?.starveDays ?? 0) >= 2 && gu.satiety <= 0;
+}
 function addGu(gs, id, satiety = 100) {
   const def = GU_DEFS[id];
   if (!def) return null;
   let uid = Date.now() + Math.floor(Math.random() * 10000);
   while (gs.player.gu.some((gu) => gu.uid === uid)) uid++;
-  const inst = { uid, id, satiety };
+  const inst = { uid, id, satiety, starveDays: 0 };
   gs.player.gu.push(inst);
   if (gs.player.equipped.length < 6 && ['攻击', '防御', '治疗', '增益', '控制', '探知', '隐匿'].includes(def.kind)) {
     gs.player.equipped.push(inst.uid);
@@ -1388,6 +1434,7 @@ function feedGu(gs, gu, threshold = 100) {
   const food = GU_DEFS[gu?.id]?.food;
   if (!food || gu.satiety >= threshold || !useItem(gs, food, 1)) return false;
   gu.satiety = Math.min(100, gu.satiety + 50);
+  gu.starveDays = 0;
   return true;
 }
 function useItem(gs, id, n = 1) {
@@ -1505,7 +1552,9 @@ function killerMoveBlock(gs, move) {
   if (blocked) return blocked;
   const { gu, equipped } = gs.player;
   const resting = pattern.sequence.find((id) => !gu.some((entry) => entry.id === id && equipped.includes(entry.uid)));
-  return resting ? `「${GU_DEFS[resting].name}」未出战` : '';
+  if (resting) return `「${GU_DEFS[resting].name}」未出战`;
+  const weak = pattern.sequence.find((id) => !gu.some((entry) => entry.id === id && equipped.includes(entry.uid) && !isGuWeak(entry)));
+  return weak ? `「${GU_DEFS[weak].name}」饥饿虚弱` : '';
 }
 function killerCraftBlock(gs, pattern) {
   if (gs.player.moves.some((move) => move.patternId === pattern.id)) return '已推演';
@@ -1588,6 +1637,7 @@ function startBattle(gs, enemyId, tag = '遭遇战', rng = Math.random) {
     state: 'ongoing', // ongoing | win | lose | fled
     lethal: false,
     scouted: false,
+    playerStunned: false,
     meShield: 0,
     meBoost: 0,
     cds: {},
@@ -1618,6 +1668,7 @@ function enemyTurn(gs, b, rng = Math.random) {
   }
   const mv = foe.intent || foe.moves[0];
   if (mv.cd) foe.cds[mv.name] = mv.cd;
+  foe.zy = Math.max(0, foe.zy - (mv.cost ?? foe.rank * 4));
   if (mv.kind === 'attack' || mv.kind === 'drain' || mv.kind === 'stun') {
     const raw = Math.round(mv.power * (0.9 + rng() * 0.2));
     const absorbed = Math.min(b.meShield, raw);
@@ -1631,7 +1682,8 @@ function enemyTurn(gs, b, rng = Math.random) {
       b.logs.push(`${foe.name}吸取气血，恢复 ${heal} 点。`);
     }
     if (mv.kind === 'stun' && rng() < 0.35) {
-      b.logs.push('你身形微晃，好在强自稳住了心神。');
+      b.playerStunned = true;
+      b.logs.push('你心神受震，下回合只能调息稳神！');
     }
   } else if (mv.kind === 'shield') {
     foe.shield += mv.power;
@@ -1656,9 +1708,10 @@ function enemyTurn(gs, b, rng = Math.random) {
   }
 }
 
-function dealDamageToFoe(b, rawDmg) {
+function dealDamageToFoe(b, rawDmg, pierce = 0) {
   const foe = b.foe;
-  const absorbed = Math.min(foe.shield, rawDmg);
+  const blockable = Math.round(rawDmg * (1 - pierce));
+  const absorbed = Math.min(foe.shield, blockable);
   foe.shield -= absorbed;
   const dmg = rawDmg - absorbed;
   foe.hp = Math.max(0, foe.hp - dmg);
@@ -1671,7 +1724,7 @@ function battleGuPlan(gs) {
     const gu = player.gu.find((g) => g.uid === uid);
     const def = GU_DEFS[gu?.id];
     if (!def || !['攻击', '控制', '防御', '治疗', '增益', '探知', '隐匿'].includes(def.kind)) return [];
-    return [{ uid, def, cooldown: Math.max(0, (battle.cds[uid] ?? 0) - 1) }];
+    return [{ uid, def, weak: isGuWeak(gu), cooldown: Math.max(0, (battle.cds[uid] ?? 0) - 1) }];
   });
   const queued = queue.map((uid) => choices.find((choice) => choice.uid === uid)).filter(Boolean);
   const cost = queued.reduce((total, choice) => total + choice.def.cost, 0);
@@ -1685,12 +1738,12 @@ function applyBattleGu(gs, b, gu, rng) {
   p.zy -= def.cost;
   if (def.cd) b.cds[gu.uid] = def.cd;
   if (def.kind === '攻击' || def.kind === '控制') {
-    const boosted = def.id === 'yueguang' && b.meBoost > 0;
+    const boosted = def.school === '月道' && def.kind === '攻击' && b.meBoost > 0;
     const mul = boosted ? 1.35 : 1;
     if (boosted) b.meBoost--;
     const strengthBonus = def.school === '力道' ? p.powerBonus * 0.4 : 0;
     const raw = Math.round((def.power + strengthBonus) * mul * (0.92 + rng() * 0.16));
-    const res = dealDamageToFoe(b, raw);
+    const res = dealDamageToFoe(b, raw, def.id === 'yuehen' ? 0.5 : 0);
     b.logs.push(`你催动「${def.name}」，${res.absorbed ? `破盾 ${res.absorbed}，` : ''}造成 ${res.dmg} 点伤害。`);
     if (def.id === 'xuefu_gu' && res.dmg > 0) {
       const leach = Math.round(res.dmg * 0.35);
@@ -1709,7 +1762,7 @@ function applyBattleGu(gs, b, gu, rng) {
     b.logs.push(`你催动「${def.name}」，气血恢复 +${def.power}。`);
   } else if (def.kind === '增益') {
     b.meBoost += 1;
-    b.logs.push(`你催动「${def.name}」，下一记月光蛊的月刃威能大增！`);
+    b.logs.push(`你催动「${def.name}」，下一记月道攻击蛊的威能大增！`);
   } else if (def.kind === '探知') {
     b.scouted = true;
     b.logs.push(`你催动「${def.name}」，看清了${foe.name}的气血真元与下步动向。`);
@@ -1725,9 +1778,23 @@ function battleAct(gs, action, arg = '', rng = Math.random) {
   const foe = b.foe;
 
   if (action === 'lethal') {
-    if (b.lethal) return b;
+    if (b.lethal || foe.practice) return b;
     b.lethal = true;
     b.logs.push('你眼神转冷，彻底下了死手！此战不再留手，也再无退路。');
+    return b;
+  }
+
+  if (b.playerStunned) {
+    if (action !== 'recover') return b;
+    b.playerStunned = false;
+    b.guQueue = [];
+    for (const k of Object.keys(b.cds)) {
+      if (b.cds[k] > 0) b.cds[k]--;
+    }
+    b.logs.push('你强忍心神震荡，稳住气息。');
+    enemyTurn(gs, b, rng);
+    b.round++;
+    if (b.logs.length > 24) b.logs = b.logs.slice(-24);
     return b;
   }
 
@@ -1740,7 +1807,7 @@ function battleAct(gs, action, arg = '', rng = Math.random) {
     } else {
       const { choices, cost } = battleGuPlan(gs);
       const choice = choices.find((entry) => entry.uid === uid);
-      if (choice && !choice.cooldown && cost + choice.def.cost <= p.zy) queue.push(uid);
+      if (choice && !choice.cooldown && !choice.weak && cost + choice.def.cost <= p.zy) queue.push(uid);
     }
     return b;
   }
@@ -1749,7 +1816,7 @@ function battleAct(gs, action, arg = '', rng = Math.random) {
   const plan = action === 'resolveGu' ? battleGuPlan(gs) : null;
   if (plan) {
     if (!queue.length || plan.queued.length !== queue.length || plan.cost > p.zy
-      || plan.queued.some((choice) => choice.cooldown)) return b;
+      || plan.queued.some((choice) => choice.cooldown || choice.weak)) return b;
     b.guQueue = [];
   } else {
     if (queue.length || !['attack', 'stone', 'flee', 'move'].includes(action)) return b;
@@ -1975,23 +2042,28 @@ function advanceMinutes(gs, minutes, rng = Math.random) {
     p.xp = Number((p.xp + xpGain).toFixed(2));
   }
 
-  // 跨日结算蛊虫饱食
+  // 跨日结算蛊虫饱食：饱食归零 2 日后进入虚弱无法出战，归零 5 日后非本命/非春秋蝉损毁
   const daysPassed = newDay - oldDay;
   if (daysPassed > 0) {
     for (let i = gs.player.gu.length - 1; i >= 0; i--) {
       const g = gs.player.gu[i];
       const def = GU_DEFS[g.id];
       if (!def || !def.food) continue;
-      if (p.autoFeed) {
-        for (let day = 0; day < daysPassed; day++) {
-          g.satiety = Math.max(0, g.satiety - 12);
-          if (feedGu(gs, g, 51)) addLog(gs, `【自动喂养】已喂食「${def.name}」。`);
-        }
-      } else {
-        g.satiety = Math.max(0, g.satiety - daysPassed * 12);
+      for (let day = 0; day < daysPassed; day++) {
+        g.satiety = Math.max(0, g.satiety - 12);
+        if (p.autoFeed && feedGu(gs, g, 51)) addLog(gs, `【自动喂养】已喂食「${def.name}」。`);
+        if (g.satiety > 0) g.starveDays = 0;
+        else g.starveDays = (g.starveDays || 0) + 1;
       }
-      if (g.satiety === 0) {
-        addLog(gs, `【饥饿】「${def.name}」腹中空空，气息衰弱，须尽快喂食！`, 'log-warn');
+      if (g.satiety > 0) continue;
+      const canDie = g.uid !== p.benming && g.id !== 'chunqiuchan';
+      if (g.starveDays >= 5 && canDie) {
+        removeGuByUid(gs, g.uid);
+        addLog(gs, `【饥毙】「${def.name}」断粮多日，气息彻底溃散，化作飞灰消散！`, 'log-bad');
+      } else if (g.starveDays >= 2) {
+        addLog(gs, `【虚弱】「${def.name}」饥饿过久已陷入虚弱，无法在战中催动！`, 'log-warn');
+      } else {
+        addLog(gs, `【饥饿】「${def.name}」腹中空空，若再不喂食恐将虚弱损毁！`, 'log-warn');
       }
     }
     // 魔道恶名追捕
@@ -2606,14 +2678,23 @@ function renderRefineModal(sess, effect) {
   const ready = refineReady(sess);
   const techniques = refineTechniques(sess);
   const signature = techniques.find(({ id, enabled }) => id === 'signature' && enabled);
+  const protectables = sess.turns && !ready && sess.protectedUid === null
+    ? sess.ingredients.filter((gu) => !gu.benming)
+    : [];
+  const protectedGu = sess.protectedUid !== null
+    ? sess.ingredients.find((gu) => gu.uid === sess.protectedUid)
+    : null;
   return `<div class="refine-ritual">${scene}
     <div class="row">
       ${sess.turns && !ready ? '<button class="gold" data-action="refineAct" data-id="pulse">按下风箱</button>' : ''}
+      ${sess.turns && !ready ? '<button data-action="refineAct" data-id="gentle">温养</button>' : ''}
       ${techniques.some(({ id, enabled }) => id === 'vent' && enabled) && !ready ? '<button data-action="refineAct" data-id="vent">掀盖放火</button>' : ''}
       ${signature && !ready ? `<button data-action="refineAct" data-id="signature">${esc(signature.name)}</button>` : ''}
+      ${protectables.map((gu) => `<button class="sm" title="耗一次运炉，失败时保住此蛊" data-action="refineAct" data-id="protect:${gu.uid}">护蛊印 · ${esc(gu.name)}</button>`).join('')}
       ${chance ? `<button class="${ready ? 'primary' : 'blood'}" data-action="refineAct" data-id="seal">${ready ? '合盖收炉' : '冒险合盖'} · ${Math.round(chance * 100)}%</button>` : ''}
       <button class="ghost" data-action="refineAct" data-id="abort">撤火</button>
     </div>
+    ${protectedGu ? `<div class="muted" style="font-size:.82rem">已施护蛊印：失败或炸炉时保住「${esc(protectedGu.name)}」</div>` : ''}
   </div>`;
 }
 function renderEventModal(eventId) {
@@ -2649,7 +2730,7 @@ function renderBattleView(gs) {
   const hpState = hpRatio > 0.6 ? '气息强盛' : hpRatio > 0.25 ? '已有伤势' : '摇摇欲坠';
   const hpLevel = hpRatio > 0.6 ? 'high' : hpRatio > 0.25 ? 'mid' : 'low';
   const foeHp = b.scouted
-    ? `<div class="foe-hp"><span class="bar hp"><i style="width:${Math.round(hpRatio * 100)}%"></i></span><span>${foe.hp} / ${foe.hpMax}</span></div>`
+    ? `<div class="foe-hp"><span class="bar hp"><i style="width:${Math.round(hpRatio * 100)}%"></i></span><span>${foe.hp} / ${foe.hpMax}</span><span class="foe-zy">真元 ${foe.zy}/${foe.zyMax}</span></div>`
     : `<div class="foe-hp is-${hpLevel}">${hpState}</div>`;
   const intentText = foe.stunned
     ? '本轮受制，无法出手'
@@ -2659,30 +2740,41 @@ function renderBattleView(gs) {
 
   const { choices, queued, cost } = battleGuPlan(gs);
   const hasQueue = queued.length > 0;
-  const guButtons = choices.map(({ uid, def, cooldown }) => {
+  const guButtons = choices.map(({ uid, def, weak, cooldown }) => {
     const position = queued.findIndex((choice) => choice.uid === uid) + 1;
     const selected = position > 0;
-    const disabled = !selected && (cooldown > 0 || p.zy - cost < def.cost);
-    return `<button class="skill${selected ? ' is-picked' : ''}" aria-pressed="${selected}" title="${esc(guEffectText(def))}" ${disabled ? 'disabled' : ''} data-action="battleAct" data-kind="gu" data-id="${uid}">
-      ${selected ? `<i class="skill-order">${position}</i>` : ''}${esc(def.name)}<small>${cooldown > 0 ? `冷却 ${cooldown}` : def.cost}</small>
+    const disabled = b.playerStunned || (!selected && (weak || cooldown > 0 || p.zy - cost < def.cost));
+    return `<button class="skill${selected ? ' is-picked' : ''}" aria-pressed="${selected}" title="${esc(weak ? '饥饿虚弱，喂食后方可催动' : guEffectText(def))}" ${disabled ? 'disabled' : ''} data-action="battleAct" data-kind="gu" data-id="${uid}">
+      ${selected ? `<i class="skill-order">${position}</i>` : ''}${esc(def.name)}<small>${weak ? '虚弱' : cooldown > 0 ? `冷却 ${cooldown}` : def.cost}</small>
     </button>`;
   }).join('');
 
   const moveButtons = p.moves.map((m) => {
     const cd = Math.max(0, (b.cds[m.id] || 0) - 1);
     const blocked = killerMoveBlock(gs, m);
-    const disabled = hasQueue || blocked || cd > 0 || p.zy < m.cost;
+    const disabled = b.playerStunned || hasQueue || blocked || cd > 0 || p.zy < m.cost;
     return `<button class="skill is-move" ${disabled ? 'disabled' : ''} ${blocked ? `title="${esc(blocked)}"` : ''} data-action="battleAct" data-kind="move" data-id="${esc(m.id)}">
       ${esc(m.name)}<small>${cd > 0 ? `冷却 ${cd}` : blocked ? '不可用' : m.cost}</small>
     </button>`;
   }).join('');
 
-  // 倒序输出，配合 column-reverse：视觉顺序不变，滚动条始终停在最新一条。
   const logs = b.logs.slice(-40);
   const logHtml = logs.map((l, i) => `<div${i === logs.length - 1 ? ' class="is-latest"' : ''}>${esc(l)}</div>`).reverse().join('');
 
-  const actions = b.state === 'ongoing'
-    ? `<section class="card battle-actions">
+  let actions;
+  if (b.state !== 'ongoing') {
+    actions = `<button class="primary battle-finish" data-action="finishBattle">${b.state === 'win' ? '打扫战场离开' : b.state === 'fled' ? '脱身离开' : '查看结局'}</button>`;
+  } else if (b.playerStunned) {
+    actions = `<section class="card battle-actions">
+        <div class="skill-head"><span class="log-warn">心神受震，本轮无法催动蛊虫与杀招</span></div>
+        <div class="battle-basic">
+          <button class="primary" data-action="battleAct" data-kind="recover">调息稳神</button>
+          <span class="battle-spacer"></span>
+          ${b.lethal ? '<span class="battle-lethal">死斗中 · 不可逃</span>' : ''}
+        </div>
+      </section>`;
+  } else {
+    actions = `<section class="card battle-actions">
         ${guButtons ? `<div class="skill-group">
           <div class="skill-head">
             <span>蛊虫<em>依次点选，再点取消</em></span>
@@ -2702,10 +2794,10 @@ function renderBattleView(gs) {
           ${b.lethal
             ? '<span class="battle-lethal">死斗中 · 不可逃</span>'
             : `<button class="sm ghost" ${hasQueue ? 'disabled' : ''} data-action="battleAct" data-kind="flee">逃走</button>
-               <button class="sm blood" title="不留余地，之后无法逃走" data-action="battleAct" data-kind="lethal">下死手</button>`}
+               ${foe.practice ? '' : '<button class="sm blood" title="不留余地，之后无法逃走" data-action="battleAct" data-kind="lethal">下死手</button>'}`}
         </div>
-      </section>`
-    : `<button class="primary battle-finish" data-action="finishBattle">${b.state === 'win' ? '打扫战场离开' : b.state === 'fled' ? '脱身离开' : '查看结局'}</button>`;
+      </section>`;
+  }
 
   return `<section class="card battle-foe">
       <div class="foe-top">
@@ -2836,42 +2928,71 @@ function renderPlaceView(gs) {
       const recipes = sellsRecipes ? REFINE_RECIPES.filter(isRecipeSold)
         .filter((recipe) => kind === 'gu' ? recipe.gu[id] : recipe.materials[id])
         .map(recipeOutputText) : [];
-      const usage = recipes.length ? `<br><small class="muted">蛊方材料 · ${esc(recipes.join('、'))}</small>` : '';
-      return `<div class="kv">
-        <span><b>${esc(def.name)}</b> ${kind === 'gu' ? `<span class="badge">${def.rank}转</span>` : ''} ${MERCHANT_GU.includes(id) ? '<span class="badge">贾家商队 · 限一只</span>' : ''} <span class="muted">${esc(def.desc)}${kind === "gu" && guEffectText(def) ? `<br>${esc(guEffectText(def))}` : ''}</span>${usage}</span>
+      const effect = kind === 'gu' ? guEffectText(def) : '';
+      return `<li class="list-row">
+        <div class="list-main">
+          <div class="list-title">
+            <b>${esc(def.name)}</b>
+            ${kind === 'gu' ? `<span class="list-meta">${def.rank}转 · ${esc(def.kind)}</span>` : `<span class="list-meta">${esc(def.kind)}</span>`}
+            ${limited ? '<span class="gu-tag">商队限售一只</span>' : ''}
+          </div>
+          <div class="list-sub" ${effect ? `title="${esc(effect)}"` : ''}>${esc(def.desc)}${effect ? ` · ${esc(effect)}` : ''}</div>
+          ${recipes.length ? `<div class="list-hint">蛊方材料：${esc(recipes.join('、'))}</div>` : ''}
+        </div>
         <div class="shop-purchase">
           ${limited ? '' : `<input type="number" min="1" max="${SHOP_BATCH_LIMIT}" step="1" value="1" aria-label="${esc(def.name)}购买数量" ${affordable ? '' : 'disabled'}>`}
-          <button class="sm" ${affordable ? '' : 'disabled'} data-action="buyItem" data-id="${esc(entry)}">买 · ${def.price} 元石${limited ? '' : kind === 'gu' ? '/只' : '/份'}</button>
+          <button class="sm ${affordable ? '' : 'ghost'}" ${affordable ? '' : 'disabled'} data-action="buyItem" data-id="${esc(entry)}">买 · ${def.price}${limited ? '' : kind === 'gu' ? '/只' : '/份'}</button>
         </div>
-      </div>`;
+      </li>`;
     }).join('');
-    shopHtml = `<div class="card"><h3>${esc(place.name)}货架</h3>${rows}</div>`;
+    shopHtml = `<div class="card"><div class="list-head"><h3>${esc(place.name)}货架</h3><span class="muted">余额 ${gs.player.yuanshi} 元石</span></div><ul class="list-rows">${rows}</ul></div>`;
   }
 
   const board = place.services.includes('quests') ? questBoard(gs) : null;
+  const questHtml = board ? `<div class="card">
+      <div class="list-head"><h3>族中委托</h3><span class="muted">轮换 · ${esc(formatDateTime(gs.minutes + board.remaining))}</span></div>
+      <ul class="list-rows">${board.entries.map((q) => {
+        const ready = q.progress === q.target;
+        return `<li class="list-row">
+          <div class="list-main">
+            <div class="list-title"><b>${esc(q.name)}</b><span class="list-meta">赏 ${q.reward} 元石${q.accepted ? ` · ${q.progress}/${q.target}` : ''}</span></div>
+            <div class="list-sub">${esc(q.desc)}</div>
+          </div>
+          <div class="list-side">
+            <button class="sm ${ready && q.accepted && !q.claimed ? 'primary' : ''}" ${q.claimed || (q.accepted && !ready) ? 'disabled' : ''} data-action="quest" data-id="${q.id}">
+              ${q.claimed ? '已交付' : !q.accepted ? '接取' : ready ? '交付领赏' : '进行中'}
+            </button>
+          </div>
+        </li>`;
+      }).join('')}</ul>
+    </div>` : '';
+
+  const recipeHtml = sellsRecipes ? `<div class="card">
+      <div class="list-head"><h3>蛊方</h3></div>
+      <ul class="list-rows">${REFINE_RECIPES.filter(isRecipeSold).map((r) => {
+        const owned = gs.player.recipes?.includes(r.id);
+        const out = GU_DEFS[r.out] || ITEMS[r.out];
+        return `<li class="list-row">
+          <div class="list-main">
+            <div class="list-title"><b>${esc(recipeOutputText(r))}${r.method ?? ''}蛊方</b>${out.rank ? `<span class="list-meta">${out.rank}转</span>` : ''}</div>
+            <div class="list-sub">${esc(recipeIngredientsText(r))}</div>
+          </div>
+          <div class="list-side">
+            <button class="sm" ${owned || gs.player.yuanshi < r.price ? 'disabled' : ''} data-action="buyRecipe" data-id="${r.id}">${owned ? '已习得' : `买 · ${r.price} 元石`}</button>
+          </div>
+        </li>`;
+      }).join('')}</ul>
+    </div>` : '';
+
   return `<section class="stage ${night ? 'is-night' : ''}">
       <div class="stage-loc">${esc(formatDateTime(gs.minutes))} · ${esc(place.region)}</div>
       <h1 id="place-title">${esc(place.name)}</h1>
       <p class="stage-desc">${esc(night ? place.night : place.day)}</p>
       <div class="row">${actions.join('')}</div>
     </section>
-    ${board ? `<div class="card"><h3>族中委托</h3>
-      <div class="muted">下次轮换 · ${esc(formatDateTime(gs.minutes + board.remaining))}</div>
-      ${board.entries.map((q) => {
-        const ready = q.progress === q.target;
-        return `<div class="kv"><span><b>${esc(q.name)}</b> · ${esc(q.desc)} · 赏 ${q.reward} 元石
-          ${q.accepted ? ` · ${q.progress}/${q.target}` : ''}</span>
-          <button class="sm" ${q.claimed || (q.accepted && !ready) ? 'disabled' : ''} data-action="quest" data-id="${q.id}">
-            ${q.claimed ? '已交付' : !q.accepted ? '接取' : ready ? '交付领赏' : '进行中'}
-          </button></div>`;
-      }).join('')}</div>` : ''}
+    ${questHtml}
     ${shopHtml}
-    ${sellsRecipes ? `<div class="card"><h3>蛊方</h3>${REFINE_RECIPES.filter(isRecipeSold).map((r) => {
-      const owned = gs.player.recipes?.includes(r.id);
-      const out = GU_DEFS[r.out] || ITEMS[r.out];
-      return `<div class="kv"><span>${esc(recipeOutputText(r))}${r.method ?? ''}蛊方${out.rank ? ` · ${out.rank}转` : ''}<br><small class="muted">${esc(recipeIngredientsText(r))}</small></span>
-        <button class="sm" ${owned || gs.player.yuanshi < r.price ? 'disabled' : ''} data-action="buyRecipe" data-id="${r.id}">${owned ? '已习得' : `买 · ${r.price} 元石`}</button></div>`;
-    }).join('')}</div>` : ''}`;
+    ${recipeHtml}`;
 }
 
 
@@ -2885,7 +3006,7 @@ function renderApertureView(gs) {
     const def = GU_DEFS[g.id];
     if (!def) return '';
     const isBm = p.benming === g.uid;
-    return `<span class="gu-chip ${g.satiety <= 20 ? 'weak' : ''}">${isBm ? '★' : ''}${esc(def.name)} <small>${g.satiety}%</small></span>`;
+    return `<span class="gu-chip ${g.satiety <= 20 || isGuWeak(g) ? 'weak' : ''}">${isBm ? '★' : ''}${esc(def.name)} <small>${isGuWeak(g) ? '虚弱' : `${g.satiety}%`}</small></span>`;
   }).join('');
 
   const order = (g) => (p.benming === g.uid ? 0 : 2) + (p.equipped.includes(g.uid) ? 0 : 1);
@@ -2902,11 +3023,12 @@ function renderApertureView(gs) {
     if (!def) return '';
     const eq = p.equipped.includes(g.uid);
     const isBm = p.benming === g.uid;
-    const isSheli = g.id === 'qingtong_sheli' || g.id === 'chitie_sheli';
+    const isSheli = g.id === 'qingtong_sheli' || g.id === 'chitie_sheli' || g.id === 'baiyin_sheli';
     const food = ITEMS[def.food];
     const foodCount = p.items[def.food] ?? 0;
     const stats = guStats(def);
     const hungry = g.satiety <= 20;
+    const weak = isGuWeak(g);
     const boarKey = g.id === 'heishi' ? 'blackBoarStrength' : 'whiteBoarStrength';
     const actions = [
       food ? `<button class="sm ghost" ${foodCount <= 0 || g.satiety >= 100 ? 'disabled' : ''} data-action="feedGu" data-id="${g.uid}">喂食</button>` : '',
@@ -2923,13 +3045,14 @@ function renderApertureView(gs) {
           <b>${esc(def.name)}</b>
           <span class="gu-meta">${def.rank}转 · ${esc(def.kind)}</span>
           ${isBm ? '<span class="gu-tag" title="合炼失败时保留，炼成后由成蛊继承本命绑定">本命</span>' : ''}
+          ${weak ? '<span class="gu-tag is-weak" title="饱食归零多日已虚弱，喂食后恢复">虚弱</span>' : ''}
         </div>
         <p class="gu-desc">${esc(def.desc)}</p>
         ${stats.length ? `<div class="gu-stats" title="${esc(guEffectText(def))}">${stats.map((s) => `<span>${esc(s)}</span>`).join('')}</div>` : ''}
       </div>
       <div class="gu-side">
-        <div class="gu-hunger${hungry ? ' is-low' : ''}" title="饱食 ${g.satiety}%">
-          <span class="bar"><i style="width:${g.satiety}%"></i></span><span>${g.satiety}%</span>
+        <div class="gu-hunger${hungry || weak ? ' is-low' : ''}" title="${weak ? '饥饿虚弱，无法出战' : `饱食 ${g.satiety}%`}">
+          <span class="bar"><i style="width:${g.satiety}%"></i></span><span>${weak ? '虚弱' : `${g.satiety}%`}</span>
         </div>
         <div class="gu-food${food && foodCount <= 0 ? ' is-empty' : ''}">${food ? `${esc(food.name)} ×${foodCount}` : '无需喂食'}</div>
         <div class="gu-actions">${actions}</div>
@@ -3001,21 +3124,50 @@ function guStats(def) {
 /* === src/ui/refine-view.js === */
 function renderRefineView(gs) {
   const realm = refineRealm(gs.player);
-  const cards = REFINE_RECIPES.filter((r) => knowsRefineRecipe(gs, r)).map((r) => {
+  const known = REFINE_RECIPES.filter((r) => knowsRefineRecipe(gs, r)).map((r) => {
+    const check = canStartRefine(gs, r.id);
+    return { r, ok: check.ok, reason: check.reason };
+  });
+  known.sort((a, b) => Number(b.ok) - Number(a.ok));
+
+  const rows = known.map(({ r, ok, reason }) => {
     const out = GU_DEFS[r.out] || ITEMS[r.out];
-    return `<div class="card">
-      <div class="kv"><b>${esc(recipeOutputText(r))}</b><span class="badge">${out.rank ? `${out.rank}转 · ` : ''}${r.method ?? '合炼'}</span></div>
-      <button class="sm" data-action="startRefine" data-id="${r.id}">查看蛊方</button>
-    </div>`;
+    const rate = Math.round(refineSuccessRate(r.rate, realm.bonus, true) * 100);
+    const parts = [
+      ...Object.entries(r.gu).map(([id, count]) => {
+        const have = gs.player.gu.filter((g) => g.id === id).length;
+        const name = `${GU_DEFS[id].name}${count > 1 ? ` ×${count}` : ''}`;
+        return `<span class="${have >= count ? '' : 'is-lack'}">${esc(name)}</span>`;
+      }),
+      ...Object.entries(r.materials).map(([id, count]) => {
+        const have = gs.player.items[id] || 0;
+        const name = `${ITEMS[id].name}${count > 1 ? ` ×${count}` : ''}`;
+        return `<span class="${have >= count ? '' : 'is-lack'}">${esc(name)}</span>`;
+      })
+    ].join('<span> + </span>');
+
+    return `<li class="list-row${ok ? ' is-ready' : ''}">
+      <div class="list-main">
+        <div class="list-title">
+          <b>${esc(recipeOutputText(r))}</b>
+          <span class="list-meta">${out.rank ? `${out.rank}转 · ` : ''}${r.method ?? '合炼'}</span>
+        </div>
+        <div class="list-sub">${parts}</div>
+      </div>
+      <div class="list-side">
+        <span class="list-note" title="${esc(reason || '材料齐备，可立即开炉')}">成算 ${rate}% · ${r.cost} 元石</span>
+        <button class="sm ${ok ? 'primary' : 'ghost'}" data-action="startRefine" data-id="${r.id}">${ok ? '开炉' : '缺料'}</button>
+      </div>
+    </li>`;
   }).join('');
 
   return `<div class="card">
-      <h3>炼蛊</h3>
-      <div>炼道 · ${realm.name}</div>
-      <div class="muted">炼道心得 ${realm.insight}${realm.next ? ` / ${realm.next}` : ''}</div>
-      ${cards ? '' : '<div class="muted">尚未习得蛊方。</div>'}
-    </div>
-    <div class="grid2">${cards}</div>`;
+      <div class="list-head">
+        <h3>炼蛊</h3>
+        <span class="muted">炼道 · ${realm.name}（心得 ${realm.insight}${realm.next ? ` / ${realm.next}` : ''}）</span>
+      </div>
+      ${rows ? `<ul class="list-rows">${rows}</ul>` : '<div class="muted">尚未习得蛊方。</div>'}
+    </div>`;
 }
 function renderRefineRequirements(materials, cost, rate, bonus) {
   return `<div class="muted">${esc(materials)}<br>开炉 ${cost} 元石 · 稳炉成算 ${Math.round(refineSuccessRate(rate, bonus, true) * 100)}%</div>`;
@@ -3023,7 +3175,7 @@ function renderRefineRequirements(materials, cost, rate, bonus) {
 function renderRefineDetails(gs, recipe, reason) {
   return `<h2>${esc(recipeOutputText(recipe))}</h2>
     ${renderRefineRequirements(recipeIngredientsText(recipe), recipe.cost, recipe.rate, refineRealm(gs.player).bonus)}
-    <div>${esc(reason)}</div>
+    <div class="log-warn">${esc(reason)}</div>
     <button data-action="closeModal">返回炼蛊</button>`;
 }
 
@@ -3070,11 +3222,15 @@ function renderBagView(gs, tab) {
     const rows = entries.map(([id, cnt]) => {
       const def = ITEMS[id];
       if (!def) return '';
-      return `<div class="card">
-        <div class="kv"><b>${esc(def.name)} ×${cnt}</b><span class="badge">${esc(def.kind)}</span></div>
-        <div class="muted" style="margin-bottom:6px">${esc(def.desc)}</div>
-        ${def.heal ? `<button class="sm primary" data-action="useHealItem" data-id="${id}">敷药疗伤（+${def.heal}血）</button>` : ''}
-      </div>`;
+      return `<li class="list-row">
+        <div class="list-main">
+          <div class="list-title"><b>${esc(def.name)} ×${cnt}</b><span class="list-meta">${esc(def.kind)}</span></div>
+          <div class="list-sub">${esc(def.desc)}</div>
+        </div>
+        <div class="list-side">
+          ${def.heal ? `<button class="sm primary" data-action="useHealItem" data-id="${id}">疗伤 +${def.heal}</button>` : ''}
+        </div>
+      </li>`;
     }).join('');
     const moDesc = p.mo >= 60 ? '正道公敌（铁血冷随时围捕）' : p.mo >= 30 ? '恶名昭彰（魔道捕手巡查）' : '清白';
     return `<div class="card">
@@ -3083,7 +3239,10 @@ function renderBagView(gs, tab) {
         <div class="kv"><span>资质 / 元海</span><b>${esc(p.grade)}等 · ${p.hai} 成</b></div>
         <div class="kv"><span>元石 / 恶名</span><b>${p.yuanshi} 元石 · 恶名 ${p.mo}（${moDesc}）</b></div>
       </div>
-      <div class="card"><h3>行囊物品</h3><div class="grid2">${rows || '<span class="muted">行囊空空如也</span>'}</div></div>`;
+      <div class="card">
+        <div class="list-head"><h3>行囊物品</h3><span class="muted">${entries.length} 种</span></div>
+        ${rows ? `<ul class="list-rows">${rows}</ul>` : '<span class="muted">行囊空空如也</span>'}
+      </div>`;
   }
 
   const hasCicada = hasGu(gs, 'chunqiuchan');
@@ -3096,6 +3255,7 @@ function renderBagView(gs, tab) {
       <div class="row">
         <button class="primary" data-action="manualSave">保存进度</button>
         <button data-action="exportSave">导出存档</button>
+        <button data-action="openImport">导入存档</button>
         <button class="blood" data-action="resetGame">重开一世</button>
         <button data-action="${gs.developerMode ? 'openDeveloper' : 'toggleDeveloper'}">${gs.developerMode ? '开发者面板' : '开启开发者模式'}</button>
       </div>
@@ -3185,11 +3345,11 @@ function renderTopBar() {
         <button class="sm ghost" data-action="togglePause">${G.paused ? '▶ 继续流逝' : '⏸ 暂停'}</button>
       </div>
     </div>
-    <div class="goal-bar"><b>当下目标：</b>${esc(G.goal)}</div>
+    <div class="goal-bar"><span>目标</span>${esc(G.goal)}</div>
     <div class="res-row">
-      <div class="res-item"><div class="res-head"><span>气血${G.battle?.meShield ? ` · 护盾 ${G.battle.meShield}` : ''}</span><span data-live="hp">${Math.round(p.hp)}/${p.hpMax}</span></div><div class="bar hp"><i data-live="hp-bar" style="width:${hpPct}%"></i></div></div>
+      <div class="res-item"><div class="res-head"><span>气血${G.battle?.meShield ? ` · 盾 ${G.battle.meShield}` : ''}</span><span data-live="hp">${Math.round(p.hp)}/${p.hpMax}</span></div><div class="bar hp"><i data-live="hp-bar" style="width:${hpPct}%"></i></div></div>
       <div class="res-item"><div class="res-head"><span>真元</span><span data-live="zy">${Math.round(p.zy)}/${p.zyMax}</span></div><div class="bar zy"><i data-live="zy-bar" style="width:${zyPct}%"></i></div></div>
-      <div class="res-item"><div class="res-head"><span>元石</span><span>${p.yuanshi}</span></div><div class="muted" style="font-size:.75rem">${p.mo >= 30 ? `恶名 ${p.mo}` : `${p.grade}等资质`}</div></div>
+      <div class="res-item res-meta"><div class="res-head"><span>元石 <b>${p.yuanshi}</b></span><span>${p.mo >= 30 ? `恶名 ${p.mo}` : `${p.grade}等`}</span></div></div>
     </div>
   </header>`;
 }
@@ -3233,6 +3393,7 @@ function renderModal() {
   else if (MODAL.kind === 'refineInfo') html = renderRefineDetails(G, MODAL.data.recipe, MODAL.data.reason);
   else if (MODAL.kind === 'killer') html = renderCustomKillerModal(G);
   else if (MODAL.kind === 'developer') html = renderDeveloperView(G);
+  else if (MODAL.kind === 'import') html = `<h2>导入存档</h2><p class="muted">粘贴之前导出的存档 JSON，覆盖当前进度。</p><textarea id="importJson" rows="6" placeholder='{"v":1,"player":{...}}'></textarea><div class="row"><button class="primary" data-action="doImportSave">导入并覆盖</button><button class="ghost" data-action="closeModal">取消</button></div>`;
   else if (MODAL.kind === 'dead') {
     html = `<h2>身殒青茅山</h2>
       <p>你的修行止步于${esc(realmText(G.player))}。</p>
@@ -3631,8 +3792,8 @@ function handleAction(el) {
     const uid = Number(id);
     const g = G.player.gu.find((x) => x.uid === uid);
     if (!g) return;
-    if (!['qingtong_sheli', 'chitie_sheli'].includes(g.id)) return;
-    const targetRank = g.id === 'qingtong_sheli' ? 1 : 2;
+    if (!['qingtong_sheli', 'chitie_sheli', 'baiyin_sheli'].includes(g.id)) return;
+    const targetRank = g.id === 'qingtong_sheli' ? 1 : g.id === 'chitie_sheli' ? 2 : 3;
     if (G.player.rank !== targetRank || G.player.xiao >= 3) {
       showToast('仅限对应转数未达巅峰时使用');
       return;
@@ -3686,6 +3847,25 @@ function handleAction(el) {
     const text = JSON.stringify(G, null, 2);
     if (navigator.clipboard) navigator.clipboard.writeText(text).then(() => showToast('存档 JSON 已复制到剪贴板'));
     else showToast('请从控制台查看存档');
+  } else if (act === 'openImport') {
+    openModal('import', {});
+  } else if (act === 'doImportSave') {
+    const raw = document.getElementById('importJson')?.value?.trim();
+    if (!raw) { showToast('请先粘贴存档 JSON'); return; }
+    try {
+      const parsed = JSON.parse(raw);
+      if (!parsed?.player || !Array.isArray(parsed.player.gu)) throw new Error('bad');
+      if (!PLACES[parsed.location]) parsed.location = 'shijie';
+      recalcStats(parsed);
+      G = parsed;
+      saveGame(G);
+      MODAL = null;
+      restoreRefining();
+      render();
+      showToast('存档已导入');
+    } catch {
+      showToast('存档格式无效，导入失败');
+    }
   } else if (act === 'resetGame') {
     if (typeof localStorage !== 'undefined') localStorage.removeItem('gujie_qingmaoshan_v1');
     G = null;

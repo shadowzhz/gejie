@@ -76,11 +76,11 @@ function renderTopBar() {
         <button class="sm ghost" data-action="togglePause">${G.paused ? '▶ 继续流逝' : '⏸ 暂停'}</button>
       </div>
     </div>
-    <div class="goal-bar"><b>当下目标：</b>${esc(G.goal)}</div>
+    <div class="goal-bar"><span>目标</span>${esc(G.goal)}</div>
     <div class="res-row">
-      <div class="res-item"><div class="res-head"><span>气血${G.battle?.meShield ? ` · 护盾 ${G.battle.meShield}` : ''}</span><span data-live="hp">${Math.round(p.hp)}/${p.hpMax}</span></div><div class="bar hp"><i data-live="hp-bar" style="width:${hpPct}%"></i></div></div>
+      <div class="res-item"><div class="res-head"><span>气血${G.battle?.meShield ? ` · 盾 ${G.battle.meShield}` : ''}</span><span data-live="hp">${Math.round(p.hp)}/${p.hpMax}</span></div><div class="bar hp"><i data-live="hp-bar" style="width:${hpPct}%"></i></div></div>
       <div class="res-item"><div class="res-head"><span>真元</span><span data-live="zy">${Math.round(p.zy)}/${p.zyMax}</span></div><div class="bar zy"><i data-live="zy-bar" style="width:${zyPct}%"></i></div></div>
-      <div class="res-item"><div class="res-head"><span>元石</span><span>${p.yuanshi}</span></div><div class="muted" style="font-size:.75rem">${p.mo >= 30 ? `恶名 ${p.mo}` : `${p.grade}等资质`}</div></div>
+      <div class="res-item res-meta"><div class="res-head"><span>元石 <b>${p.yuanshi}</b></span><span>${p.mo >= 30 ? `恶名 ${p.mo}` : `${p.grade}等`}</span></div></div>
     </div>
   </header>`;
 }
@@ -124,6 +124,7 @@ function renderModal() {
   else if (MODAL.kind === 'refineInfo') html = renderRefineDetails(G, MODAL.data.recipe, MODAL.data.reason);
   else if (MODAL.kind === 'killer') html = renderCustomKillerModal(G);
   else if (MODAL.kind === 'developer') html = renderDeveloperView(G);
+  else if (MODAL.kind === 'import') html = `<h2>导入存档</h2><p class="muted">粘贴之前导出的存档 JSON，覆盖当前进度。</p><textarea id="importJson" rows="6" placeholder='{"v":1,"player":{...}}'></textarea><div class="row"><button class="primary" data-action="doImportSave">导入并覆盖</button><button class="ghost" data-action="closeModal">取消</button></div>`;
   else if (MODAL.kind === 'dead') {
     html = `<h2>身殒青茅山</h2>
       <p>你的修行止步于${esc(realmText(G.player))}。</p>
@@ -523,8 +524,8 @@ function handleAction(el) {
     const uid = Number(id);
     const g = G.player.gu.find((x) => x.uid === uid);
     if (!g) return;
-    if (!['qingtong_sheli', 'chitie_sheli'].includes(g.id)) return;
-    const targetRank = g.id === 'qingtong_sheli' ? 1 : 2;
+    if (!['qingtong_sheli', 'chitie_sheli', 'baiyin_sheli'].includes(g.id)) return;
+    const targetRank = g.id === 'qingtong_sheli' ? 1 : g.id === 'chitie_sheli' ? 2 : 3;
     if (G.player.rank !== targetRank || G.player.xiao >= 3) {
       showToast('仅限对应转数未达巅峰时使用');
       return;
@@ -578,6 +579,25 @@ function handleAction(el) {
     const text = JSON.stringify(G, null, 2);
     if (navigator.clipboard) navigator.clipboard.writeText(text).then(() => showToast('存档 JSON 已复制到剪贴板'));
     else showToast('请从控制台查看存档');
+  } else if (act === 'openImport') {
+    openModal('import', {});
+  } else if (act === 'doImportSave') {
+    const raw = document.getElementById('importJson')?.value?.trim();
+    if (!raw) { showToast('请先粘贴存档 JSON'); return; }
+    try {
+      const parsed = JSON.parse(raw);
+      if (!parsed?.player || !Array.isArray(parsed.player.gu)) throw new Error('bad');
+      if (!PLACES[parsed.location]) parsed.location = 'shijie';
+      recalcStats(parsed);
+      G = parsed;
+      saveGame(G);
+      MODAL = null;
+      restoreRefining();
+      render();
+      showToast('存档已导入');
+    } catch {
+      showToast('存档格式无效，导入失败');
+    }
   } else if (act === 'resetGame') {
     if (typeof localStorage !== 'undefined') localStorage.removeItem('gujie_qingmaoshan_v1');
     G = null;

@@ -60,10 +60,10 @@ button.sm { min-height: 32px; padding: 4px 10px; font-size: .85rem; }
   background: rgba(12, 23, 21, .95);
   backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--line);
-  padding: 10px 14px;
+  padding: 8px 14px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 .top-row {
   display: flex;
@@ -89,16 +89,20 @@ button.sm { min-height: 32px; padding: 4px 10px; font-size: .85rem; }
 
 .clock-box { display: flex; align-items: center; gap: 8px; font-size: .86rem; color: var(--dim); }
 .goal-bar {
-  background: rgba(216, 191, 135, .1);
-  border-left: 3px solid var(--gold);
-  padding: 5px 10px;
-  font-size: .88rem;
-  color: #efe3c4;
-  border-radius: 0 6px 6px 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: .82rem;
+  color: #dfd3b4;
+  padding: 2px 0 2px 8px;
+  border-left: 2px solid var(--gold);
 }
-.res-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.res-item { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 5px 8px; }
-.res-head { display: flex; justify-content: space-between; font-size: .78rem; color: var(--dim); margin-bottom: 3px; }
+.goal-bar > span { font-size: .74rem; color: var(--gold); flex-shrink: 0; }
+.res-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 14px; align-items: center; }
+.res-item { min-width: 0; }
+.res-head { display: flex; justify-content: space-between; gap: 10px; font-size: .76rem; color: var(--dim); margin-bottom: 2px; font-variant-numeric: tabular-nums; }
+.res-meta .res-head { margin-bottom: 0; white-space: nowrap; }
+.res-meta b { color: var(--gold); font-weight: 600; }
 .bar { height: 6px; background: #0c1513; border-radius: 999px; overflow: hidden; }
 .bar > i { display: block; height: 100%; background: var(--jade); transition: width .2s; }
 .bar.hp > i { background: #d46b5e; }
@@ -218,6 +222,7 @@ button.sm { min-height: 32px; padding: 4px 10px; font-size: .85rem; }
 .gu-title b { font-size: 1rem; }
 .gu-meta { font-size: .8rem; color: var(--dim); }
 .gu-tag { font-size: .75rem; color: var(--gold); }
+.gu-tag.is-weak { color: var(--blood); }
 .gu-tag::before { content: "· "; color: var(--dim); }
 .gu-desc { margin: 2px 0 4px; font-size: .86rem; color: var(--dim); }
 .gu-stats { display: flex; flex-wrap: wrap; gap: 0 12px; font-size: .82rem; color: #cfd9d3; cursor: help; }
@@ -535,6 +540,7 @@ button.sm { min-height: 32px; padding: 4px 10px; font-size: .85rem; }
 .foe-status { display: flex; align-items: center; gap: 12px; font-size: .88rem; }
 .foe-hp { display: flex; align-items: center; gap: 8px; flex: 1; font-variant-numeric: tabular-nums; color: var(--dim); }
 .foe-hp .bar { flex: 1; max-width: 320px; }
+.foe-zy { font-size: .8rem; color: #5da9c4; margin-left: 4px; }
 .foe-hp.is-high { color: var(--ink); }
 .foe-hp.is-mid { color: var(--warn); }
 .foe-hp.is-low { color: var(--blood); }
@@ -625,4 +631,33 @@ input[type="text"], input[type="number"], select, textarea {
 .dev-fields select {
   width: auto;
   max-width: 100%;
+}
+
+/* 通用紧凑列表 */
+.list-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+.list-head h3 { margin: 0; }
+.list-rows { list-style: none; margin: 0; padding: 0; }
+.list-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 0 10px 10px;
+  border-top: 1px solid rgba(41, 73, 66, .6);
+  border-left: 2px solid transparent;
+}
+.list-row:first-child { border-top: 0; }
+.list-row.is-ready { border-left-color: var(--jade); }
+.list-main { min-width: 0; }
+.list-title { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.list-title b { font-size: .96rem; }
+.list-meta { font-size: .78rem; color: var(--dim); }
+.list-sub { font-size: .84rem; color: var(--dim); margin-top: 2px; }
+.list-hint { font-size: .78rem; color: var(--gold); margin-top: 2px; }
+.is-lack { color: var(--blood); }
+.list-side { display: flex; align-items: center; gap: 8px; }
+.list-note { font-size: .78rem; color: var(--dim); white-space: nowrap; }
+@media (max-width: 520px) {
+  .list-row { grid-template-columns: 1fr; gap: 6px; }
+  .list-side, .shop-purchase { justify-content: flex-end; }
 }

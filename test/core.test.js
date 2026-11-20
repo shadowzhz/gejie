@@ -575,7 +575,7 @@ test('炼道晋级提高成算，仙蛊与舍利蛊没有本篇蛊方', () => {
   assert.ok(refineChance({ ...first, realmBonus: refineRealm(gs.player).bonus }) > chance);
   for (const { id, food } of Object.values(GU_DEFS)) {
     assert.ok(ITEMS[food], id);
-    assert.equal(REFINE_RECIPES.some(({ out }) => out === id), !['chunqiuchan', 'qingtong_sheli', 'chitie_sheli'].includes(id), id);
+    assert.equal(REFINE_RECIPES.some(({ out }) => out === id), !['chunqiuchan', 'qingtong_sheli', 'chitie_sheli', 'baiyin_sheli'].includes(id), id);
   }
 });
 
@@ -655,4 +655,86 @@ test('自动喂蛊消耗口粮，同种蛊虫计入升阶，委托只能领赏�
   handleQuest(gs, 'caoren');
   handleQuest(gs, 'caoren');
   assert.equal(p.yuanshi, stones + 8);
+});
+
+test('饱食归零数日后进入虚弱无法出战，继续断粮则非本命蛊损毁', () => {
+  const gs = createNewGame();
+  const bm = addGu(gs, 'yueguang', 10);
+  gs.player.benming = bm.uid;
+  const pet = addGu(gs, 'shipi', 10);
+
+  advanceMinutes(gs, 1440);
+  assert.equal(bm.satiety, 0);
+  assert.equal(bm.starveDays, 1);
+  assert.equal(battleGuPlan({ ...gs, battle: { guQueue: [], cds: {} } }).choices.every((c) => !c.weak), true);
+
+  advanceMinutes(gs, 1440);
+  assert.equal(pet.starveDays, 2);
+  const b = startBattle(gs, 'caoren', '', () => 0.5);
+  assert.equal(battleGuPlan(gs).choices.every((c) => c.weak), true);
+  battleAct(gs, 'gu', pet.uid);
+  assert.deepEqual(b.guQueue, []);
+
+  gs.battle = null;
+  advanceMinutes(gs, 1440 * 3);
+  assert.equal(gs.player.gu.some((g) => g.uid === pet.uid), false);
+  assert.equal(gs.player.gu.some((g) => g.uid === bm.uid), true);
+});
+
+test('小光蛊可增幅进阶月道蛊，月痕蛊穿半盾，切磋不可下死手，受震须调息', () => {
+  const gs = createNewGame();
+  const light = addGu(gs, 'xiaoguang');
+  const mark = addGu(gs, 'yuehen');
+  const goldMoon = addGu(gs, 'huangjinyue');
+  gs.player.zy = gs.player.zyMax = 60;
+
+  const b = startBattle(gs, 'caoren', '切磋', () => 0.5);
+  battleAct(gs, 'lethal');
+  assert.equal(b.lethal, false);
+
+  b.foe.hpMax = 200;
+  b.foe.hp = 200;
+  b.foe.shield = 20;
+  battleAct(gs, 'gu', light.uid);
+  battleAct(gs, 'gu', mark.uid);
+  battleAct(gs, 'resolveGu', '', () => 0.5);
+  // 22 * 1.35 = 30；穿半盾，最多被挡 15，造成 15 伤害
+  assert.equal(b.foe.shield, 5);
+  assert.equal(b.foe.hp, 185);
+
+  b.foe.shield = 0;
+  b.cds = {};
+  const hpBefore = b.foe.hp;
+  battleAct(gs, 'gu', light.uid);
+  battleAct(gs, 'gu', goldMoon.uid);
+  battleAct(gs, 'resolveGu', '', () => 0.5);
+  assert.equal(hpBefore - b.foe.hp, Math.round(58 * 1.35));
+
+  b.playerStunned = true;
+  const round = b.round;
+  battleAct(gs, 'attack', '', () => 0.5);
+  assert.equal(b.round, round);
+  battleAct(gs, 'recover', '', () => 0.5);
+  assert.equal(b.playerStunned, false);
+  assert.equal(b.round, round + 1);
+});
+
+test('三转蛊虫可由二转蛊合炼并满足三转破壁条件', () => {
+  const gs = createNewGame();
+  gs.player.rank = 2;
+  gs.player.xiao = 3;
+  gs.player.zy = gs.player.zyMax;
+  gs.player.yuanshi = 300;
+  gs.player.items.yuanshi_zha = 4;
+  gs.player.recipes.push('r_huangjinyue');
+  addGu(gs, 'yuemang');
+  addGu(gs, 'yuehen');
+
+  const ref = createRefineSession(gs, 'r_huangjinyue');
+  assert.ok(!ref.error);
+  runRefining(gs, ref);
+  assert.equal(ref.success, true);
+  assert.ok(gs.player.gu.some((g) => g.id === 'huangjinyue'));
+  gs.player.zy = gs.player.zyMax;
+  assert.ok(!createBreakSession(gs).error);
 });

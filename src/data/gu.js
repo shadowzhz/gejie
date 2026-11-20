@@ -24,7 +24,7 @@ export function guEffectText(def) {
     控制: `基础伤害 ${def.power} · 35% 几率使敌方跳过 1 次出手`,
     防御: `护盾 ${def.power} · 持续至耗尽或战斗结束`,
     治疗: `立即恢复 ${def.power} 气血`,
-    增益: '下一次月光蛊伤害 +35%',
+    增益: '下一次月道攻击蛊伤害 +35%',
     探知: '查看敌方气血、真元和意图，持续至战斗结束',
     隐匿: `护盾 ${Math.round(def.power * 0.6)} · 持续至耗尽或战斗结束`
   };
@@ -32,7 +32,8 @@ export function guEffectText(def) {
   if (!effect) return '';
   const extra = {
     dianlang_gu: ' · 35% 几率使敌方跳过 1 次出手',
-    xuefu_gu: ' · 回复实际伤害的 35%'
+    xuefu_gu: ' · 回复实际伤害的 35%',
+    yuehen: ' · 无视一半护盾'
   }[def.id] || '';
   const wait = Math.max(0, def.cd - 1);
   return `${effect}${extra} · 真元 ${def.cost} · ${wait ? `间隔 ${wait} 回合` : '可连续催动'}`;
@@ -44,10 +45,13 @@ export const GU_DEFS = {
   yuemang: { id: 'yuemang', name: '月芒蛊', rank: 2, school: '月道', kind: '攻击', cost: 8, cd: 1, power: 34, food: 'yuelanhua', price: 45, desc: '将月光聚成威力更强的月刃。' },
   yuexuan: { id: 'yuexuan', name: '月旋蛊', rank: 2, school: '月道', kind: '攻击', cost: 7, cd: 1, power: 34, food: 'yuelanhua', price: 45, desc: '绿色月刃沿弧线斩出。' },
   henshi: { id: 'henshi', name: '痕石蛊', rank: 1, kind: '炼蛊', cost: 0, cd: 0, power: 0, food: 'kuangshi', price: 15, desc: '可与月光蛊合炼成二转月痕蛊。' },
-  yuehen: { id: 'yuehen', name: '月痕蛊', rank: 2, school: '月道', kind: '攻击', cost: 4, cd: 0, power: 18, food: 'yuelanhua', price: 45, desc: '月刃威力与月光蛊相同，设定中的射程从十米延至二十米。' },
+  yuehen: { id: 'yuehen', name: '月痕蛊', rank: 2, school: '月道', kind: '攻击', cost: 4, cd: 0, power: 22, food: 'yuelanhua', price: 45, desc: '月刃射程延至二十米，落处留痕，可穿透敌方半数护盾。' },
+  huangjinyue: { id: 'huangjinyue', name: '黄金月', rank: 3, school: '月道', kind: '攻击', cost: 13, cd: 1, power: 58, food: 'yuelanhua', price: 135, desc: '三转月道攻伐之蛊，催动后斩出半人高的金色月牙。' },
   yueni: { id: 'yueni', name: '月霓裳', rank: 2, school: '月道', kind: '防御', cost: 6, cd: 2, power: 36, food: 'yuelanhua', price: 45, desc: '引月光覆于周身，织成轻盈的护身衣。' },
   yupi: { id: 'yupi', name: '玉皮蛊', rank: 1, school: '土道', kind: '防御', cost: 4, cd: 2, power: 22, food: 'yushi', price: 20, desc: '催动后皮肤泛起温润玉光，化作护盾抵挡来袭伤害。' },
   baiyu: { id: 'baiyu', name: '白玉蛊', rank: 2, school: '土道', kind: '防御', cost: 7, cd: 2, power: 44, food: 'yushi', price: 52, desc: '二转防御蛊，凝出厚实白玉光甲护盾，稳固空窍根基。' },
+  shuizhao: { id: 'shuizhao', name: '水罩蛊', rank: 2, school: '水道', kind: '防御', cost: 8, cd: 2, power: 46, food: 'yuanshi_zha', price: 54, desc: '水行防御之蛊，周身化出圆球水罩，以流动水流卸力分散伤害。' },
+  tianpeng: { id: 'tianpeng', name: '天蓬蛊', rank: 3, school: '金道', kind: '防御', cost: 13, cd: 2, power: 72, food: 'kuangshi', price: 140, desc: '三转防御大蛊，浑身浮现厚实白晶之光，隐约可见铠甲雏形。' },
   shipi: { id: 'shipi', name: '石皮蛊', rank: 1, school: '土道', kind: '防御', cost: 3, cd: 2, power: 18, food: 'kuangshi', price: 15, desc: '以石质硬皮覆体抵挡攻击。' },
   shoupi: { id: 'shoupi', name: '兽皮蛊', rank: 1, kind: '防御', cost: 3, cd: 2, power: 14, food: 'shourou', price: 11, desc: '皮蛊中常见的一种，用于护身，售价低于石皮蛊。' },
   qingsi: { id: 'qingsi', name: '青丝蛊', rank: 1, kind: '防御', cost: 12, cd: 2, power: 30, food: 'fengmi', price: 24, desc: '催动时消耗较多真元，能抵御打击。也可与黑豕蛊合炼。' },
@@ -65,6 +69,7 @@ export const GU_DEFS = {
   xuanfeng: { id: 'xuanfeng', name: '旋风蛊', rank: 1, school: '风道', kind: '控制', cost: 4, cd: 2, power: 16, food: 'yuelanhua', price: 22, desc: '卷起山风扰乱敌方身法，造成伤害并有概率打断对手蓄势。' },
   qingtong_sheli: { id: 'qingtong_sheli', name: '青铜舍利蛊', rank: 1, school: '天道', kind: '消耗', cost: 0, cd: 0, power: 0, food: 'kuangshi', price: 90, desc: '一转破境奇蛊，使用后可直接助一转蛊师连破小境界。' },
   chitie_sheli: { id: 'chitie_sheli', name: '赤铁舍利蛊', rank: 2, school: '天道', kind: '消耗', cost: 0, cd: 0, power: 0, food: 'kuangshi', price: 210, desc: '二转破境奇蛊，使用后可直接助二转蛊师打破小境界壁垒。' },
+  baiyin_sheli: { id: 'baiyin_sheli', name: '白银舍利蛊', rank: 3, school: '天道', kind: '消耗', cost: 0, cd: 0, power: 0, food: 'kuangshi', price: 420, desc: '三转破境奇蛊，使用后可直接助三转蛊师提升一个小境界。' },
   chunqiuchan: { id: 'chunqiuchan', name: '春秋蝉（残）', rank: 3, school: '宙道', kind: '奇蛊', cost: 0, cd: 0, power: 0, food: 'guangyin_water', price: 0, desc: '奇蛊榜第七，可于行纪中留下一道旧影；身殒时消耗它回到那一刻。' }
 };
 
@@ -95,6 +100,9 @@ export const REFINE_RECIPES = [
   { id: 'r_yuehen', flow: 'moon', price: 12, out: 'yuehen', gu: { yueguang: 1, henshi: 1 }, materials: {}, rate: 0.76, cost: 25 },
   { id: 'r_yueni', flow: 'moon', price: 12, out: 'yueni', gu: { yueguang: 1, yupi: 1 }, materials: {}, rate: 0.62, cost: 25 },
   { id: 'r_baiyu', flow: 'armor', price: 12, out: 'baiyu', gu: { yupi: 1, baishi: 1 }, materials: { yezhuya: 1 }, rate: 0.57, cost: 25 },
+  { id: 'r_shuizhao', flow: 'armor', price: 14, out: 'shuizhao', source: '原创', gu: {}, materials: { yuanshi_zha: 4, kuangshi: 2 }, rate: 0.58, cost: 26 },
+  { id: 'r_tianpeng', flow: 'armor', price: 24, out: 'tianpeng', gu: { baiyu: 1, shuizhao: 1 }, materials: { kuangshi: 2 }, rate: 0.46, cost: 48 },
+  { id: 'r_huangjinyue', flow: 'moon', price: 24, out: 'huangjinyue', gu: { yuemang: 1, yuehen: 1 }, materials: { yuanshi_zha: 2 }, rate: 0.48, cost: 48 },
   { id: 'r_heizong', flow: 'armor', price: 12, out: 'heizong', gu: { heishi: 1, qingsi: 1 }, materials: {}, rate: 0.56, cost: 25 },
   { id: 'r_siwei', flow: 'wine', price: 20, out: 'siwei_jiu', gu: { jiuchong: 2 }, materials: { suanjiu: 1, tianjiu: 1, kujiu: 1, lajiu: 1 }, rate: 0.51, cost: 45 }
 ];
