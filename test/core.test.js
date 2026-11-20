@@ -1,17 +1,135 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createNewGame, addGu, BENMING_ZY_COST, claimBenming, handleQuest, purchaseShopEntry, questBoard, refineBenming, realmText, recordQuestProgress, removeGuByUid, useHealItem, useHealingGu, useBoarGu } from '../src/core/state.js';
-import { placeShopEntries } from '../src/data/places.js';
+import { PLACES, placeShopEntries, rareGathering } from '../src/data/places.js';
 import { advanceMinutes, moveToPlace, rewindSpringCicada, saveSpringSnapshot } from '../src/core/clock.js';
 import { makeTime } from '../src/core/calendar.js';
-import { applyEventChoice, checkStoryTriggers } from '../src/core/story-engine.js';
+import { applyEventChoice, checkStoryTriggers, innRumors, nextRetreatTime } from '../src/core/story-engine.js';
 import { createKillerMove, forgetKillerMove } from '../src/core/killer.js';
 import { battleAct, battleGuPlan, startBattle } from '../src/core/combat.js';
 import { createBreakSession, stepBreakSession, washMinorWall } from '../src/core/breakthrough.js';
 import { availableRecipeDiscovery, canStartRefine, createRefineSession, isRecipeSold, knowsRefineRecipe, refineChance, refineReady, refineRealm, refineTechniques, stepRefineSession } from '../src/core/refine.js';
-import { renderCustomKillerModal } from '../src/ui/rituals.js';
+import { renderCustomKillerModal, renderEventModal } from '../src/ui/rituals.js';
 import { renderPlaceView } from '../src/ui/place-view.js';
 import { GU_DEFS, ITEMS, REFINE_RECIPES } from '../src/data/gu.js';
+
+test('卷一两条路线按日期连到卷末，证词和恶名改变查案与大比选项', () => {
+  for (const outlaw of [false, true]) {
+    const gs = createNewGame('试炼', { grade: '丁', hai: 3.2 });
+    const choose = (id, choice, year, month, day) => {
+      if (year) advanceMinutes(gs, makeTime(year, month, day) - gs.minutes);
+      assert.equal(gs.pendingEventId, id);
+      applyEventChoice(gs, id, choice);
+      assert.equal(gs.flags[`event_done:${id}`], true);
+    };
+    choose('kaike', 0);
+    assert.equal(nextRetreatTime(gs), makeTime(1, 3, 3));
+    choose('toumin_lost', 0, 1, 3, 3);
+    choose('uncle', outlaw ? 1 : 0, 1, 4, 1);
+    choose('classmates', outlaw ? 1 : 0, 1, 5, 1);
+    choose('wine_lead', outlaw ? 1 : 0, 1, 6, 1);
+    choose('early_sheli', 0, 1, 7, 1);
+    choose('jiuyecao_inheritance', outlaw ? 2 : 0, 1, 9, 1);
+    assert.equal(gs.player.gu.some((gu) => gu.id === 'jiuyecao'), !outlaw);
+    choose('nianmo_exam', 0, 1, 12, 15);
+    choose('wolf_signs', outlaw ? 1 : 0, 2, 1, 1);
+    choose('jia_missing', outlaw ? 1 : 0, 2, 3, 2);
+    choose('jia_questions', outlaw ? 2 : 0, 2, 3, 6);
+    choose('langchao_start', outlaw ? 3 : 1, 2, 6, 1);
+    choose('bai_encounter', 1, 2, 6, 15);
+    choose('wolf_breach', outlaw ? 1 : 0, 2, 7, 10);
+    advanceMinutes(gs, makeTime(2, 8, 20) - gs.minutes);
+    const hearing = renderEventModal(gs, 'tie_inquiry');
+    assert.equal(hearing.includes('以失踪案证词或救援记录结案'), !outlaw);
+    assert.equal(hearing.includes('迎战铁家追兵'), outlaw);
+    applyEventChoice(gs, 'tie_inquiry', outlaw ? 0 : 3);
+    assert.equal(gs.pendingEventId, 'tie_inquiry');
+    choose('tie_inquiry', outlaw ? 2 : 0);
+    assert.equal(gs.player.mo, outlaw ? 62 : 0);
+    choose('three_clans', outlaw ? 2 : 0, 2, 9, 10);
+    if (!outlaw) {
+      assert.equal(gs.battle.foe.id, 'bainingbing');
+      assert.equal(gs.player.gu.some((gu) => gu.id === 'chitie_sheli'), false);
+      gs.battle.foe.hp = 1;
+      battleAct(gs, 'attack', '', () => 0.5);
+      assert.equal(gs.flags.tournament_won, true);
+      assert.equal(gs.player.gu.some((gu) => gu.id === 'chitie_sheli'), true);
+      gs.battle = null;
+    }
+    choose('blood_skull', outlaw ? 0 : 1, 2, 10, 1);
+    assert.equal(gs.player.hai, outlaw ? 5.2 : 3.2);
+    checkStoryTriggers(gs);
+    choose('qingmao_endgame', 2);
+    assert.equal(gs.flags.qingmao_finished, true);
+  }
+});
+
+test('传闻使用当天采集资源，竞买帖与商队放货日期影响实付价格和库存', () => {
+  const gs = createNewGame();
+  gs.flags.practiced = true;
+  gs.minutes = makeTime(1, 1, 2);
+  assert.equal(rareGathering(gs, PLACES.zhulin), 'yezhuya');
+  assert.match(innRumors(gs).join(' '), /月下竹林.*野猪牙/);
+  gs.flags['gathered:zhulin'] = 1;
+  assert.equal(rareGathering(gs, PLACES.zhulin), null);
+  assert.doesNotMatch(innRumors(gs).join(' '), /野猪牙/);
+  gs.location = 'gupu';
+  gs.minutes = makeTime(2, 3, 6);
+  gs.flags.wine_bid = true;
+  gs.player.yuanshi = 45;
+  assert.ok(!placeShopEntries(gs).includes('gu:chitie_sheli'));
+  assert.match(renderPlaceView(gs), /竞买 · 45/);
+  assert.equal(purchaseShopEntry(gs, 'gu:jiuchong', 1).ok, true);
+  assert.equal(gs.player.yuanshi, 0);
+  gs.minutes = makeTime(2, 3, 7);
+  assert.ok(placeShopEntries(gs).includes('gu:chitie_sheli'));
+});
+
+test('风雷杀招打断敌招并留下提速，力道破盾，血道只按实际伤害吸血', () => {
+  const gs = createNewGame();
+  gs.player.rank = 2;
+  gs.player.yuanshi = 100;
+  const run = (pattern, guIds, foeHp = 100, shield = 0) => {
+    gs.battle = null;
+    gs.player.equipped = guIds.map((id) => addGu(gs, id).uid);
+    gs.player.usedGu = guIds;
+    gs.player.zy = gs.player.zyMax;
+    const { move } = createKillerMove(gs, pattern);
+    const b = startBattle(gs, 'caoren', '', () => 0.5);
+    b.foe.hp = foeHp;
+    b.foe.shield = shield;
+    battleAct(gs, 'move', move.id, () => 0.5);
+    return b;
+  };
+  const wind = run('thunder_wind', ['xuanfeng', 'dianlang_gu']);
+  assert.equal(wind.haste.turns, 1);
+  assert.ok(wind.logs.some((line) => line.includes('错过了这一轮出手')));
+  const ram = run('stone_ram', ['shoupi', 'shipi'], 100, 50);
+  assert.equal(ram.foe.shield, 10);
+  gs.player.hp = 40;
+  const blood = run('hidden_bat', ['yinshi', 'xuefu_gu'], 5);
+  assert.equal(blood.state, 'win');
+  assert.equal(gs.player.hp, 43);
+});
+
+test('丁等冲刷更费真元，养好的酒虫能减轻冲刷和破壁压力', () => {
+  const gs = createNewGame('试炼', { grade: '丁', hai: 3.2 });
+  const player = gs.player;
+  addGu(gs, 'yueguang');
+  addGu(gs, 'shipi');
+  player.xp = 1000;
+  player.zy = Math.round(player.zyMax * 0.6);
+  assert.match(washMinorWall(gs).reason, /真元不足/);
+  const wine = addGu(gs, 'jiuchong');
+  assert.equal(washMinorWall(gs).ok, true);
+  player.xiao = 3;
+  addGu(gs, 'yuehen');
+  player.zy = player.zyMax;
+  assert.equal(createBreakSession(gs).wallHeal, 2);
+  wine.satiety = 0;
+  wine.starveDays = 2;
+  assert.equal(createBreakSession(gs).wallHeal, 7);
+});
 
 function loadFurnace(gs, session) {
   stepRefineSession(gs, session, 'ignite');

@@ -6,12 +6,12 @@ export const KILLER_PATTERNS = [
   {
     id: 'light_moon', name: '凝光月刃', sequence: ['xiaoguang', 'yueguang'],
     desc: '小光先聚光，再以月光蛊斩出月刃。',
-    fee: 24, kind: '攻击', power: 31, cost: 9, cd: 2
+    fee: 24, kind: '攻击', power: 43, moon: true, cost: 9, cd: 2
   },
   {
     id: 'guarded_moon', name: '披月斩', sequence: ['yueni', 'yuemang'],
     desc: '月霓裳先护身，再用月芒蛊反击。',
-    fee: 36, kind: '攻击', power: 39, bonusShield: 30, cost: 15, cd: 3
+    fee: 36, kind: '攻击', power: 39, moon: true, bonusShield: 30, cost: 15, cd: 3
   },
   {
     id: 'bristle_armor', name: '青丝黑鬃甲', sequence: ['qingsi', 'heizong'],
@@ -19,21 +19,42 @@ export const KILLER_PATTERNS = [
     fee: 36, kind: '防御', power: 76, cost: 20, cd: 3
   },
   { id: 'wind_moon', name: '回风掠月', sequence: ['xuanfeng', 'yuexuan'],
-    desc: '先以山风扰乱身法，再以弧形月刃追击。', fee: 28, kind: '攻击', power: 49, cost: 12, cd: 2 },
+    desc: '借旋风逼开对手，再以弧形月刃追击。', fee: 28, kind: '攻击', power: 49, speed: 5, moon: true, cost: 12, cd: 2 },
   { id: 'sighted_moon', name: '照隙月刃', sequence: ['nianxi', 'yuehen'],
-    desc: '念息辨出破绽，由月痕蛊在远处补上一刀。', fee: 22, kind: '攻击', power: 28, cost: 8, cd: 2 },
+    desc: '念息辨出破绽，由月痕蛊在远处补上一刀。', fee: 22, kind: '攻击', power: 28, pierce: 0.7, moon: true, cost: 8, cd: 2 },
   { id: 'jade_moon', name: '玉甲藏月', sequence: ['yupi', 'yuemang'],
     desc: '玉皮先护身，月芒紧随其后。', fee: 28, kind: '攻击', power: 36, bonusShield: 22, cost: 13, cd: 2 },
   { id: 'stone_hide', name: '石甲兽衣', sequence: ['shoupi', 'shipi'],
     desc: '兽皮卸力，石皮在外挡下重击。', fee: 20, kind: '防御', power: 38, cost: 7, cd: 2 },
+  { id: 'stone_ram', name: '披甲冲撞', sequence: ['shoupi', 'shipi'],
+    desc: '裹上皮甲贴身冲撞，豕蛊养成的膂力越大，撞击越重。', fee: 22, kind: '攻击', power: 22,
+    strength: 1, bonusShield: 10, breakShield: 18, cost: 6, cd: 2 },
   { id: 'bronze_jade', name: '铜胎白玉甲', sequence: ['tongpi', 'baiyu'],
     desc: '铜皮为底，白玉覆面。', fee: 40, kind: '防御', power: 90, cost: 16, cd: 3 },
   { id: 'thunder_wind', name: '风裹惊雷', sequence: ['xuanfeng', 'dianlang_gu'],
-    desc: '借旋风开路，再催电狼蛊放出雷击。', fee: 36, kind: '攻击', power: 56, cost: 14, cd: 3 },
+    desc: '借旋风开路，再催电狼蛊放出雷击。', fee: 36, kind: '攻击', power: 47, stun: 0.75, speed: 5, cost: 14, cd: 3 },
   { id: 'hidden_bat', name: '伏影蝠袭', sequence: ['yinshi', 'xuefu_gu'],
-    desc: '隐去身形，趁敌手失去目标时放出血蝠。', fee: 32, kind: '攻击', power: 42, bonusShield: 8, cost: 12, cd: 3 }
+    desc: '藏身后从暗处放出血蝠，使其反哺气血。', fee: 32, kind: '攻击', power: 42, drain: 0.6, bonusShield: 8, cost: 12, cd: 3 }
 ];
 
+export function killerEffects(move) {
+  return KILLER_PATTERNS.find((pattern) => pattern.id === (move.patternId ?? move.id)) ?? move;
+}
+
+export function killerEffectText(move) {
+  const effect = killerEffects(move);
+  return [
+    `${effect.kind === '防御' ? '护盾' : '威能'} ${effect.power}`,
+    effect.bonusShield && `护盾 +${effect.bonusShield}`,
+    effect.moon && '可受小光蛊增幅',
+    effect.strength && '威能随膂力增加',
+    effect.pierce && `${effect.pierce * 100}% 伤害穿盾`,
+    effect.breakShield && `先削 ${effect.breakShield} 护盾`,
+    effect.drain && `吸血 ${effect.drain * 100}%`,
+    effect.stun && `${effect.stun * 100}% 几率打断本轮`,
+    effect.speed && `身法 +${effect.speed}（持续两轮，可减伤或助逃）`
+  ].filter(Boolean).join(' · ');
+}
 export function discoveredKillerPatterns(player) {
   return player.rank < 2 ? [] : KILLER_PATTERNS.filter((pattern) => hasUsedKillerGu(player, pattern));
 }

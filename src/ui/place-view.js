@@ -1,8 +1,8 @@
 import { GU_DEFS, ITEMS, REFINE_RECIPES, guEffectText, recipeIngredientsText, recipeOutputText } from '../data/gu.js';
-import { MERCHANT_GU, PLACES, placeShopEntries } from '../data/places.js';
+import { MERCHANT_GU, PLACES, placeShopEntries, rareGathering, shopUnitPrice } from '../data/places.js';
 import { formatDateTime, isNight } from '../core/calendar.js';
 import { esc, questBoard, SHOP_BATCH_LIMIT } from '../core/state.js';
-import { evalCond } from '../core/story-engine.js';
+import { evalCond, nextRetreatTime } from '../core/story-engine.js';
 import { availableRecipeDiscovery, isRecipeSold } from '../core/refine.js';
 import { STORY_EVENTS } from '../data/story.js';
 
@@ -16,6 +16,7 @@ export function renderPlaceView(gs) {
   if (place.services.includes('cultivate')) {
     actions.push('<button class="primary" data-action="placeAct" data-id="meditate">打坐吐纳 · 1 时辰</button>');
     actions.push('<button data-action="placeAct" data-id="rest">歇息养伤 · 4 时辰</button>');
+    actions.push(`<button title="闭关期间照常消耗蛊虫口粮，请先备料并开启自动喂养" data-action="placeAct" data-id="retreat">闭关至${esc(formatDateTime(nextRetreatTime(gs)))}</button>`);
     if (gs.player.xiao < 3) actions.push('<button class="gold" data-action="washMinor">冲刷窍壁</button>');
     else actions.push('<button class="gold" data-action="openBreak">破壁冲关</button>');
   }
@@ -33,7 +34,8 @@ export function renderPlaceView(gs) {
     actions.push('<button data-action="placeAct" data-id="docHeal">药堂疗伤（10 元石回满）</button>');
   }
   if (place.services.includes('rumor')) {
-    actions.push('<button class="gold" data-action="placeAct" data-id="rumor">打听后山消息（12 元石）</button>');
+    actions.push('<button class="gold" data-action="placeAct" data-id="rumor">打听近况 · 2 刻</button>');
+    if (!gs.flags['clue:huajiu']) actions.push('<button data-action="placeAct" data-id="secretRumor">买暗涧遗洞消息（12 元石）</button>');
   }
   if (place.services.includes('clan_hall')) {
     actions.push('<button class="gold" data-action="placeAct" data-id="clanGift">领取二转赏赐</button>');
@@ -61,7 +63,8 @@ export function renderPlaceView(gs) {
       const def = kind === 'gu' ? GU_DEFS[id] : ITEMS[id];
       if (!def) return '';
       const limited = MERCHANT_GU.includes(id);
-      const affordable = gs.player.yuanshi >= def.price;
+      const price = shopUnitPrice(gs, id, def.price);
+      const affordable = gs.player.yuanshi >= price;
       const recipes = sellsRecipes ? REFINE_RECIPES.filter(isRecipeSold)
         .filter((recipe) => kind === 'gu' ? recipe.gu[id] : recipe.materials[id])
         .map(recipeOutputText) : [];
@@ -78,7 +81,7 @@ export function renderPlaceView(gs) {
         </div>
         <div class="shop-purchase">
           ${limited ? '' : `<input type="number" min="1" max="${SHOP_BATCH_LIMIT}" step="1" value="1" aria-label="${esc(def.name)}购买数量" ${affordable ? '' : 'disabled'}>`}
-          <button class="sm ${affordable ? '' : 'ghost'}" ${affordable ? '' : 'disabled'} data-action="buyItem" data-id="${esc(entry)}">买 · ${def.price}${limited ? '' : kind === 'gu' ? '/只' : '/份'}</button>
+          <button class="sm ${affordable ? '' : 'ghost'}" ${affordable ? '' : 'disabled'} data-action="buyItem" data-id="${esc(entry)}">${id === 'jiuchong' && gs.flags.wine_bid ? '竞买' : '买'} · ${price}${limited ? '' : kind === 'gu' ? '/只' : '/份'}</button>
         </div>
       </li>`;
     }).join('');
@@ -125,6 +128,7 @@ export function renderPlaceView(gs) {
       <div class="stage-loc">${esc(formatDateTime(gs.minutes))} · ${esc(place.region)}</div>
       <h1 id="place-title">${esc(place.name)}</h1>
       <p class="stage-desc">${esc(night ? place.night : place.day)}</p>
+      ${place.gather ? `<p class="muted">常见山材 · ${esc([...new Set(place.gather)].map((id) => ITEMS[id].name).join('、'))}${rareGathering(gs, place) ? ` · 今日山材丰收，可采${esc(ITEMS[place.rare.item].name)} ×4` : ''}</p>` : ''}
       <div class="row">${actions.join('')}</div>
     </section>
     ${questHtml}

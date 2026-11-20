@@ -1,6 +1,6 @@
 import { guEffectText } from '../data/gu.js';
 import { battleGuPlan } from '../core/combat.js';
-import { killerMoveBlock } from '../core/killer.js';
+import { killerEffectText, killerMoveBlock } from '../core/killer.js';
 import { esc } from '../core/state.js';
 
 export function renderBattleView(gs) {
@@ -34,7 +34,7 @@ export function renderBattleView(gs) {
     const cd = Math.max(0, (b.cds[m.id] || 0) - 1);
     const blocked = killerMoveBlock(gs, m);
     const disabled = b.playerStunned || hasQueue || blocked || cd > 0 || p.zy < m.cost;
-    return `<button class="skill is-move" ${disabled ? 'disabled' : ''} ${blocked ? `title="${esc(blocked)}"` : ''} data-action="battleAct" data-kind="move" data-id="${esc(m.id)}">
+    return `<button class="skill is-move" ${disabled ? 'disabled' : ''} title="${esc(blocked || killerEffectText(m))}" data-action="battleAct" data-kind="move" data-id="${esc(m.id)}">
       ${esc(m.name)}<small>${cd > 0 ? `冷却 ${cd}` : blocked ? '不可用' : m.cost}</small>
     </button>`;
   }).join('');

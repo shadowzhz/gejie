@@ -1,5 +1,5 @@
 import { GU_DEFS } from '../data/gu.js';
-import { addLog, minorXpNeed, realmText, recalcStats } from './state.js';
+import { activeCultivationWine, addLog, minorXpNeed, realmText, recalcStats } from './state.js';
 
 export function realmGuRequirement(p) {
   const rank = p.xiao < 3 ? p.rank : p.rank + 1;
@@ -19,7 +19,7 @@ export function washMinorWall(gs) {
   const gu = realmGuRequirement(p);
   if (gu.count < gu.need) return { ok: false, reason: gu.text };
   const needXp = minorXpNeed(p);
-  const needZy = Math.round(p.zyMax * 0.6);
+  const needZy = Math.round(p.zyMax * (p.hai < 6 && !activeCultivationWine(p) ? 0.75 : 0.6));
   if (p.xp < needXp) return { ok: false, reason: `修为不足（需 ${needXp}）` };
   if (p.zy < needZy) return { ok: false, reason: `真元不足（需 ${needZy}）` };
   const before = { ...p };
@@ -40,6 +40,7 @@ export function createBreakSession(gs) {
   if (gu.count < gu.need) return { error: gu.text };
   if (p.zy < Math.round(p.zyMax * 0.9)) return { error: '真元须温养至九成以上' };
   const crackMult = Math.min(2.2, 1 + 0.2 * (p.attempts || 0));
+  const wine = activeCultivationWine(p);
   return {
     crack: 0,
     hurt: 0,
@@ -48,12 +49,12 @@ export function createBreakSession(gs) {
     stones: p.yuanshi,
     stonesUsed: 0,
     turn: p.rank,
-    wallHeal: p.hai < 4.5 ? 5 : 3,
+    wallHeal: wine ? 2 : p.hai < 4 ? 7 : p.hai < 6 ? 5 : 3,
     crackMult,
     steps: 0,
     state: 'ongoing',
     lines: [
-      '你盘膝坐定，心神沉入空窍。窍壁薄如晶膜，却坚韧异常。',
+      wine ? '酒虫提纯真元，冲出的裂痕愈合得更慢。' : '你盘膝坐定，心神沉入空窍。窍壁薄如晶膜，却坚韧异常。',
       p.attempts ? `此前冲关 ${p.attempts} 次未成，此番心得令破壁裂痕多 ${Math.round((crackMult - 1) * 100)}%。` : '每次冲关后窍壁都会略微愈合，注意真元与震伤。'
     ]
   };

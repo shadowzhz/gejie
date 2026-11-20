@@ -1,7 +1,8 @@
 import { STORY_EVENTS } from '../data/story.js';
-import { discoveredKillerPatterns, killerCraftBlock, killerPatternSequence } from '../core/killer.js';
+import { discoveredKillerPatterns, killerCraftBlock, killerEffectText, killerPatternSequence } from '../core/killer.js';
 import { OVERLOAD_PRESSURE, refineChance, refineReady, refineTechniques } from '../core/refine.js';
 import { esc } from '../core/state.js';
+import { evalCond } from '../core/story-engine.js';
 import { renderRefineRequirements } from './refine-view.js';
 
 export function renderStartScreen(startState) {
@@ -162,12 +163,12 @@ export function renderRefineModal(sess, effect) {
   </div>`;
 }
 
-export function renderEventModal(eventId) {
+export function renderEventModal(gs, eventId) {
   const ev = STORY_EVENTS.find((e) => e.id === eventId);
   if (!ev) return '';
   return `<h2>${esc(ev.title)}</h2>
     <div class="card" style="white-space:pre-line">${esc(ev.text)}</div>
-    <div class="row">${ev.choices.map((c, idx) => `<button class="primary" data-action="chooseEvent" data-id="${esc(ev.id)}" data-idx="${idx}">${esc(c.text)}</button>`).join('')}</div>`;
+    <div class="row">${ev.choices.map((c, idx) => evalCond(gs, c.cond) ? `<button class="primary" data-action="chooseEvent" data-id="${esc(ev.id)}" data-idx="${idx}">${esc(c.text)}</button>` : '').join('')}</div>`;
 }
 
 export function renderCustomKillerModal(gs) {
@@ -177,6 +178,7 @@ export function renderCustomKillerModal(gs) {
       <div class="kv"><b>${esc(pattern.name)}</b><span class="badge">${pattern.kind} · 耗 ${pattern.cost} 真元</span></div>
       <div>${esc(killerPatternSequence(pattern))}</div>
       <div class="muted">${esc(pattern.desc)}</div>
+      <div class="muted">${esc(killerEffectText(pattern))}</div>
       <button class="sm primary" ${blocked ? 'disabled' : ''} data-action="kmCreate" data-id="${pattern.id}">${esc(blocked || `推演 · ${pattern.fee} 元石`)}</button>
     </div>`;
   }).join('');

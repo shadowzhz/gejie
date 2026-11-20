@@ -69,20 +69,20 @@ export const ENEMIES = {
     reward: { yuanshi: 30 },
     practice: true
   },
-  modao: {
-    id: 'modao', name: '山外魔道蛊师', rank: 2, hp: 185, zy: 85, speed: 12,
+  bainingbing: {
+    id: 'bainingbing', name: '白凝冰', rank: 2, hp: 175, zy: 85, speed: 12,
     moves: [
-      { name: '毒刺暗袭', kind: 'attack', power: 28, weight: 3 },
-      { name: '血遁借力', kind: 'drain', power: 22, cd: 2, weight: 2 },
-      { name: '铁皮护身', kind: 'shield', power: 26, weight: 1 }
+      { name: '冰锥蛊', kind: 'attack', power: 23, weight: 3 },
+      { name: '水罩蛊', kind: 'shield', power: 34, cd: 2, weight: 2 },
+      { name: '冰刀蛊', kind: 'attack', power: 31, cd: 3, weight: 2 }
     ],
-    reward: { yuanshi: 45 }
+    practice: true
   },
-  tiexueleng: {
-    id: 'tiexueleng', name: '铁血冷捕手', rank: 3, hp: 270, zy: 120, speed: 15,
+  tie_patrol: {
+    id: 'tie_patrol', name: '铁家追兵', rank: 2, hp: 185, zy: 85, speed: 11,
     moves: [
       { name: '铁索镇压', kind: 'stun', power: 28, cd: 3, weight: 2 },
-      { name: '正道斩邪', kind: 'attack', power: 38, weight: 3 },
+      { name: '正道斩邪', kind: 'attack', power: 26, weight: 3 },
       { name: '玄铁护甲', kind: 'shield', power: 38, cd: 2, weight: 1 }
     ],
     reward: { yuanshi: 80 }

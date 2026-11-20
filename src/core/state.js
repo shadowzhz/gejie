@@ -1,5 +1,5 @@
 import { GU_DEFS, ITEMS } from '../data/gu.js';
-import { MERCHANT_GU, PLACES, placeShopEntries } from '../data/places.js';
+import { MERCHANT_GU, PLACES, placeShopEntries, shopUnitPrice } from '../data/places.js';
 import { MIN_PER_DAY, makeTime, yearOf } from './calendar.js';
 
 const QUEST_ROTATIONS = [
@@ -179,6 +179,11 @@ export function isGuWeak(gu) {
   return (gu?.starveDays ?? 0) >= 2 && gu.satiety <= 0;
 }
 
+export function activeCultivationWine(player) {
+  const id = { 1: 'jiuchong', 2: 'siwei_jiu' }[player.rank];
+  return player.gu.some((gu) => gu.id === id && !isGuWeak(gu));
+}
+
 export function addGu(gs, id, satiety = 100) {
   const def = GU_DEFS[id];
   if (!def) return null;
@@ -243,7 +248,7 @@ export function purchaseShopEntry(gs, entry, count) {
   if (!Number.isSafeInteger(count) || count < 1 || count > limit) {
     return { ok: false, reason: limited ? '商队限售一只' : `数量须为 1 到 ${limit} 的整数` };
   }
-  const cost = def.price * count;
+  const cost = shopUnitPrice(gs, id, def.price) * count;
   if (gs.player.yuanshi < cost) return { ok: false, reason: `元石不足，需 ${cost} 块` };
   gs.player.yuanshi -= cost;
   if (kind === 'gu') {
@@ -252,7 +257,7 @@ export function purchaseShopEntry(gs, entry, count) {
     addItem(gs, id, count);
   }
   if (limited) gs.flags[`merchant_${id}_bought`] = true;
-  const message = `已购入「${def.name}」×${count}，花费 ${cost} 元石`;
+  const message = `已${id === 'jiuchong' && gs.flags.wine_bid ? '竞得' : '购入'}「${def.name}」×${count}，花费 ${cost} 元石`;
   addLog(gs, `${message}。`);
   return { ok: true, message };
 }

@@ -1,13 +1,13 @@
 import { GU_DEFS, ITEMS, REFINE_RECIPES, recipeOutputText } from '../data/gu.js';
-import { hasPlaceActions, PLACES } from '../data/places.js';
+import { hasPlaceActions, PLACES, rareGathering } from '../data/places.js';
 import { formatDateTime, isNight, MIN_PER_DAY, MIN_PER_MONTH, MIN_PER_SHICHEN } from '../core/calendar.js';
 import { addGu, addItem, addLog, claimBenming, createAptitude, createNewGame, esc, feedGu, handleQuest, loadGame, minorXpNeed, purchaseShopEntry, RANK_NAMES, realmText, recalcStats, recordQuestProgress, refineBenming, saveGame, useHealItem, useHealingGu, useBoarGu, XIAO_NAMES } from '../core/state.js';
 import { createKillerMove, discoveredKillerPatterns, forgetKillerMove, recordGuUsage } from '../core/killer.js';
 import { battleAct, startBattle } from '../core/combat.js';
-import { applyEventChoice, checkStoryTriggers } from '../core/story-engine.js';
+import { applyEventChoice, checkStoryTriggers, innRumors, nextRetreatTime } from '../core/story-engine.js';
 import { advanceMinutes, moveToPlace, rewindSpringCicada, saveSpringSnapshot } from '../core/clock.js';
 import { availableRecipeDiscovery, createRefineSession, isRecipeSold, knowsRefineRecipe, stepRefineSession } from '../core/refine.js';
-import { createBreakSession, realmGrowthText, realmGuRequirement, stepBreakSession, washMinorWall } from '../core/breakthrough.js';
+import { createBreakSession, realmGrowthText, stepBreakSession, washMinorWall } from '../core/breakthrough.js';
 import { renderBreakModal, renderCustomKillerModal, renderEventModal, renderRefineModal, renderStartScreen } from './rituals.js';
 import { renderBattleView } from './battle-view.js';
 import { renderPlaceView } from './place-view.js';
@@ -104,7 +104,7 @@ function renderModal() {
   else sheetEl.removeAttribute('aria-labelledby');
 
   if (G && G.pendingEventId && !G.battle && (!MODAL || MODAL.kind === 'place')) {
-    sheetEl.innerHTML = renderEventModal(G.pendingEventId);
+    sheetEl.innerHTML = renderEventModal(G, G.pendingEventId);
     modalEl.hidden = false;
     return;
   }
@@ -197,6 +197,15 @@ function handlePlaceAction(id) {
   const p = G.player;
   if (id === 'meditate') { advanceMinutes(G, 120); addLog(G, '你盘膝打坐一个时辰，吐纳天地灵气。'); }
   else if (id === 'rest') { advanceMinutes(G, 480); addLog(G, '你在竹楼安歇四个时辰，精神恢复了不少。'); }
+  else if (id === 'retreat') {
+    if (G.location !== 'zhulou') return;
+    const until = nextRetreatTime(G);
+    while (G.minutes < until && !G.pendingEventId && !p.dead) {
+      const toDawn = MIN_PER_DAY - G.minutes % MIN_PER_DAY;
+      advanceMinutes(G, Math.min(toDawn, until - G.minutes));
+    }
+    addLog(G, `【闭关】出关时已是${formatDateTime(G.minutes)}。`);
+  }
   else if (id === 'pickBenming') {
     claimBenming(G);
   } else if (id === 'caoren') {
@@ -212,22 +221,27 @@ function handlePlaceAction(id) {
     p.hp = p.hpMax;
     addLog(G, '你在药堂敷药调理，气血已然回满。', 'log-good');
   } else if (id === 'rumor') {
+    advanceMinutes(G, 30);
+    const news = innRumors(G);
+    if (!news.length) news.push('酒客正在等新的行脚商人进寨，暂时没有新的山外消息。');
+    for (const line of news) addLog(G, `【客栈】${line}`);
+    showToast(news.at(-1));
+  } else if (id === 'secretRumor') {
+    if (G.flags['clue:huajiu']) return;
     if (p.yuanshi < 12) { showToast('元石不足 12 块'); return; }
     p.yuanshi -= 12;
     advanceMinutes(G, 30);
-    if (!G.flags['clue:huajiu']) {
-      G.flags['clue:huajiu'] = true;
-      addLog(G, '【密闻】酒客低声提起：血蝠洞下游瀑布后，藏着花酒行者的暗涧遗洞。', 'log-gold');
-    } else {
-      addLog(G, '【传闻】听说山外狼群正在集结，明年夏天怕是要闹狼潮。');
-    }
+    G.flags['clue:huajiu'] = true;
+    const line = '血蝠洞下游瀑布后，藏着花酒行者的暗涧遗洞。';
+    addLog(G, `【密闻】${line}`, 'log-gold');
+    showToast(line);
   } else if (id === 'clanGift') {
     if (!G.flags['clan_gift_r2']) {
       G.flags['clan_gift_r2'] = true;
       p.yuanshi += 40;
-      addGu(G, 'qingtong_sheli');
+      addGu(G, 'chitie_sheli');
       addGu(G, 'yupi');
-      addLog(G, '【家族赏赐】族长嘉许你晋入二转，赏元石 40、青铜舍利蛊和玉皮蛊各 1 只！', 'log-gold');
+      addLog(G, '【家族赏赐】族长嘉许你晋入二转，赏元石 40、赤铁舍利蛊和玉皮蛊各 1 只！', 'log-gold');
     } else {
       showToast('族中近来暂无新赏格');
       return;
@@ -241,12 +255,16 @@ function handlePlaceAction(id) {
     advanceMinutes(G, 60);
     if (!G.battle && place.bossEnemy) startBattle(G, place.bossEnemy, `讨伐${place.name}`);
   } else if (id === 'gather') {
+    const place = PLACES[G.location];
+    if (!place.gather) return;
     advanceMinutes(G, 120);
-    const pool = ['yuelanhua', 'shourou', 'fengmi', 'kuangshi', 'yuanshi_zha'];
-    const got = pool[Math.floor(Math.random() * pool.length)];
-    addItem(G, got, 2);
+    const rare = rareGathering(G, place);
+    if (rare) G.flags[`gathered:${place.id}`] = Math.floor(G.minutes / MIN_PER_DAY);
+    const got = rare || place.gather[Math.floor(Math.random() * place.gather.length)];
+    const count = rare ? 4 : 2;
+    addItem(G, got, count);
     recordQuestProgress(G, 'gather', G.location);
-    const message = `采集完成，获得「${ITEMS[got].name}」×2`;
+    const message = `采集完成，获得「${ITEMS[got].name}」×${count}`;
     addLog(G, `${message}。`, 'log-good');
     showToast(message);
   } else if (id === 'discoverRecipe') {
@@ -429,6 +447,7 @@ function handleAction(el) {
     render();
   } else if (act === 'chooseEvent') {
     applyEventChoice(G, id, Number(el.dataset.idx) || 0);
+    checkStoryTriggers(G);
     saveGame(G);
     render();
   } else if (act === 'washMinor') {
@@ -530,8 +549,6 @@ function handleAction(el) {
       showToast('仅限对应转数未达巅峰时使用');
       return;
     }
-    const gu = realmGuRequirement({ ...G.player, gu: G.player.gu.filter((x) => x.uid !== uid) });
-    if (gu.count < gu.need) { showToast(gu.text); return; }
     const before = { ...G.player };
     G.player.gu = G.player.gu.filter((x) => x.uid !== uid);
     G.player.xiao++;
@@ -554,6 +571,10 @@ function handleAction(el) {
     saveGame(G);
     render();
   } else if (act === 'finishBattle') {
+    if (!G.battle || G.battle.state === 'ongoing') return;
+    if (G.battle.storyEvent === 'qingmao_endgame' && G.battle.state === 'fled') {
+      delete G.flags['event_done:qingmao_endgame'];
+    }
     const dead = G.player.dead;
     G.battle = null;
     if (dead) openModal('dead', {});

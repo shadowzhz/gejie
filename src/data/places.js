@@ -1,4 +1,4 @@
-import { makeTime } from '../core/calendar.js';
+import { makeTime, MIN_PER_DAY } from '../core/calendar.js';
 
 export function hasPlaceActions(gs) {
   return !!(PLACES[gs.location]?.services.length
@@ -97,6 +97,8 @@ export const PLACES = {
     night: '月色洒在竹叶上，酒香混着兽腥从深处飘来。',
     exploreEnemy: 'yezhu',
     bossEnemy: 'zhuwang',
+    gather: ['yuelanhua', 'yuelanhua', 'shourou', 'fengmi'],
+    rare: { item: 'yezhuya', day: 1 },
     services: ['explore', 'gather']
   },
   xuefu: {
@@ -107,6 +109,8 @@ export const PLACES = {
     night: '洞内腥风大作，正是血蝠群出洞觅食的时辰。',
     exploreEnemy: 'xuefu',
     bossEnemy: 'xuefu_king',
+    gather: ['shourou', 'yushi', 'yuanshi_zha', 'yuanshi_zha'],
+    rare: { item: 'yushi', day: 2 },
     services: ['explore', 'gather']
   },
   langchao: {
@@ -117,6 +121,8 @@ export const PLACES = {
     night: '坡顶雷光频闪，豪电狼王的啸声震得山石作响。',
     exploreEnemy: 'dianlang',
     bossEnemy: 'langwang',
+    gather: ['kuangshi', 'kuangshi', 'shourou', 'yuanshi_zha'],
+    rare: { item: 'kuangshi', day: 3 },
     services: ['explore', 'gather']
   },
   huajiu: {
@@ -128,7 +134,16 @@ export const PLACES = {
     services: ['huajiu_explore']
   }
 };
-export const MERCHANT_GU = ['jiuchong', 'heishi'];
+export const MERCHANT_GU = ['jiuchong', 'heishi', 'chitie_sheli'];
+
+export function rareGathering(gs, place, minute = gs.minutes) {
+  const day = Math.floor(minute / MIN_PER_DAY);
+  return place.rare && day % 4 === place.rare.day && gs.flags[`gathered:${place.id}`] !== day ? place.rare.item : null;
+}
+
+export function shopUnitPrice(gs, id, price) {
+  return id === 'jiuchong' && gs.flags.wine_bid ? price - 20 : price;
+}
 
 export function placeShopEntries(gs) {
   const shop = PLACES[gs.location]?.shop ?? [];
@@ -137,6 +152,7 @@ export function placeShopEntries(gs) {
   if (gs.flags.kaike) entries.push('gu:yueguang', 'gu:xiaoguang', 'gu:henshi');
   if (gs.minutes >= makeTime(2, 3, 1) && gs.minutes < makeTime(2, 3, 9)) {
     for (const id of MERCHANT_GU) {
+      if (id === 'chitie_sheli' && gs.minutes < makeTime(2, 3, 7)) continue;
       if (!gs.flags[`merchant_${id}_bought`]) entries.push(`gu:${id}`);
     }
   }

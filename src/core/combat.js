@@ -1,7 +1,7 @@
 import { GU_DEFS } from '../data/gu.js';
 import { ENEMIES } from '../data/enemies.js';
 import { addGu, addItem, addLog, hasGu, isGuWeak, recalcStats, recordQuestProgress } from './state.js';
-import { killerMoveBlock, recordGuUsage } from './killer.js';
+import { killerEffects, killerMoveBlock, recordGuUsage } from './killer.js';
 
 function pickIntent(enemy, rng = Math.random) {
   const pool = enemy.moves.filter((m) => (enemy.cds[m.name] || 0) <= 0);
@@ -15,7 +15,7 @@ function pickIntent(enemy, rng = Math.random) {
   return list[0];
 }
 
-export function startBattle(gs, enemyId, tag = '遭遇战', rng = Math.random) {
+export function startBattle(gs, enemyId, tag = '遭遇战', rng = Math.random, { shield = 0, winFlag, winGu, storyEvent } = {}) {
   const tpl = ENEMIES[enemyId];
   if (!tpl || gs.battle) return null;
   const foe = {
@@ -44,7 +44,10 @@ export function startBattle(gs, enemyId, tag = '遭遇战', rng = Math.random) {
     lethal: false,
     scouted: false,
     playerStunned: false,
-    meShield: 0,
+    meShield: shield,
+    winFlag,
+    winGu,
+    storyEvent,
     meBoost: 0,
     cds: {},
     guQueue: [],
@@ -63,6 +66,8 @@ export function startBattle(gs, enemyId, tag = '遭遇战', rng = Math.random) {
 function enemyTurn(gs, b, rng = Math.random) {
   const foe = b.foe;
   if (foe.hp <= 0) return;
+  const speed = b.haste?.turns > 0 ? b.haste.speed : 0;
+  if (speed) b.haste.turns--;
   for (const k of Object.keys(foe.cds)) {
     if (foe.cds[k] > 0) foe.cds[k]--;
   }
@@ -76,7 +81,9 @@ function enemyTurn(gs, b, rng = Math.random) {
   if (mv.cd) foe.cds[mv.name] = mv.cd;
   foe.zy = Math.max(0, foe.zy - (mv.cost ?? foe.rank * 4));
   if (mv.kind === 'attack' || mv.kind === 'drain' || mv.kind === 'stun') {
-    const raw = Math.round(mv.power * (0.9 + rng() * 0.2));
+    const evaded = speed > 0 && gs.player.speed + speed > foe.speed;
+    const raw = Math.round(mv.power * (0.9 + rng() * 0.2) * (evaded ? 0.7 : 1));
+    if (evaded) b.logs.push('你借身法避开锋芒，受到的打击减轻。');
     const absorbed = Math.min(b.meShield, raw);
     b.meShield -= absorbed;
     const dmg = raw - absorbed;
@@ -119,7 +126,7 @@ function dealDamageToFoe(b, rawDmg, pierce = 0) {
   const blockable = Math.round(rawDmg * (1 - pierce));
   const absorbed = Math.min(foe.shield, blockable);
   foe.shield -= absorbed;
-  const dmg = rawDmg - absorbed;
+  const dmg = Math.min(foe.hp, rawDmg - absorbed);
   foe.hp = Math.max(0, foe.hp - dmg);
   return { dmg, absorbed };
 }
@@ -247,7 +254,8 @@ export function battleAct(gs, action, arg = '', rng = Math.random) {
     p.zy += gain;
     b.logs.push(`你消耗 2 块元石补充真元，真元恢复 +${gain}。`);
   } else if (action === 'flee') {
-    const chance = 0.55 + (p.speed - foe.speed) * 0.04 + (hasGu(gs, 'yinshi') ? 0.25 : 0);
+    const speed = p.speed + (b.haste?.turns > 0 ? b.haste.speed : 0);
+    const chance = 0.55 + (speed - foe.speed) * 0.04 + (hasGu(gs, 'yinshi') ? 0.25 : 0);
     if (rng() < Math.max(0.2, Math.min(0.95, chance))) {
       b.state = 'fled';
       b.logs.push('你虚晃一招，顺利脱离战局。');
@@ -263,16 +271,39 @@ export function battleAct(gs, action, arg = '', rng = Math.random) {
     }
     recordGuUsage(gs, fired);
   } else if (action === 'move') {
+    const effect = killerEffects(mv);
     p.zy -= mv.cost;
     b.cds[mv.id] = mv.cd;
-    if (mv.kind === '防御') {
-      b.meShield += mv.power;
-      b.logs.push(`你催动杀招「${mv.name}」，凝出 ${mv.power} 点厚盾！`);
+    if (effect.kind === '防御') {
+      b.meShield += effect.power;
+      b.logs.push(`你催动杀招「${mv.name}」，凝出 ${effect.power} 点厚盾！`);
     } else {
-      const raw = Math.round(mv.power * (0.94 + rng() * 0.14));
-      const res = dealDamageToFoe(b, raw);
+      const boosted = effect.moon && b.meBoost > 0;
+      if (boosted) b.meBoost--;
+      const removed = Math.min(foe.shield, effect.breakShield ?? 0);
+      foe.shield -= removed;
+      if (removed) b.logs.push(`冲撞击碎 ${removed} 点护盾。`);
+      const power = effect.power + (effect.strength ?? 0) * p.powerBonus;
+      const raw = Math.round(power * (boosted ? 1.35 : 1) * (0.94 + rng() * 0.14));
+      const res = dealDamageToFoe(b, raw, effect.pierce);
       b.logs.push(`你催动杀招「${mv.name}」，${res.absorbed ? `破盾 ${res.absorbed}，` : ''}重创 ${foe.name} ${res.dmg} 点！`);
-      if (mv.bonusShield) { b.meShield += mv.bonusShield; b.logs.push(`辅蛊护体，附加护盾 +${mv.bonusShield}。`); }
+      if (effect.bonusShield) {
+        b.meShield += effect.bonusShield;
+        b.logs.push(`辅蛊护体，附加护盾 +${effect.bonusShield}。`);
+      }
+      if (effect.drain && res.dmg > 0) {
+        const healed = Math.min(p.hpMax - p.hp, Math.round(res.dmg * effect.drain));
+        p.hp += healed;
+        if (healed) b.logs.push(`血蝠反哺，气血恢复 ${Math.round(healed)} 点。`);
+      }
+      if (foe.hp > 0 && effect.stun && rng() < effect.stun) {
+        foe.stunned = true;
+        b.logs.push(`${foe.name}被雷击麻痹。`);
+      }
+      if (effect.speed) {
+        b.haste = { speed: effect.speed, turns: 2 };
+        b.logs.push(`风势助身，身法 +${effect.speed}，持续两轮。`);
+      }
     }
   }
 
@@ -283,6 +314,8 @@ export function battleAct(gs, action, arg = '', rng = Math.random) {
     const ys = (rw.yuanshi || 0) + (b.lethal ? 15 : 0);
     if (ys > 0) p.yuanshi += ys;
     if (rw.item) addItem(gs, rw.item, 1);
+    if (b.winFlag) gs.flags[b.winFlag] = true;
+    if (b.winGu && addGu(gs, b.winGu)) b.logs.push(`战后获赏：「${GU_DEFS[b.winGu].name}」。`);
     if (rw.gu && !hasGu(gs, rw.gu)) {
       addGu(gs, rw.gu);
       b.logs.push(`战后缴获：「${GU_DEFS[rw.gu].name}」！`);

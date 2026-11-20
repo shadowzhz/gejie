@@ -2,7 +2,7 @@ import { GU_DEFS, ITEMS, guEffectText } from '../data/gu.js';
 import { BENMING_ZY_COST, esc, isGuWeak, minorXpNeed, realmText } from '../core/state.js';
 
 import { realmGuRequirement } from '../core/breakthrough.js';
-import { discoveredKillerPatterns, killerMoveBlock } from '../core/killer.js';
+import { discoveredKillerPatterns, killerEffectText, killerMoveBlock } from '../core/killer.js';
 
 export function renderApertureView(gs) {
   const p = gs.player;
@@ -71,7 +71,7 @@ export function renderApertureView(gs) {
     ? p.moves.map((m) => `<div class="card">
         <div class="kv"><b>${esc(m.name)}</b><button class="sm ghost" data-action="forgetKiller" data-id="${esc(m.id)}">删除</button></div>
         <span class="badge gold">${esc(m.kind)} · 耗${m.cost} 真元</span>
-        <div class="muted">${esc(killerMoveBlock(gs, m) || `威能 ${m.power}${m.bonusShield ? ` · 盾+${m.bonusShield}` : ''} · 间隔 ${m.cd - 1} 回合`)}</div>
+        <div class="muted">${esc(killerMoveBlock(gs, m) || `${killerEffectText(m)} · 间隔 ${m.cd - 1} 回合`)}</div>
       </div>`).join('')
     : '<div class="muted">尚未创出杀招。</div>';
 
@@ -85,6 +85,7 @@ export function renderApertureView(gs) {
     </div>
     <div class="card">
       <div class="muted">${p.rank >= 4 && p.xiao >= 3 ? '已达本卷境界上限' : esc(realmGuRequirement(p).text)}</div>
+      ${p.hai < 6 ? '<div class="muted">丙、丁等冲刷窍壁耗费更多真元。养好对应转数的酒虫可减轻压力，舍利蛊可直接提升一小阶。</div>' : ''}
       <div class="row">
         ${p.xiao < 3 ? '<button class="primary" data-action="washMinor">冲刷窍壁</button>' : '<button class="gold" data-action="openBreak">破壁冲关</button>'}
         <button data-action="feedAll">一键喂饱</button>

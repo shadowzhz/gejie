@@ -774,6 +774,8 @@ const PLACES = {
     night: '月色洒在竹叶上，酒香混着兽腥从深处飘来。',
     exploreEnemy: 'yezhu',
     bossEnemy: 'zhuwang',
+    gather: ['yuelanhua', 'yuelanhua', 'shourou', 'fengmi'],
+    rare: { item: 'yezhuya', day: 1 },
     services: ['explore', 'gather']
   },
   xuefu: {
@@ -784,6 +786,8 @@ const PLACES = {
     night: '洞内腥风大作，正是血蝠群出洞觅食的时辰。',
     exploreEnemy: 'xuefu',
     bossEnemy: 'xuefu_king',
+    gather: ['shourou', 'yushi', 'yuanshi_zha', 'yuanshi_zha'],
+    rare: { item: 'yushi', day: 2 },
     services: ['explore', 'gather']
   },
   langchao: {
@@ -794,6 +798,8 @@ const PLACES = {
     night: '坡顶雷光频闪，豪电狼王的啸声震得山石作响。',
     exploreEnemy: 'dianlang',
     bossEnemy: 'langwang',
+    gather: ['kuangshi', 'kuangshi', 'shourou', 'yuanshi_zha'],
+    rare: { item: 'kuangshi', day: 3 },
     services: ['explore', 'gather']
   },
   huajiu: {
@@ -805,7 +811,14 @@ const PLACES = {
     services: ['huajiu_explore']
   }
 };
-const MERCHANT_GU = ['jiuchong', 'heishi'];
+const MERCHANT_GU = ['jiuchong', 'heishi', 'chitie_sheli'];
+function rareGathering(gs, place, minute = gs.minutes) {
+  const day = Math.floor(minute / MIN_PER_DAY);
+  return place.rare && day % 4 === place.rare.day && gs.flags[`gathered:${place.id}`] !== day ? place.rare.item : null;
+}
+function shopUnitPrice(gs, id, price) {
+  return id === 'jiuchong' && gs.flags.wine_bid ? price - 20 : price;
+}
 function placeShopEntries(gs) {
   const shop = PLACES[gs.location]?.shop ?? [];
   if (gs.location !== 'gupu') return shop;
@@ -813,6 +826,7 @@ function placeShopEntries(gs) {
   if (gs.flags.kaike) entries.push('gu:yueguang', 'gu:xiaoguang', 'gu:henshi');
   if (gs.minutes >= makeTime(2, 3, 1) && gs.minutes < makeTime(2, 3, 9)) {
     for (const id of MERCHANT_GU) {
+      if (id === 'chitie_sheli' && gs.minutes < makeTime(2, 3, 7)) continue;
       if (!gs.flags[`merchant_${id}_bought`]) entries.push(`gu:${id}`);
     }
   }
@@ -886,9 +900,9 @@ const GU_DEFS = {
   xuefu_gu: { id: 'xuefu_gu', name: '血蝠蛊', rank: 2, school: '血道', kind: '攻击', cost: 8, cd: 2, power: 32, food: 'shourou', price: 55, desc: '吸食敌手精血，造成伤害的同时将部分血气反哺己身。' },
   dianlang_gu: { id: 'dianlang_gu', name: '电狼蛊', rank: 2, school: '雷道', kind: '攻击', cost: 9, cd: 2, power: 38, food: 'shourou', price: 62, desc: '引动蓝白电弧扑击敌手，疾速暴烈，有概率麻痹对手。' },
   nianxi: { id: 'nianxi', name: '念息蛊', rank: 1, school: '智道', kind: '探知', cost: 3, cd: 2, power: 15, food: 'yuanshi_zha', price: 24, desc: '战中催动可探明敌手确切气血、真元与下回合真意。' },
-  yinshi: { id: 'yinshi', name: '隐石蛊', rank: 1, school: '暗道', kind: '隐匿', cost: 3, cd: 2, power: 12, food: 'yuanshi_zha', price: 24, desc: '持有时提高战中脱身成功率，并降低招致追捕的几率。' },
+  yinshi: { id: 'yinshi', name: '隐石蛊', rank: 1, school: '暗道', kind: '隐匿', cost: 3, cd: 2, power: 12, food: 'yuanshi_zha', price: 24, desc: '持有时提高战中脱身成功率。' },
   xuanfeng: { id: 'xuanfeng', name: '旋风蛊', rank: 1, school: '风道', kind: '控制', cost: 4, cd: 2, power: 16, food: 'yuelanhua', price: 22, desc: '卷起山风扰乱敌方身法，造成伤害并有概率打断对手蓄势。' },
-  qingtong_sheli: { id: 'qingtong_sheli', name: '青铜舍利蛊', rank: 1, school: '天道', kind: '消耗', cost: 0, cd: 0, power: 0, food: 'kuangshi', price: 90, desc: '一转破境奇蛊，使用后可直接助一转蛊师连破小境界。' },
+  qingtong_sheli: { id: 'qingtong_sheli', name: '青铜舍利蛊', rank: 1, school: '天道', kind: '消耗', cost: 0, cd: 0, power: 0, food: 'kuangshi', price: 90, desc: '一转蛊师消耗此蛊可直接提升一小阶。' },
   chitie_sheli: { id: 'chitie_sheli', name: '赤铁舍利蛊', rank: 2, school: '天道', kind: '消耗', cost: 0, cd: 0, power: 0, food: 'kuangshi', price: 210, desc: '二转破境奇蛊，使用后可直接助二转蛊师打破小境界壁垒。' },
   baiyin_sheli: { id: 'baiyin_sheli', name: '白银舍利蛊', rank: 3, school: '天道', kind: '消耗', cost: 0, cd: 0, power: 0, food: 'kuangshi', price: 420, desc: '三转破境奇蛊，使用后可直接助三转蛊师提升一个小境界。' },
   chunqiuchan: { id: 'chunqiuchan', name: '春秋蝉（残）', rank: 3, school: '宙道', kind: '奇蛊', cost: 0, cd: 0, power: 0, food: 'guangyin_water', price: 0, desc: '奇蛊榜第七，可于行纪中留下一道旧影；身殒时消耗它回到那一刻。' }
@@ -1009,20 +1023,20 @@ const ENEMIES = {
     reward: { yuanshi: 30 },
     practice: true
   },
-  modao: {
-    id: 'modao', name: '山外魔道蛊师', rank: 2, hp: 185, zy: 85, speed: 12,
+  bainingbing: {
+    id: 'bainingbing', name: '白凝冰', rank: 2, hp: 175, zy: 85, speed: 12,
     moves: [
-      { name: '毒刺暗袭', kind: 'attack', power: 28, weight: 3 },
-      { name: '血遁借力', kind: 'drain', power: 22, cd: 2, weight: 2 },
-      { name: '铁皮护身', kind: 'shield', power: 26, weight: 1 }
+      { name: '冰锥蛊', kind: 'attack', power: 23, weight: 3 },
+      { name: '水罩蛊', kind: 'shield', power: 34, cd: 2, weight: 2 },
+      { name: '冰刀蛊', kind: 'attack', power: 31, cd: 3, weight: 2 }
     ],
-    reward: { yuanshi: 45 }
+    practice: true
   },
-  tiexueleng: {
-    id: 'tiexueleng', name: '铁血冷捕手', rank: 3, hp: 270, zy: 120, speed: 15,
+  tie_patrol: {
+    id: 'tie_patrol', name: '铁家追兵', rank: 2, hp: 185, zy: 85, speed: 11,
     moves: [
       { name: '铁索镇压', kind: 'stun', power: 28, cd: 3, weight: 2 },
-      { name: '正道斩邪', kind: 'attack', power: 38, weight: 3 },
+      { name: '正道斩邪', kind: 'attack', power: 26, weight: 3 },
       { name: '玄铁护甲', kind: 'shield', power: 38, cd: 2, weight: 1 }
     ],
     reward: { yuanshi: 80 }
@@ -1079,12 +1093,55 @@ const STORY_EVENTS = [
     ]
   },
   {
+    id: 'uncle',
+    title: '舅父设局',
+    cond: 'after:1-4-1-0',
+    text: '古月冻土请你在过继文书上画押，许诺先给一笔安家钱。你翻到末页，发现旧产仍由他代管。族中执事愿替你留一份文书，却要你自己承担日后的争讼。',
+    choices: [
+      { text: '拒绝画押，请执事封存文书', effects: ['flag:inheritance_claim'] },
+      { text: '签下文书，领取二十八块元石', effects: ['yuanshi:+28'] }
+    ]
+  },
+  {
+    id: 'classmates',
+    title: '学堂推举班头',
+    cond: 'after:1-5-1-0',
+    text: '古月漠北与古月赤城各自招揽同窗。漠北邀你随队练手，赤城愿借家中的人脉帮你备货。你也可以独行，去听酒客说说山里的旧事。',
+    choices: [
+      { text: '与漠北同练，领一只石皮蛊', effects: ['flag:mo_faction', 'gu:shipi'] },
+      { text: '随赤城备货，领十八块元石', effects: ['flag:chi_faction', 'yuanshi:+18'] },
+      { text: '独行，追查酒香（解锁暗涧遗洞）', effects: ['flag:clue:huajiu', 'goal:循血蝠洞旁的小径探访暗涧遗洞'] }
+    ]
+  },
+  {
+    id: 'wine_lead',
+    title: '石缝里的酒香',
+    cond: 'after:1-6-1-0',
+    text: '客栈伙计拾到一片沾着酒香的石片，指得出它来自哪一道山涧。行商也肯替你留意下一趟商队的酒虫拍卖。',
+    choices: [
+      { text: '收下石片，私探遗洞', effects: ['flag:clue:huajiu', 'goal:从血蝠洞旁前往暗涧遗洞，寻找酒虫'] },
+      { text: '等商队开拍（凭帖竞买酒虫）', effects: ['flag:wine_bid', 'goal:次年三月初一至初八去蛊铺竞买酒虫'] }
+    ]
+  },
+  {
+    id: 'early_sheli',
+    title: '学堂的青铜舍利',
+    cond: 'after:1-7-1-0&rank:1&haiBelow:6',
+    text: '家老见你冲刷窍壁吃力，从备给学徒的赏格里取出一只青铜舍利蛊。你可留待瓶颈时使用，也可领取口粮继续温养。',
+    choices: [
+      { text: '领青铜舍利蛊（一转提升一小阶）', effects: ['gu:qingtong_sheli'] },
+      { text: '领月兰花瓣十二片与元石十块', effects: ['item:yuelanhua:12', 'yuanshi:+10'] }
+    ]
+  },
+  {
     id: 'jiuyecao_inheritance',
     title: '家产交割',
     cond: 'after:1-9-1-0',
-    text: '族中执事送来家产册与一只木匣。匣中草叶青翠，正是遗产中的九叶生机草。',
+    text: '族中执事摊开旧账，酒肆和药圃须重新清点。此前封存的文书足以证明你对药圃的份额。若已经签下过继文书，眼下只能接受舅父拨给你的补偿。',
     choices: [
-      { text: '收下九叶生机草', effects: ['gu:jiuyecao'] }
+      { text: '按旧账分产，收下九叶生机草', cond: 'flag:inheritance_claim', effects: ['gu:jiuyecao'] },
+      { text: '拿酒肆分红作本钱（四十二块元石）', cond: 'flag:inheritance_claim', effects: ['yuanshi:+42'] },
+      { text: '收下过继后的补偿（十八块元石）', cond: '!flag:inheritance_claim', effects: ['yuanshi:+18'] }
     ]
   },
   {
@@ -1097,23 +1154,112 @@ const STORY_EVENTS = [
     ]
   },
   {
+    id: 'wolf_signs',
+    title: '残狼过冬',
+    cond: 'after:2-1-1-0',
+    text: '猎户发现原在山脊活动的狼已经压到竹林。任务堂要人运粮，也有人想趁巡山人手不足去山外探路。',
+    choices: [
+      { text: '替守寨人运粮，备下疗伤物资', effects: ['flag:wolf_supplies', 'item:zhixuegao:3'] },
+      { text: '独自踩点，记下狼群绕行的小径', effects: ['flag:wolf_trail', 'item:shourou:8'] }
+    ]
+  },
+  {
+    id: 'jia_missing',
+    title: '商队少了一人',
+    cond: 'after:2-3-2-0',
+    text: '贾家商队点货时，贾金生迟迟没有回来。伙计记得他打听过山涧方向，求你搭把手。窄道泥泞，车辙和脚印正在被雨冲散。',
+    choices: [
+      { text: '描下脚印，保管商队失物', effects: ['flag:jia_evidence'] },
+      { text: '拾走散落货款（四十块元石，恶名 +22）', effects: ['yuanshi:+40', 'mo:+22', 'flag:jia_missing_stones'] },
+      { text: '护送车队回寨，领十二块元石', effects: ['yuanshi:+12'] }
+    ]
+  },
+  {
+    id: 'jia_questions',
+    title: '贾富问询',
+    cond: 'after:2-3-6-0&flag:event_done:jia_missing',
+    text: '贾富借竹君子逐一问话，想知道谁见过贾金生和失踪前的货物。问到山涧时，伙计将目光移向了你。',
+    choices: [
+      { text: '交出失物与足迹（留下查案凭证）', cond: 'flag:jia_evidence', effects: ['flag:jia_witness', 'yuanshi:+20'] },
+      { text: '退回货款（四十块元石，恶名 -15）', cond: 'flag:jia_missing_stones&stones:40', effects: ['yuanshi:-40', 'mo:-15'] },
+      { text: '只说自己亲眼所见，到此为止', effects: [] }
+    ]
+  },
+  {
     id: 'langchao_start',
     title: '青茅狼潮',
     cond: 'after:2-6-1-0&!flag:langchao_seen',
     text: '次年六月，黑压压的电狼群终于顺着山脊压向古月山寨！山脚木栅接连告急，族中下令所有二转以上蛊师轮值迎敌。\n混乱之中，有人在趁乱发财，也有人在死守寨门。',
     choices: [
-      { text: '随族人登墙守寨（立功稳妥）', effects: ['flag:langchao_seen', 'yuanshi:+35', 'goal:前往「电狼坡」斩杀豪电狼王，平定狼潮锋芒'] },
-      { text: '趁夜暗中搜刮战死同族遗物（高收益，恶名上升）', effects: ['flag:langchao_seen', 'yuanshi:+75', 'mo:+25', 'goal:狼潮已起，山寨危局渐近，尽快冲击三转准备应对变局'] }
+      { text: '随漠北登墙，迎击电狼（从护盾 30 开战）', cond: 'flag:mo_faction', effects: ['flag:langchao_seen', 'battle:dianlang', 'shield:30', 'onwin:wall_held'] },
+      { text: '用备好的药粮接济守军（立下战功）', cond: 'flag:wolf_supplies', effects: ['flag:langchao_seen', 'flag:wall_held', 'yuanshi:+20'] },
+      { text: '亲自迎击电狼，守住缺口', effects: ['flag:langchao_seen', 'battle:dianlang', 'onwin:wall_held'] },
+      { text: '趁夜搜刮遗物（六十块元石，恶名 +25）', effects: ['flag:langchao_seen', 'yuanshi:+60', 'mo:+25'] }
+    ]
+  },
+  {
+    id: 'bai_encounter',
+    title: '白家来客',
+    cond: 'after:2-6-15-0&flag:langchao_seen',
+    text: '白凝冰出关后接连向两寨蛊师挑战。你在巡山换防时遇见他，石径上凝着一层薄霜。他邀你过招，守军却正等着这批人回寨。',
+    choices: [
+      { text: '接下邀约（切磋，胜后再会有备）', effects: ['battle:bainingbing', 'onwin:bai_read'] },
+      { text: '护送同窗回寨（领十块元石）', effects: ['yuanshi:+10'] }
+    ]
+  },
+  {
+    id: 'wolf_breach',
+    title: '东门告急',
+    cond: 'after:2-7-10-0&flag:langchao_seen',
+    text: '狼群扑向东门，熊家求援队也被困在山坳。你可以点烽火引守军接应，或把狼群引向对方的退路，趁混乱取得遗落的物资。',
+    choices: [
+      { text: '点烽火接应（有守寨战功，领四十块元石）', cond: 'flag:wall_held', effects: ['flag:wolf_rescue', 'yuanshi:+40'] },
+      { text: '从小径引狼截路（赤铁舍利蛊，恶名 +35）', cond: 'flag:wolf_trail', effects: ['flag:wolf_betrayal', 'gu:chitie_sheli', 'item:kuangshi:3', 'mo:+35'] },
+      { text: '守住驿道，迎战豪电狼王', effects: ['battle:langwang', 'onwin:wolf_rescue'] },
+      { text: '留守内寨，护送伤员撤退', effects: ['item:shengjiye:2'] }
+    ]
+  },
+  {
+    id: 'tie_inquiry',
+    title: '铁血冷入寨',
+    cond: 'after:2-8-20-0&flag:event_done:wolf_breach',
+    text: '铁血冷与铁若男查起贾金生一案，同时复核狼潮时几支队伍的行迹。贾家问话时的证词、东门的战功和乡人的指认都摆上了案头。',
+    choices: [
+      { text: '以失踪案证词或救援记录结案（恶名 -15）', cond: '!mo:30&(flag:jia_witness|flag:wolf_rescue)', effects: ['mo:-15', 'flag:tie_cleared', 'yuanshi:+24'] },
+      { text: '领取协查文书，以后出入须登记', cond: '!mo:30', effects: ['flag:tie_cleared'] },
+      { text: '交三十块元石赔偿，接受保结（恶名 -20）', cond: 'mo:30&stones:30', effects: ['yuanshi:-30', 'mo:-20', 'flag:tie_bond'] },
+      { text: '趁夜冲出封锁，迎战铁家追兵', cond: 'mo:30', effects: ['battle:tie_patrol', 'onwin:tie_fugitive'] }
+    ]
+  },
+  {
+    id: 'three_clans',
+    title: '三寨斗蛊大比',
+    cond: 'after:2-9-10-0&flag:event_done:tie_inquiry',
+    text: '狼潮过后，古月、白、熊三家要以斗蛊重划山路和猎场。白凝冰已经登台。寨门仍有铁家的人盘查，保结在身的人可请赤城作保递帖。',
+    choices: [
+      { text: '登台挑战白凝冰（胜得赤铁舍利蛊）', cond: 'flag:tie_cleared|(flag:tie_bond&flag:chi_faction)', effects: ['battle:bainingbing', 'onwin:tournament_won', 'wingu:chitie_sheli'] },
+      { text: '依上次交手所见先护住要害（护盾 28，胜得赤铁舍利蛊）', cond: 'flag:bai_read&(flag:tie_cleared|(flag:tie_bond&flag:chi_faction))', effects: ['battle:bainingbing', 'shield:28', 'onwin:tournament_won', 'wingu:chitie_sheli'] },
+      { text: '在场外观战，记下撤往山外的路', effects: [] }
+    ]
+  },
+  {
+    id: 'blood_skull',
+    title: '血池边的取舍',
+    cond: 'after:2-10-1-0&flag:event_done:three_clans',
+    text: '地下血池翻涌，古月一代现身。血颅蛊能以血亲之血提升资质。乱局中有人想夺取这份力量，也有人打算趁通道尚在，叫醒身边还活着的族人。',
+    choices: [
+      { text: '夺血颅蛊，以血亲献祭（元海最多 +2 成，恶名 +55）', cond: 'flag:wolf_betrayal|flag:tie_fugitive', effects: ['hai:+2', 'mo:+55'] },
+      { text: '疏散族人，备好干粮继续突围', effects: ['item:shourou:6'] }
     ]
   },
   {
     id: 'qingmao_endgame',
     title: '血海降世 · 天鹤来袭',
-    cond: 'after:2-10-1-0&!flag:qingmao_finished&flag:langchao_seen',
-    text: '十万大山骤然血光冲天！古月一族先祖「古月一代」于地下血池苏醒，欲屠戮全族血亲提炼资质；与此同时，中洲古魂门「天鹤上人」驾仙鹤破空而至，两位绝世强者即将在青茅山拼杀至死！\n山崩地裂，整座青茅山已成死地，这是你走出青茅山的最后时机。',
+    cond: 'after:2-10-1-0&!flag:qingmao_finished&flag:event_done:blood_skull',
+    text: '十万大山骤然血光冲天！古月一族先祖「古月一代」从血池杀出，中洲仙鹤门的天鹤上人驾鹤截住了他。\n山崩地裂，整座青茅山已成死地，这是你走出青茅山的最后时机。',
     choices: [
-      { text: '先截击古月一代残躯，再夺路冲出青茅山（凶险，战利品极丰）', effects: ['battle:guyue_yidai', 'flag:qingmao_finished', 'flag:qingmao_hero', 'goal:已历血海大战！整顿行囊，随时可告别青茅山'] },
-      { text: '迎战天鹤上人外围弟子，趁两位强者死斗突围', effects: ['battle:tianhe', 'flag:qingmao_finished', 'goal:已从天鹤上人手下脱身，准备走出青茅山'] },
+      { text: '截击古月一代残躯（胜后可离开青茅山）', effects: ['battle:guyue_yidai', 'onwin:qingmao_finished', 'goal:击败古月一代残躯后，从寨门离开青茅山'] },
+      { text: '直面天鹤上人（胜后可离开青茅山）', effects: ['battle:tianhe', 'onwin:qingmao_finished', 'goal:击退天鹤上人后，从寨门离开青茅山'] },
       { text: '趁双方两败俱伤，潜行绕道直接翻山离去（稳妥脱身）', effects: ['flag:qingmao_finished', 'yuanshi:+40', 'goal:你已避开血海绝境，可于「寨门」或行纪中宣告走出青茅山'] }
     ]
   }
@@ -1336,6 +1482,10 @@ function hasGu(gs, id) {
 function isGuWeak(gu) {
   return (gu?.starveDays ?? 0) >= 2 && gu.satiety <= 0;
 }
+function activeCultivationWine(player) {
+  const id = { 1: 'jiuchong', 2: 'siwei_jiu' }[player.rank];
+  return player.gu.some((gu) => gu.id === id && !isGuWeak(gu));
+}
 function addGu(gs, id, satiety = 100) {
   const def = GU_DEFS[id];
   if (!def) return null;
@@ -1394,7 +1544,7 @@ function purchaseShopEntry(gs, entry, count) {
   if (!Number.isSafeInteger(count) || count < 1 || count > limit) {
     return { ok: false, reason: limited ? '商队限售一只' : `数量须为 1 到 ${limit} 的整数` };
   }
-  const cost = def.price * count;
+  const cost = shopUnitPrice(gs, id, def.price) * count;
   if (gs.player.yuanshi < cost) return { ok: false, reason: `元石不足，需 ${cost} 块` };
   gs.player.yuanshi -= cost;
   if (kind === 'gu') {
@@ -1403,7 +1553,7 @@ function purchaseShopEntry(gs, entry, count) {
     addItem(gs, id, count);
   }
   if (limited) gs.flags[`merchant_${id}_bought`] = true;
-  const message = `已购入「${def.name}」×${count}，花费 ${cost} 元石`;
+  const message = `已${id === 'jiuchong' && gs.flags.wine_bid ? '竞得' : '购入'}「${def.name}」×${count}，花费 ${cost} 元石`;
   addLog(gs, `${message}。`);
   return { ok: true, message };
 }
@@ -1488,12 +1638,12 @@ const KILLER_PATTERNS = [
   {
     id: 'light_moon', name: '凝光月刃', sequence: ['xiaoguang', 'yueguang'],
     desc: '小光先聚光，再以月光蛊斩出月刃。',
-    fee: 24, kind: '攻击', power: 31, cost: 9, cd: 2
+    fee: 24, kind: '攻击', power: 43, moon: true, cost: 9, cd: 2
   },
   {
     id: 'guarded_moon', name: '披月斩', sequence: ['yueni', 'yuemang'],
     desc: '月霓裳先护身，再用月芒蛊反击。',
-    fee: 36, kind: '攻击', power: 39, bonusShield: 30, cost: 15, cd: 3
+    fee: 36, kind: '攻击', power: 39, moon: true, bonusShield: 30, cost: 15, cd: 3
   },
   {
     id: 'bristle_armor', name: '青丝黑鬃甲', sequence: ['qingsi', 'heizong'],
@@ -1501,20 +1651,40 @@ const KILLER_PATTERNS = [
     fee: 36, kind: '防御', power: 76, cost: 20, cd: 3
   },
   { id: 'wind_moon', name: '回风掠月', sequence: ['xuanfeng', 'yuexuan'],
-    desc: '先以山风扰乱身法，再以弧形月刃追击。', fee: 28, kind: '攻击', power: 49, cost: 12, cd: 2 },
+    desc: '借旋风逼开对手，再以弧形月刃追击。', fee: 28, kind: '攻击', power: 49, speed: 5, moon: true, cost: 12, cd: 2 },
   { id: 'sighted_moon', name: '照隙月刃', sequence: ['nianxi', 'yuehen'],
-    desc: '念息辨出破绽，由月痕蛊在远处补上一刀。', fee: 22, kind: '攻击', power: 28, cost: 8, cd: 2 },
+    desc: '念息辨出破绽，由月痕蛊在远处补上一刀。', fee: 22, kind: '攻击', power: 28, pierce: 0.7, moon: true, cost: 8, cd: 2 },
   { id: 'jade_moon', name: '玉甲藏月', sequence: ['yupi', 'yuemang'],
     desc: '玉皮先护身，月芒紧随其后。', fee: 28, kind: '攻击', power: 36, bonusShield: 22, cost: 13, cd: 2 },
   { id: 'stone_hide', name: '石甲兽衣', sequence: ['shoupi', 'shipi'],
     desc: '兽皮卸力，石皮在外挡下重击。', fee: 20, kind: '防御', power: 38, cost: 7, cd: 2 },
+  { id: 'stone_ram', name: '披甲冲撞', sequence: ['shoupi', 'shipi'],
+    desc: '裹上皮甲贴身冲撞，豕蛊养成的膂力越大，撞击越重。', fee: 22, kind: '攻击', power: 22,
+    strength: 1, bonusShield: 10, breakShield: 18, cost: 6, cd: 2 },
   { id: 'bronze_jade', name: '铜胎白玉甲', sequence: ['tongpi', 'baiyu'],
     desc: '铜皮为底，白玉覆面。', fee: 40, kind: '防御', power: 90, cost: 16, cd: 3 },
   { id: 'thunder_wind', name: '风裹惊雷', sequence: ['xuanfeng', 'dianlang_gu'],
-    desc: '借旋风开路，再催电狼蛊放出雷击。', fee: 36, kind: '攻击', power: 56, cost: 14, cd: 3 },
+    desc: '借旋风开路，再催电狼蛊放出雷击。', fee: 36, kind: '攻击', power: 47, stun: 0.75, speed: 5, cost: 14, cd: 3 },
   { id: 'hidden_bat', name: '伏影蝠袭', sequence: ['yinshi', 'xuefu_gu'],
-    desc: '隐去身形，趁敌手失去目标时放出血蝠。', fee: 32, kind: '攻击', power: 42, bonusShield: 8, cost: 12, cd: 3 }
+    desc: '藏身后从暗处放出血蝠，使其反哺气血。', fee: 32, kind: '攻击', power: 42, drain: 0.6, bonusShield: 8, cost: 12, cd: 3 }
 ];
+function killerEffects(move) {
+  return KILLER_PATTERNS.find((pattern) => pattern.id === (move.patternId ?? move.id)) ?? move;
+}
+function killerEffectText(move) {
+  const effect = killerEffects(move);
+  return [
+    `${effect.kind === '防御' ? '护盾' : '威能'} ${effect.power}`,
+    effect.bonusShield && `护盾 +${effect.bonusShield}`,
+    effect.moon && '可受小光蛊增幅',
+    effect.strength && '威能随膂力增加',
+    effect.pierce && `${effect.pierce * 100}% 伤害穿盾`,
+    effect.breakShield && `先削 ${effect.breakShield} 护盾`,
+    effect.drain && `吸血 ${effect.drain * 100}%`,
+    effect.stun && `${effect.stun * 100}% 几率打断本轮`,
+    effect.speed && `身法 +${effect.speed}（持续两轮，可减伤或助逃）`
+  ].filter(Boolean).join(' · ');
+}
 function discoveredKillerPatterns(player) {
   return player.rank < 2 ? [] : KILLER_PATTERNS.filter((pattern) => hasUsedKillerGu(player, pattern));
 }
@@ -1609,7 +1779,7 @@ function pickIntent(enemy, rng = Math.random) {
   }
   return list[0];
 }
-function startBattle(gs, enemyId, tag = '遭遇战', rng = Math.random) {
+function startBattle(gs, enemyId, tag = '遭遇战', rng = Math.random, { shield = 0, winFlag, winGu, storyEvent } = {}) {
   const tpl = ENEMIES[enemyId];
   if (!tpl || gs.battle) return null;
   const foe = {
@@ -1638,7 +1808,10 @@ function startBattle(gs, enemyId, tag = '遭遇战', rng = Math.random) {
     lethal: false,
     scouted: false,
     playerStunned: false,
-    meShield: 0,
+    meShield: shield,
+    winFlag,
+    winGu,
+    storyEvent,
     meBoost: 0,
     cds: {},
     guQueue: [],
@@ -1657,6 +1830,8 @@ function startBattle(gs, enemyId, tag = '遭遇战', rng = Math.random) {
 function enemyTurn(gs, b, rng = Math.random) {
   const foe = b.foe;
   if (foe.hp <= 0) return;
+  const speed = b.haste?.turns > 0 ? b.haste.speed : 0;
+  if (speed) b.haste.turns--;
   for (const k of Object.keys(foe.cds)) {
     if (foe.cds[k] > 0) foe.cds[k]--;
   }
@@ -1670,7 +1845,9 @@ function enemyTurn(gs, b, rng = Math.random) {
   if (mv.cd) foe.cds[mv.name] = mv.cd;
   foe.zy = Math.max(0, foe.zy - (mv.cost ?? foe.rank * 4));
   if (mv.kind === 'attack' || mv.kind === 'drain' || mv.kind === 'stun') {
-    const raw = Math.round(mv.power * (0.9 + rng() * 0.2));
+    const evaded = speed > 0 && gs.player.speed + speed > foe.speed;
+    const raw = Math.round(mv.power * (0.9 + rng() * 0.2) * (evaded ? 0.7 : 1));
+    if (evaded) b.logs.push('你借身法避开锋芒，受到的打击减轻。');
     const absorbed = Math.min(b.meShield, raw);
     b.meShield -= absorbed;
     const dmg = raw - absorbed;
@@ -1713,7 +1890,7 @@ function dealDamageToFoe(b, rawDmg, pierce = 0) {
   const blockable = Math.round(rawDmg * (1 - pierce));
   const absorbed = Math.min(foe.shield, blockable);
   foe.shield -= absorbed;
-  const dmg = rawDmg - absorbed;
+  const dmg = Math.min(foe.hp, rawDmg - absorbed);
   foe.hp = Math.max(0, foe.hp - dmg);
   return { dmg, absorbed };
 }
@@ -1839,7 +2016,8 @@ function battleAct(gs, action, arg = '', rng = Math.random) {
     p.zy += gain;
     b.logs.push(`你消耗 2 块元石补充真元，真元恢复 +${gain}。`);
   } else if (action === 'flee') {
-    const chance = 0.55 + (p.speed - foe.speed) * 0.04 + (hasGu(gs, 'yinshi') ? 0.25 : 0);
+    const speed = p.speed + (b.haste?.turns > 0 ? b.haste.speed : 0);
+    const chance = 0.55 + (speed - foe.speed) * 0.04 + (hasGu(gs, 'yinshi') ? 0.25 : 0);
     if (rng() < Math.max(0.2, Math.min(0.95, chance))) {
       b.state = 'fled';
       b.logs.push('你虚晃一招，顺利脱离战局。');
@@ -1855,16 +2033,39 @@ function battleAct(gs, action, arg = '', rng = Math.random) {
     }
     recordGuUsage(gs, fired);
   } else if (action === 'move') {
+    const effect = killerEffects(mv);
     p.zy -= mv.cost;
     b.cds[mv.id] = mv.cd;
-    if (mv.kind === '防御') {
-      b.meShield += mv.power;
-      b.logs.push(`你催动杀招「${mv.name}」，凝出 ${mv.power} 点厚盾！`);
+    if (effect.kind === '防御') {
+      b.meShield += effect.power;
+      b.logs.push(`你催动杀招「${mv.name}」，凝出 ${effect.power} 点厚盾！`);
     } else {
-      const raw = Math.round(mv.power * (0.94 + rng() * 0.14));
-      const res = dealDamageToFoe(b, raw);
+      const boosted = effect.moon && b.meBoost > 0;
+      if (boosted) b.meBoost--;
+      const removed = Math.min(foe.shield, effect.breakShield ?? 0);
+      foe.shield -= removed;
+      if (removed) b.logs.push(`冲撞击碎 ${removed} 点护盾。`);
+      const power = effect.power + (effect.strength ?? 0) * p.powerBonus;
+      const raw = Math.round(power * (boosted ? 1.35 : 1) * (0.94 + rng() * 0.14));
+      const res = dealDamageToFoe(b, raw, effect.pierce);
       b.logs.push(`你催动杀招「${mv.name}」，${res.absorbed ? `破盾 ${res.absorbed}，` : ''}重创 ${foe.name} ${res.dmg} 点！`);
-      if (mv.bonusShield) { b.meShield += mv.bonusShield; b.logs.push(`辅蛊护体，附加护盾 +${mv.bonusShield}。`); }
+      if (effect.bonusShield) {
+        b.meShield += effect.bonusShield;
+        b.logs.push(`辅蛊护体，附加护盾 +${effect.bonusShield}。`);
+      }
+      if (effect.drain && res.dmg > 0) {
+        const healed = Math.min(p.hpMax - p.hp, Math.round(res.dmg * effect.drain));
+        p.hp += healed;
+        if (healed) b.logs.push(`血蝠反哺，气血恢复 ${Math.round(healed)} 点。`);
+      }
+      if (foe.hp > 0 && effect.stun && rng() < effect.stun) {
+        foe.stunned = true;
+        b.logs.push(`${foe.name}被雷击麻痹。`);
+      }
+      if (effect.speed) {
+        b.haste = { speed: effect.speed, turns: 2 };
+        b.logs.push(`风势助身，身法 +${effect.speed}，持续两轮。`);
+      }
     }
   }
 
@@ -1875,6 +2076,8 @@ function battleAct(gs, action, arg = '', rng = Math.random) {
     const ys = (rw.yuanshi || 0) + (b.lethal ? 15 : 0);
     if (ys > 0) p.yuanshi += ys;
     if (rw.item) addItem(gs, rw.item, 1);
+    if (b.winFlag) gs.flags[b.winFlag] = true;
+    if (b.winGu && addGu(gs, b.winGu)) b.logs.push(`战后获赏：「${GU_DEFS[b.winGu].name}」。`);
     if (rw.gu && !hasGu(gs, rw.gu)) {
       addGu(gs, rw.gu);
       b.logs.push(`战后缴获：「${GU_DEFS[rw.gu].name}」！`);
@@ -1900,10 +2103,31 @@ function battleAct(gs, action, arg = '', rng = Math.random) {
 
 
 /* === src/core/story-engine.js === */
-
-
-
-
+function innRumors(gs) {
+  const { flags, minutes, player } = gs;
+  const news = [];
+  if (minutes < makeTime(2, 3, 9)) news.push(`贾家商队${minutes < makeTime(2, 3, 1) ? '次年' : '今年'}三月初一至初八在蛊铺开市，第七日起有赤铁舍利蛊。持竞买帖的人可少付二十块买酒虫。`);
+  if (flags['clue:huajiu'] && !flags['looted:huajiu']) news.push('从血蝠洞沿下游走，水帘背后便是暗涧遗洞。');
+  if (flags['looted:huajiu']) news.push('酒虫要用青竹酒养着。酒虫饥饿虚弱，提纯真元的助益也会消失。');
+  if (minutes < makeTime(2, 6, 1)) news.push('猎户说残狼越来越多。六月前备齐药粮，东门遇袭时有人能接应。');
+  else if (!flags['event_done:wolf_breach']) news.push('东门和熊家的求援道只隔一道山坳。记过狼道的人知道该从哪儿绕。');
+  if (flags.jia_evidence && !flags.jia_witness) news.push('贾富三月初六问话。收着商队失物的人，届时记得带去作证。');
+  if (flags['event_done:jia_questions'] && !flags['event_done:tie_inquiry']) news.push(`铁家八月下旬入寨。你眼下恶名 ${player.mo}，达到 30 会遭追查；贾家凭证和守寨战功可供查验。`);
+  if (flags.tie_bond && flags.chi_faction) news.push('赤城托人捎话，三寨大比时他能为你的保结作保。');
+  for (const place of Object.values(PLACES)) {
+    if (place.lock && !flags[place.lock.flag]) continue;
+    const item = rareGathering(gs, place);
+    if (item) news.push(`今日「${place.name}」有一处山材丰收，可一次采到 4 份「${ITEMS[item].name}」。`);
+  }
+  return news;
+}
+function nextRetreatTime(gs) {
+  const dates = STORY_EVENTS.filter((event) => !event.manual && !gs.flags[`event_done:${event.id}`])
+    .map((event) => event.cond.match(/(?:^|&)after:([\d-]+)/)?.[1])
+    .filter(Boolean).map(parseTimeExpr);
+  if (gs.flags.wine_bid && !gs.flags.merchant_jiuchong_bought) dates.push(makeTime(2, 3, 1));
+  return Math.min(gs.minutes + MIN_PER_MONTH, ...dates.filter((date) => date > gs.minutes));
+}
 
 function evalToken(gs, token) {
   if (!token) return true;
@@ -1912,17 +2136,24 @@ function evalToken(gs, token) {
   if (token.startsWith('at:')) return gs.location === token.slice(3);
   if (token.startsWith('before:')) return gs.minutes < parseTimeExpr(token.slice(7));
   if (token.startsWith('after:')) return gs.minutes >= parseTimeExpr(token.slice(6));
+  if (token.startsWith('mo:')) return gs.player.mo >= Number(token.slice(3));
+  if (token.startsWith('stones:')) return gs.player.yuanshi >= Number(token.slice(7));
+  if (token.startsWith('rank:')) return gs.player.rank === Number(token.slice(5));
+  if (token.startsWith('haiBelow:')) return gs.player.hai < Number(token.slice(9));
+  if (token === 'true') return true;
   return false;
 }
 function evalCond(gs, cond) {
   if (!cond) return true;
-  return cond.split('&').every((raw) => {
+  const grouped = cond.replace(/\(([^()]*)\)/g, (_, group) => String(evalCond(gs, group)));
+  if (grouped !== cond) return evalCond(gs, grouped);
+  return cond.split('|').some((alternative) => alternative.split('&').every((raw) => {
     const t = raw.trim();
     if (!t) return true;
     const neg = t.startsWith('!');
     const ok = evalToken(gs, neg ? t.slice(1) : t);
     return neg ? !ok : ok;
-  });
+  }));
 }
 function checkStoryTriggers(gs, eventId) {
   if (!gs || gs.player.dead || gs.pendingEventId || gs.battle) return null;
@@ -1939,7 +2170,8 @@ function checkStoryTriggers(gs, eventId) {
 function applyEventChoice(gs, eventId, choiceIdx) {
   const ev = STORY_EVENTS.find((e) => e.id === eventId);
   if (!ev) { gs.pendingEventId = null; return; }
-  const choice = ev.choices[choiceIdx] || ev.choices[0];
+  const choice = ev.choices[choiceIdx];
+  if (gs.pendingEventId !== eventId || gs.player.dead || gs.battle || !choice || !evalCond(gs, choice.cond)) return;
   gs.flags[`event_done:${ev.id}`] = true;
   gs.pendingEventId = null;
 
@@ -1950,14 +2182,28 @@ function applyEventChoice(gs, eventId, choiceIdx) {
       delete gs.flags[eff.slice(7)];
     } else if (eff.startsWith('goal:')) {
       gs.goal = eff.slice(5);
-    } else if (eff.startsWith('yuanshi:+')) {
-      const add = Number(eff.slice(9)) || 0;
+    } else if (eff.startsWith('yuanshi:')) {
+      const add = Number(eff.slice(8));
       gs.player.yuanshi += add;
-      addLog(gs, `【${ev.title}】获得元石 +${add}。`, 'log-gold');
-    } else if (eff.startsWith('mo:+')) {
-      const add = Number(eff.slice(4)) || 0;
-      gs.player.mo += add;
-      addLog(gs, `【${ev.title}】恶名 +${add}。`, 'log-bad');
+      addLog(gs, `【${ev.title}】元石 ${add >= 0 ? '+' : ''}${add}。`, 'log-gold');
+    } else if (eff.startsWith('mo:')) {
+      const before = gs.player.mo;
+      gs.player.mo = Math.max(0, before + Number(eff.slice(3)));
+      const change = gs.player.mo - before;
+      if (change) addLog(gs, `【${ev.title}】恶名 ${change > 0 ? '+' : ''}${change}。`, change > 0 ? 'log-bad' : 'log-good');
+    } else if (eff.startsWith('item:')) {
+      const [, id, count] = eff.split(':');
+      addItem(gs, id, Number(count));
+      addLog(gs, `【${ev.title}】获得「${ITEMS[id].name}」×${count}。`, 'log-gold');
+    } else if (eff.startsWith('hai:')) {
+      const p = gs.player;
+      const before = p.zyMax;
+      const previousHai = p.hai;
+      p.hai = Math.min(9.9, Math.round((p.hai + Number(eff.slice(4))) * 10) / 10);
+      p.grade = p.hai >= 8 ? '甲' : p.hai >= 6 ? '乙' : p.hai >= 4 ? '丙' : '丁';
+      recalcStats(gs);
+      p.zy = Math.min(p.zyMax, p.zy + p.zyMax - before);
+      addLog(gs, `【${ev.title}】元海 ${previousHai} 成 → ${p.hai} 成，资质 ${p.grade} 等。`, 'log-gold');
     } else if (eff === 'exam:nianmo') {
       const score = gs.player.rank * 25 + gs.player.xiao * 8 + gs.player.gu.length * 8 + (gs.flags['clear:zhulin'] ? 20 : 0);
       let reward = 10, grade = '丙等';
@@ -1969,7 +2215,13 @@ function applyEventChoice(gs, eventId, choiceIdx) {
       const gu = addGu(gs, eff.slice(3));
       if (gu) addLog(gs, `【${ev.title}】获得「${GU_DEFS[gu.id].name}」。`, 'log-gold');
     } else if (eff.startsWith('battle:')) {
-      startBattle(gs, eff.slice(7), ev.title);
+      const value = (prefix) => choice.effects.find((entry) => entry.startsWith(prefix))?.slice(prefix.length);
+      startBattle(gs, eff.slice(7), ev.title, Math.random, {
+        shield: Number(value('shield:') ?? 0),
+        winFlag: value('onwin:'),
+        winGu: value('wingu:'),
+        storyEvent: ev.id
+      });
     }
   }
   if (gs.player.rank >= 2) gs.flags['open:jiazhuge'] = true;
@@ -2017,7 +2269,7 @@ function moveToPlace(gs, targetId) {
   checkStoryTriggers(gs);
   return { ok: true };
 }
-function advanceMinutes(gs, minutes, rng = Math.random) {
+function advanceMinutes(gs, minutes) {
   if (!gs || gs.player.dead || minutes <= 0) return;
   const oldDay = Math.floor(gs.minutes / MIN_PER_DAY);
   const oldMonth = Math.floor(gs.minutes / (MIN_PER_DAY * 30));
@@ -2035,9 +2287,7 @@ function advanceMinutes(gs, minutes, rng = Math.random) {
 
   // 轻挂机修为缓涨（竹楼或正常时辰自然温养）
   if (p.xiao < 3) {
-    let wineMul = 1;
-    if (p.rank === 1 && hasGu(gs, 'jiuchong')) wineMul = 1.25;
-    if (p.rank === 2 && hasGu(gs, 'siwei_jiu')) wineMul = 1.45;
+    const wineMul = activeCultivationWine(p) ? (p.rank === 1 ? 1.25 : 1.45) : 1;
     const xpGain = kes * (0.22 + p.hai * 0.04) * wineMul;
     p.xp = Number((p.xp + xpGain).toFixed(2));
   }
@@ -2064,15 +2314,6 @@ function advanceMinutes(gs, minutes, rng = Math.random) {
         addLog(gs, `【虚弱】「${def.name}」饥饿过久已陷入虚弱，无法在战中催动！`, 'log-warn');
       } else {
         addLog(gs, `【饥饿】「${def.name}」腹中空空，若再不喂食恐将虚弱损毁！`, 'log-warn');
-      }
-    }
-    // 魔道恶名追捕
-    if (p.mo >= 30 && !gs.battle && ['zhulin', 'xuefu', 'langchao', 'zhaimen'].includes(gs.location)) {
-      const cooldown = gs.flags['pursuit_cd'] || 0;
-      if (newDay >= cooldown && rng() < Math.min(0.45, (p.mo - 20) / 140) * (hasGu(gs, 'yinshi') ? 0.55 : 1)) {
-        gs.flags['pursuit_cd'] = newDay + 7;
-        addLog(gs, '【追捕】恶名招致正道捕手循迹而来！', 'log-bad');
-        startBattle(gs, p.mo >= 60 ? 'tiexueleng' : 'modao', '正道围捕', rng);
       }
     }
   }
@@ -2419,7 +2660,7 @@ function washMinorWall(gs) {
   const gu = realmGuRequirement(p);
   if (gu.count < gu.need) return { ok: false, reason: gu.text };
   const needXp = minorXpNeed(p);
-  const needZy = Math.round(p.zyMax * 0.6);
+  const needZy = Math.round(p.zyMax * (p.hai < 6 && !activeCultivationWine(p) ? 0.75 : 0.6));
   if (p.xp < needXp) return { ok: false, reason: `修为不足（需 ${needXp}）` };
   if (p.zy < needZy) return { ok: false, reason: `真元不足（需 ${needZy}）` };
   const before = { ...p };
@@ -2439,6 +2680,7 @@ function createBreakSession(gs) {
   if (gu.count < gu.need) return { error: gu.text };
   if (p.zy < Math.round(p.zyMax * 0.9)) return { error: '真元须温养至九成以上' };
   const crackMult = Math.min(2.2, 1 + 0.2 * (p.attempts || 0));
+  const wine = activeCultivationWine(p);
   return {
     crack: 0,
     hurt: 0,
@@ -2447,12 +2689,12 @@ function createBreakSession(gs) {
     stones: p.yuanshi,
     stonesUsed: 0,
     turn: p.rank,
-    wallHeal: p.hai < 4.5 ? 5 : 3,
+    wallHeal: wine ? 2 : p.hai < 4 ? 7 : p.hai < 6 ? 5 : 3,
     crackMult,
     steps: 0,
     state: 'ongoing',
     lines: [
-      '你盘膝坐定，心神沉入空窍。窍壁薄如晶膜，却坚韧异常。',
+      wine ? '酒虫提纯真元，冲出的裂痕愈合得更慢。' : '你盘膝坐定，心神沉入空窍。窍壁薄如晶膜，却坚韧异常。',
       p.attempts ? `此前冲关 ${p.attempts} 次未成，此番心得令破壁裂痕多 ${Math.round((crackMult - 1) * 100)}%。` : '每次冲关后窍壁都会略微愈合，注意真元与震伤。'
     ]
   };
@@ -2697,12 +2939,12 @@ function renderRefineModal(sess, effect) {
     ${protectedGu ? `<div class="muted" style="font-size:.82rem">已施护蛊印：失败或炸炉时保住「${esc(protectedGu.name)}」</div>` : ''}
   </div>`;
 }
-function renderEventModal(eventId) {
+function renderEventModal(gs, eventId) {
   const ev = STORY_EVENTS.find((e) => e.id === eventId);
   if (!ev) return '';
   return `<h2>${esc(ev.title)}</h2>
     <div class="card" style="white-space:pre-line">${esc(ev.text)}</div>
-    <div class="row">${ev.choices.map((c, idx) => `<button class="primary" data-action="chooseEvent" data-id="${esc(ev.id)}" data-idx="${idx}">${esc(c.text)}</button>`).join('')}</div>`;
+    <div class="row">${ev.choices.map((c, idx) => evalCond(gs, c.cond) ? `<button class="primary" data-action="chooseEvent" data-id="${esc(ev.id)}" data-idx="${idx}">${esc(c.text)}</button>` : '').join('')}</div>`;
 }
 function renderCustomKillerModal(gs) {
   const rows = discoveredKillerPatterns(gs.player).map((pattern) => {
@@ -2711,6 +2953,7 @@ function renderCustomKillerModal(gs) {
       <div class="kv"><b>${esc(pattern.name)}</b><span class="badge">${pattern.kind} · 耗 ${pattern.cost} 真元</span></div>
       <div>${esc(killerPatternSequence(pattern))}</div>
       <div class="muted">${esc(pattern.desc)}</div>
+      <div class="muted">${esc(killerEffectText(pattern))}</div>
       <button class="sm primary" ${blocked ? 'disabled' : ''} data-action="kmCreate" data-id="${pattern.id}">${esc(blocked || `推演 · ${pattern.fee} 元石`)}</button>
     </div>`;
   }).join('');
@@ -2753,7 +2996,7 @@ function renderBattleView(gs) {
     const cd = Math.max(0, (b.cds[m.id] || 0) - 1);
     const blocked = killerMoveBlock(gs, m);
     const disabled = b.playerStunned || hasQueue || blocked || cd > 0 || p.zy < m.cost;
-    return `<button class="skill is-move" ${disabled ? 'disabled' : ''} ${blocked ? `title="${esc(blocked)}"` : ''} data-action="battleAct" data-kind="move" data-id="${esc(m.id)}">
+    return `<button class="skill is-move" ${disabled ? 'disabled' : ''} title="${esc(blocked || killerEffectText(m))}" data-action="battleAct" data-kind="move" data-id="${esc(m.id)}">
       ${esc(m.name)}<small>${cd > 0 ? `冷却 ${cd}` : blocked ? '不可用' : m.cost}</small>
     </button>`;
   }).join('');
@@ -2879,6 +3122,7 @@ function renderPlaceView(gs) {
   if (place.services.includes('cultivate')) {
     actions.push('<button class="primary" data-action="placeAct" data-id="meditate">打坐吐纳 · 1 时辰</button>');
     actions.push('<button data-action="placeAct" data-id="rest">歇息养伤 · 4 时辰</button>');
+    actions.push(`<button title="闭关期间照常消耗蛊虫口粮，请先备料并开启自动喂养" data-action="placeAct" data-id="retreat">闭关至${esc(formatDateTime(nextRetreatTime(gs)))}</button>`);
     if (gs.player.xiao < 3) actions.push('<button class="gold" data-action="washMinor">冲刷窍壁</button>');
     else actions.push('<button class="gold" data-action="openBreak">破壁冲关</button>');
   }
@@ -2896,7 +3140,8 @@ function renderPlaceView(gs) {
     actions.push('<button data-action="placeAct" data-id="docHeal">药堂疗伤（10 元石回满）</button>');
   }
   if (place.services.includes('rumor')) {
-    actions.push('<button class="gold" data-action="placeAct" data-id="rumor">打听后山消息（12 元石）</button>');
+    actions.push('<button class="gold" data-action="placeAct" data-id="rumor">打听近况 · 2 刻</button>');
+    if (!gs.flags['clue:huajiu']) actions.push('<button data-action="placeAct" data-id="secretRumor">买暗涧遗洞消息（12 元石）</button>');
   }
   if (place.services.includes('clan_hall')) {
     actions.push('<button class="gold" data-action="placeAct" data-id="clanGift">领取二转赏赐</button>');
@@ -2924,7 +3169,8 @@ function renderPlaceView(gs) {
       const def = kind === 'gu' ? GU_DEFS[id] : ITEMS[id];
       if (!def) return '';
       const limited = MERCHANT_GU.includes(id);
-      const affordable = gs.player.yuanshi >= def.price;
+      const price = shopUnitPrice(gs, id, def.price);
+      const affordable = gs.player.yuanshi >= price;
       const recipes = sellsRecipes ? REFINE_RECIPES.filter(isRecipeSold)
         .filter((recipe) => kind === 'gu' ? recipe.gu[id] : recipe.materials[id])
         .map(recipeOutputText) : [];
@@ -2941,7 +3187,7 @@ function renderPlaceView(gs) {
         </div>
         <div class="shop-purchase">
           ${limited ? '' : `<input type="number" min="1" max="${SHOP_BATCH_LIMIT}" step="1" value="1" aria-label="${esc(def.name)}购买数量" ${affordable ? '' : 'disabled'}>`}
-          <button class="sm ${affordable ? '' : 'ghost'}" ${affordable ? '' : 'disabled'} data-action="buyItem" data-id="${esc(entry)}">买 · ${def.price}${limited ? '' : kind === 'gu' ? '/只' : '/份'}</button>
+          <button class="sm ${affordable ? '' : 'ghost'}" ${affordable ? '' : 'disabled'} data-action="buyItem" data-id="${esc(entry)}">${id === 'jiuchong' && gs.flags.wine_bid ? '竞买' : '买'} · ${price}${limited ? '' : kind === 'gu' ? '/只' : '/份'}</button>
         </div>
       </li>`;
     }).join('');
@@ -2988,6 +3234,7 @@ function renderPlaceView(gs) {
       <div class="stage-loc">${esc(formatDateTime(gs.minutes))} · ${esc(place.region)}</div>
       <h1 id="place-title">${esc(place.name)}</h1>
       <p class="stage-desc">${esc(night ? place.night : place.day)}</p>
+      ${place.gather ? `<p class="muted">常见山材 · ${esc([...new Set(place.gather)].map((id) => ITEMS[id].name).join('、'))}${rareGathering(gs, place) ? ` · 今日山材丰收，可采${esc(ITEMS[place.rare.item].name)} ×4` : ''}</p>` : ''}
       <div class="row">${actions.join('')}</div>
     </section>
     ${questHtml}
@@ -3064,7 +3311,7 @@ function renderApertureView(gs) {
     ? p.moves.map((m) => `<div class="card">
         <div class="kv"><b>${esc(m.name)}</b><button class="sm ghost" data-action="forgetKiller" data-id="${esc(m.id)}">删除</button></div>
         <span class="badge gold">${esc(m.kind)} · 耗${m.cost} 真元</span>
-        <div class="muted">${esc(killerMoveBlock(gs, m) || `威能 ${m.power}${m.bonusShield ? ` · 盾+${m.bonusShield}` : ''} · 间隔 ${m.cd - 1} 回合`)}</div>
+        <div class="muted">${esc(killerMoveBlock(gs, m) || `${killerEffectText(m)} · 间隔 ${m.cd - 1} 回合`)}</div>
       </div>`).join('')
     : '<div class="muted">尚未创出杀招。</div>';
 
@@ -3078,6 +3325,7 @@ function renderApertureView(gs) {
     </div>
     <div class="card">
       <div class="muted">${p.rank >= 4 && p.xiao >= 3 ? '已达本卷境界上限' : esc(realmGuRequirement(p).text)}</div>
+      ${p.hai < 6 ? '<div class="muted">丙、丁等冲刷窍壁耗费更多真元。养好对应转数的酒虫可减轻压力，舍利蛊可直接提升一小阶。</div>' : ''}
       <div class="row">
         ${p.xiao < 3 ? '<button class="primary" data-action="washMinor">冲刷窍壁</button>' : '<button class="gold" data-action="openBreak">破壁冲关</button>'}
         <button data-action="feedAll">一键喂饱</button>
@@ -3373,7 +3621,7 @@ function renderModal() {
   else sheetEl.removeAttribute('aria-labelledby');
 
   if (G && G.pendingEventId && !G.battle && (!MODAL || MODAL.kind === 'place')) {
-    sheetEl.innerHTML = renderEventModal(G.pendingEventId);
+    sheetEl.innerHTML = renderEventModal(G, G.pendingEventId);
     modalEl.hidden = false;
     return;
   }
@@ -3465,6 +3713,15 @@ function handlePlaceAction(id) {
   const p = G.player;
   if (id === 'meditate') { advanceMinutes(G, 120); addLog(G, '你盘膝打坐一个时辰，吐纳天地灵气。'); }
   else if (id === 'rest') { advanceMinutes(G, 480); addLog(G, '你在竹楼安歇四个时辰，精神恢复了不少。'); }
+  else if (id === 'retreat') {
+    if (G.location !== 'zhulou') return;
+    const until = nextRetreatTime(G);
+    while (G.minutes < until && !G.pendingEventId && !p.dead) {
+      const toDawn = MIN_PER_DAY - G.minutes % MIN_PER_DAY;
+      advanceMinutes(G, Math.min(toDawn, until - G.minutes));
+    }
+    addLog(G, `【闭关】出关时已是${formatDateTime(G.minutes)}。`);
+  }
   else if (id === 'pickBenming') {
     claimBenming(G);
   } else if (id === 'caoren') {
@@ -3480,22 +3737,27 @@ function handlePlaceAction(id) {
     p.hp = p.hpMax;
     addLog(G, '你在药堂敷药调理，气血已然回满。', 'log-good');
   } else if (id === 'rumor') {
+    advanceMinutes(G, 30);
+    const news = innRumors(G);
+    if (!news.length) news.push('酒客正在等新的行脚商人进寨，暂时没有新的山外消息。');
+    for (const line of news) addLog(G, `【客栈】${line}`);
+    showToast(news.at(-1));
+  } else if (id === 'secretRumor') {
+    if (G.flags['clue:huajiu']) return;
     if (p.yuanshi < 12) { showToast('元石不足 12 块'); return; }
     p.yuanshi -= 12;
     advanceMinutes(G, 30);
-    if (!G.flags['clue:huajiu']) {
-      G.flags['clue:huajiu'] = true;
-      addLog(G, '【密闻】酒客低声提起：血蝠洞下游瀑布后，藏着花酒行者的暗涧遗洞。', 'log-gold');
-    } else {
-      addLog(G, '【传闻】听说山外狼群正在集结，明年夏天怕是要闹狼潮。');
-    }
+    G.flags['clue:huajiu'] = true;
+    const line = '血蝠洞下游瀑布后，藏着花酒行者的暗涧遗洞。';
+    addLog(G, `【密闻】${line}`, 'log-gold');
+    showToast(line);
   } else if (id === 'clanGift') {
     if (!G.flags['clan_gift_r2']) {
       G.flags['clan_gift_r2'] = true;
       p.yuanshi += 40;
-      addGu(G, 'qingtong_sheli');
+      addGu(G, 'chitie_sheli');
       addGu(G, 'yupi');
-      addLog(G, '【家族赏赐】族长嘉许你晋入二转，赏元石 40、青铜舍利蛊和玉皮蛊各 1 只！', 'log-gold');
+      addLog(G, '【家族赏赐】族长嘉许你晋入二转，赏元石 40、赤铁舍利蛊和玉皮蛊各 1 只！', 'log-gold');
     } else {
       showToast('族中近来暂无新赏格');
       return;
@@ -3509,12 +3771,16 @@ function handlePlaceAction(id) {
     advanceMinutes(G, 60);
     if (!G.battle && place.bossEnemy) startBattle(G, place.bossEnemy, `讨伐${place.name}`);
   } else if (id === 'gather') {
+    const place = PLACES[G.location];
+    if (!place.gather) return;
     advanceMinutes(G, 120);
-    const pool = ['yuelanhua', 'shourou', 'fengmi', 'kuangshi', 'yuanshi_zha'];
-    const got = pool[Math.floor(Math.random() * pool.length)];
-    addItem(G, got, 2);
+    const rare = rareGathering(G, place);
+    if (rare) G.flags[`gathered:${place.id}`] = Math.floor(G.minutes / MIN_PER_DAY);
+    const got = rare || place.gather[Math.floor(Math.random() * place.gather.length)];
+    const count = rare ? 4 : 2;
+    addItem(G, got, count);
     recordQuestProgress(G, 'gather', G.location);
-    const message = `采集完成，获得「${ITEMS[got].name}」×2`;
+    const message = `采集完成，获得「${ITEMS[got].name}」×${count}`;
     addLog(G, `${message}。`, 'log-good');
     showToast(message);
   } else if (id === 'discoverRecipe') {
@@ -3697,6 +3963,7 @@ function handleAction(el) {
     render();
   } else if (act === 'chooseEvent') {
     applyEventChoice(G, id, Number(el.dataset.idx) || 0);
+    checkStoryTriggers(G);
     saveGame(G);
     render();
   } else if (act === 'washMinor') {
@@ -3798,8 +4065,6 @@ function handleAction(el) {
       showToast('仅限对应转数未达巅峰时使用');
       return;
     }
-    const gu = realmGuRequirement({ ...G.player, gu: G.player.gu.filter((x) => x.uid !== uid) });
-    if (gu.count < gu.need) { showToast(gu.text); return; }
     const before = { ...G.player };
     G.player.gu = G.player.gu.filter((x) => x.uid !== uid);
     G.player.xiao++;
@@ -3822,6 +4087,10 @@ function handleAction(el) {
     saveGame(G);
     render();
   } else if (act === 'finishBattle') {
+    if (!G.battle || G.battle.state === 'ongoing') return;
+    if (G.battle.storyEvent === 'qingmao_endgame' && G.battle.state === 'fled') {
+      delete G.flags['event_done:qingmao_endgame'];
+    }
     const dead = G.player.dead;
     G.battle = null;
     if (dead) openModal('dead', {});

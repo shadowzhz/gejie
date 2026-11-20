@@ -1,8 +1,7 @@
 import { GU_DEFS } from '../data/gu.js';
 import { PLACES } from '../data/places.js';
 import { MIN_PER_DAY, MIN_PER_KE, dayOf } from './calendar.js';
-import { addLog, feedGu, hasGu, recalcStats, recordQuestProgress, removeGuByUid } from './state.js';
-import { startBattle } from './combat.js';
+import { activeCultivationWine, addLog, feedGu, hasGu, recalcStats, recordQuestProgress, removeGuByUid } from './state.js';
 import { checkStoryTriggers } from './story-engine.js';
 
 export function placeMoveList(gs) {
@@ -47,7 +46,7 @@ export function moveToPlace(gs, targetId) {
   return { ok: true };
 }
 
-export function advanceMinutes(gs, minutes, rng = Math.random) {
+export function advanceMinutes(gs, minutes) {
   if (!gs || gs.player.dead || minutes <= 0) return;
   const oldDay = Math.floor(gs.minutes / MIN_PER_DAY);
   const oldMonth = Math.floor(gs.minutes / (MIN_PER_DAY * 30));
@@ -65,9 +64,7 @@ export function advanceMinutes(gs, minutes, rng = Math.random) {
 
   // 轻挂机修为缓涨（竹楼或正常时辰自然温养）
   if (p.xiao < 3) {
-    let wineMul = 1;
-    if (p.rank === 1 && hasGu(gs, 'jiuchong')) wineMul = 1.25;
-    if (p.rank === 2 && hasGu(gs, 'siwei_jiu')) wineMul = 1.45;
+    const wineMul = activeCultivationWine(p) ? (p.rank === 1 ? 1.25 : 1.45) : 1;
     const xpGain = kes * (0.22 + p.hai * 0.04) * wineMul;
     p.xp = Number((p.xp + xpGain).toFixed(2));
   }
@@ -94,15 +91,6 @@ export function advanceMinutes(gs, minutes, rng = Math.random) {
         addLog(gs, `【虚弱】「${def.name}」饥饿过久已陷入虚弱，无法在战中催动！`, 'log-warn');
       } else {
         addLog(gs, `【饥饿】「${def.name}」腹中空空，若再不喂食恐将虚弱损毁！`, 'log-warn');
-      }
-    }
-    // 魔道恶名追捕
-    if (p.mo >= 30 && !gs.battle && ['zhulin', 'xuefu', 'langchao', 'zhaimen'].includes(gs.location)) {
-      const cooldown = gs.flags['pursuit_cd'] || 0;
-      if (newDay >= cooldown && rng() < Math.min(0.45, (p.mo - 20) / 140) * (hasGu(gs, 'yinshi') ? 0.55 : 1)) {
-        gs.flags['pursuit_cd'] = newDay + 7;
-        addLog(gs, '【追捕】恶名招致正道捕手循迹而来！', 'log-bad');
-        startBattle(gs, p.mo >= 60 ? 'tiexueleng' : 'modao', '正道围捕', rng);
       }
     }
   }
