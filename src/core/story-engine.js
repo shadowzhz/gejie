@@ -5,6 +5,16 @@ import { addGu, addItem, addLog, recalcStats } from './state.js';
 import { startBattle } from './combat.js';
 import { PLACES, rareGathering } from '../data/places.js';
 
+export function finishStoryBattle(gs) {
+  if (!gs.battle || gs.battle.state === 'ongoing') return false;
+  if (gs.battle.storyEvent === 'qingmao_endgame' && gs.battle.state === 'fled') {
+    delete gs.flags['event_done:qingmao_endgame'];
+  }
+  gs.battle = null;
+  if (!gs.player.dead) checkStoryTriggers(gs);
+  return true;
+}
+
 export function innRumors(gs) {
   const { flags, minutes, player } = gs;
   const news = [];

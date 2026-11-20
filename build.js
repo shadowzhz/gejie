@@ -26,6 +26,7 @@ const ORDER = [
   'src/core/clock.js',
   'src/core/refine.js',
   'src/core/breakthrough.js',
+  'src/core/place-actions.js',
   'src/ui/rituals.js',
   'src/ui/battle-view.js',
   'src/ui/map-view.js',
@@ -33,6 +34,10 @@ const ORDER = [
   'src/ui/aperture-view.js',
   'src/ui/refine-view.js',
   'src/ui/bag-view.js',
+  'src/ui/persistence.js',
+  'src/ui/modal-controller.js',
+  'src/ui/game-loop.js',
+  'src/ui/actions.js',
   'src/ui/app.js'
 ];
 

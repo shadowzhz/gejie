@@ -1,4 +1,5 @@
 import { GU_DEFS, ITEMS, REFINE_RECIPES, recipeIngredientsText, recipeOutputText } from '../data/gu.js';
+import { PLACES } from '../data/places.js';
 import { isNight } from './calendar.js';
 import { addGu, addItem, addLog, removeGuByUid, useItem } from './state.js';
 
@@ -28,6 +29,18 @@ const RECIPE_DISCOVERIES = [
 
 export function isRecipeSold(recipe) {
   return !Object.hasOwn(RECIPE_SOURCES, recipe.id) && !RECIPE_DISCOVERIES.some(({ id }) => id === recipe.id);
+}
+
+export function purchaseRecipe(gs, id) {
+  const recipe = REFINE_RECIPES.find((entry) => entry.id === id);
+  const p = gs.player;
+  if (!PLACES[gs.location]?.services.includes('recipes') || !recipe || !isRecipeSold(recipe)
+    || p.recipes?.includes(id) || p.yuanshi < recipe.price) return null;
+  p.yuanshi -= recipe.price;
+  (p.recipes ??= []).push(id);
+  const message = `已习得「${recipeOutputText(recipe)}」${recipe.method ?? ''}蛊方，花费 ${recipe.price} 元石`;
+  addLog(gs, `【蛊方】${message}。`, 'log-gold');
+  return message;
 }
 
 export function availableRecipeDiscovery(gs) {

@@ -1,5 +1,5 @@
 import { GU_DEFS } from '../data/gu.js';
-import { activeCultivationWine, addLog, minorXpNeed, realmText, recalcStats } from './state.js';
+import { activeCultivationWine, addLog, minorXpNeed, realmText, recalcStats, removeGuByUid } from './state.js';
 
 export function realmGuRequirement(p) {
   const rank = p.xiao < 3 ? p.rank : p.rank + 1;
@@ -29,6 +29,22 @@ export function washMinorWall(gs) {
   recalcStats(gs);
   const message = `晋入${realmText(p)} · ${realmGrowthText(before, p)}`;
   addLog(gs, `【冲刷窍壁】${message}`, 'log-gold');
+  return { ok: true, message };
+}
+
+export function useSheli(gs, uid) {
+  const p = gs.player;
+  const gu = p.gu.find((entry) => entry.uid === uid);
+  if (!gu || !['qingtong_sheli', 'chitie_sheli', 'baiyin_sheli'].includes(gu.id)) return { ok: false };
+  if (p.rank !== GU_DEFS[gu.id].rank || p.xiao >= 3) {
+    return { ok: false, reason: '仅限对应转数未达巅峰时使用' };
+  }
+  const before = { ...p };
+  removeGuByUid(gs, uid);
+  p.xiao++;
+  recalcStats(gs);
+  const message = `晋入${realmText(p)} · ${realmGrowthText(before, p)}`;
+  addLog(gs, `【舍利破境】${message}`, 'log-gold');
   return { ok: true, message };
 }
 
