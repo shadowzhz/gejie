@@ -1,0 +1,16 @@
+{
+  "name": "gujie-qingmaoshan",
+  "version": "1.0.0",
+  "private": true,
+  "description": "蛊界 · 青茅山篇（《蛊真人》卷一轻实时模拟 RPG）",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "node build.js",
+    "preview": "vite preview",
+    "test": "node --test test/core.test.js"
+  },
+  "devDependencies": {
+    "vite": "^6.0.0"
+  }
+}

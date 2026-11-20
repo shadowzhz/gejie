@@ -1,0 +1,2425 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0d1917">
+  <title>蛊界 · 青茅山篇</title>
+  <style>
+:root {
+  --bg: #0c1715;
+  --bg2: #122320;
+  --card: #162b27;
+  --card2: #1c3530;
+  --line: #294942;
+  --ink: #ebe7dc;
+  --dim: #9ab0a8;
+  --jade: #72c4a3;
+  --gold: #d8bf87;
+  --blood: #e07a6b;
+  --warn: #e3a857;
+  --radius: 10px;
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  line-height: 1.55;
+  min-height: 100%;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  border: 1px solid var(--line);
+  background: var(--card2);
+  border-radius: 8px;
+  padding: 8px 14px;
+  min-height: 40px;
+  transition: background .15s, border-color .15s, transform .1s;
+}
+button:hover:not(:disabled) { background: #23433d; border-color: var(--jade); }
+button:disabled { opacity: .48; cursor: not-allowed; }
+button.primary { background: #1e4d3f; border-color: var(--jade); color: #f4f9f6; font-weight: 600; }
+button.gold { background: #3e341f; border-color: var(--gold); color: #f6e9c8; font-weight: 600; }
+button.blood { background: #4a2320; border-color: var(--blood); color: #fde4e0; font-weight: 600; }
+button.ghost { background: transparent; }
+button.sm { min-height: 32px; padding: 4px 10px; font-size: .85rem; }
+
+.shell {
+  max-width: 960px;
+  margin: 0 auto;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 74px;
+}
+
+/* 顶部在场状态栏 */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: rgba(12, 23, 21, .95);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--line);
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.top-id { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.top-id strong { font-size: 1.05rem; color: var(--gold); }
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: .78rem;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--dim);
+}
+.badge.jade { border-color: var(--jade); color: var(--jade); }
+.badge.gold { border-color: var(--gold); color: var(--gold); }
+.badge.blood { border-color: var(--blood); color: var(--blood); }
+
+.clock-box { display: flex; align-items: center; gap: 8px; font-size: .86rem; color: var(--dim); }
+.goal-bar {
+  background: rgba(216, 191, 135, .1);
+  border-left: 3px solid var(--gold);
+  padding: 5px 10px;
+  font-size: .88rem;
+  color: #efe3c4;
+  border-radius: 0 6px 6px 0;
+}
+.res-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.res-item { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 5px 8px; }
+.res-head { display: flex; justify-content: space-between; font-size: .78rem; color: var(--dim); margin-bottom: 3px; }
+.bar { height: 6px; background: #0c1513; border-radius: 999px; overflow: hidden; }
+.bar > i { display: block; height: 100%; background: var(--jade); transition: width .2s; }
+.bar.hp > i { background: #d46b5e; }
+.bar.zy > i { background: #5da9c4; }
+
+/* 主内容区 */
+.main { flex: 1; padding: 14px; display: flex; flex-direction: column; gap: 14px; }
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px;
+}
+.card h2, .card h3 { margin: 0 0 8px; font-size: 1.05rem; color: var(--gold); }
+.muted { color: var(--dim); font-size: .88rem; }
+.kv { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; gap: 8px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+
+/* 场景舞台 + 昼夜氛围 */
+.stage {
+  background: linear-gradient(155deg, #18322c, #10201d);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+.stage.is-night {
+  background: linear-gradient(155deg, #101b24, #0b1318);
+  border-color: #263847;
+}
+.stage-loc { font-size: .84rem; color: var(--gold); margin-bottom: 4px; }
+.stage h1 { margin: 0 0 8px; font-size: 1.65rem; font-family: Georgia, "Songti SC", serif; }
+.stage-desc { margin: 0 0 14px; color: #ddd8ca; }
+
+/* 山野舆图 */
+.map-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: #101d1a; }
+.map-canvas {
+  position: relative;
+  min-width: 600px;
+  height: 340px;
+  background:
+    radial-gradient(circle at 28% 45%, rgba(114, 196, 163, .10), transparent 50%),
+    radial-gradient(circle at 80% 72%, rgba(216, 191, 135, .08), transparent 40%);
+}
+.map-canvas.is-night {
+  background:
+    radial-gradient(circle at 28% 45%, rgba(90, 140, 160, .10), transparent 50%),
+    radial-gradient(circle at 80% 72%, rgba(150, 130, 90, .06), transparent 40%);
+}
+.map-lines { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.map-edge { stroke: #31524a; stroke-width: .6; stroke-dasharray: 1.4 1.2; opacity: .65; }
+.map-edge.is-active { stroke: var(--jade); stroke-width: .95; stroke-dasharray: none; opacity: .95; }
+.map-edge.is-blocked { stroke: var(--warn); stroke-width: .75; stroke-dasharray: 1.2 1.2; opacity: .8; }
+.map-node {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 70px;
+  min-height: 0;
+  padding: 5px 9px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--bg2);
+  font-size: .8rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  z-index: 1;
+}
+.map-node small { font-size: .7rem; color: var(--dim); margin-top: 2px; }
+.map-node.is-here { border-color: var(--jade); background: #1d4238; box-shadow: 0 0 0 2px rgba(114, 196, 163, .25); z-index: 2; }
+.map-node.is-here small { color: var(--jade); font-weight: 600; }
+.map-node.is-move { border-color: var(--gold); z-index: 2; }
+.map-node.is-move:hover:not(:disabled) { background: #26483e; transform: translate(-50%, -53%); }
+.map-node.is-far { opacity: .52; }
+
+/* 空窍画布 */
+.aperture-canvas {
+  position: relative;
+  height: 150px;
+  border-radius: 10px;
+  border: 1px solid #2b5452;
+  background: radial-gradient(circle at 50% 65%, rgba(93, 169, 196, .28), rgba(16, 40, 44, .95) 70%);
+  overflow: hidden;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.aperture-gu-list { display: flex; flex-wrap: wrap; gap: 6px; z-index: 1; }
+.gu-chip {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: .82rem;
+  background: rgba(12, 23, 21, .8);
+  border: 1px solid var(--jade);
+}
+.gu-chip.weak { border-color: var(--blood); color: var(--blood); }
+
+/* 底部导航 */
+.nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  background: rgba(12, 23, 21, .97);
+  border-top: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 4px;
+  padding: 6px 8px;
+}
+.nav button {
+  min-height: 46px;
+  padding: 4px 2px;
+  font-size: .82rem;
+  border-radius: 8px;
+  background: transparent;
+  border-color: transparent;
+}
+.nav button.on { background: var(--card2); border-color: var(--jade); color: var(--jade); font-weight: 600; }
+
+/* 弹窗 & Toast */
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(5, 10, 9, .78);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.modal[hidden] { display: none; }
+.sheet {
+  width: min(560px, 100%);
+  max-height: 88vh;
+  overflow-y: auto;
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 76px;
+  transform: translateX(-50%);
+  z-index: 60;
+  background: #203d36;
+  border: 1px solid var(--jade);
+  color: var(--ink);
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: .88rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s;
+}
+.toast.show { opacity: 1; }
+
+.loglist { display: flex; flex-direction: column; gap: 4px; max-height: 260px; overflow-y: auto; font-size: .86rem; }
+.log-good { color: var(--jade); }
+.log-bad { color: var(--blood); }
+.log-warn { color: var(--warn); }
+.log-gold { color: var(--gold); font-weight: 600; }
+.intent-box {
+  background: rgba(224, 122, 107, .1);
+  border: 1px solid rgba(224, 122, 107, .35);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: .86rem;
+}
+input[type="text"], textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--ink);
+  font: inherit;
+}
+
+</style>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="modal" class="modal" hidden><div id="sheet" class="sheet" role="dialog" aria-modal="true"></div></div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script>
+/* === src/data/places.js === */
+const PLACES = {
+  zhulou: {
+    id: 'zhulou', name: '竹楼', region: '古月山寨', x: 10, y: 22,
+    links: { shijie: 15 },
+    day: '晨光透进竹帘，案上摆着一只粗瓷碗和几块碎元石。',
+    night: '夜风吹动青竹，窗纸外偶尔掠过巡夜人的火把光。',
+    services: ['rest', 'cultivate']
+  },
+  shijie: {
+    id: 'shijie', name: '寨中石阶', region: '古月山寨', x: 26, y: 46,
+    links: { zhulou: 15, xuetang: 15, yanwu: 15, yaotang: 30, kezhan: 30, jucaifang: 30, liangu: 30, jiazhuge: 30, zhaimen: 30 },
+    day: '青石阶上人来人往，学堂的钟声与坊市的叫卖混在一处。',
+    night: '石阶泛着夜露的潮气，家主阁方向亮着几盏高悬的灯笼。',
+    services: []
+  },
+  xuetang: {
+    id: 'xuetang', name: '学堂', region: '古月山寨', x: 24, y: 14,
+    links: { shijie: 15 },
+    day: '学堂家老站在讲台前翻看名册，门外悬着蛊室的铜牌。',
+    night: '学堂大门半掩，只有值夜的教习在灯下整理考核簿。',
+    services: ['xuetang_gu', 'xuetang_report']
+  },
+  yanwu: {
+    id: 'yanwu', name: '演武场', region: '古月山寨', x: 42, y: 16,
+    links: { shijie: 15 },
+    day: '几名少年正围着木桩催动月刃，沙地上留下浅浅的月牙痕。',
+    night: '演武场空无一人，草人傀儡静静立在靶位中央。',
+    services: ['practice_caoren', 'sparring']
+  },
+  yaotang: {
+    id: 'yaotang', name: '药堂', region: '古月山寨', x: 10, y: 54,
+    links: { shijie: 30 },
+    day: '药堂里弥漫着草药与生机叶的清香，专售疗伤之蛊与蛊方。',
+    night: '药堂已落了门栓，只留一扇小窗应对急症。',
+    shop: ['gu:shengjiye', 'gu:jiuyecao', 'gu:yupi', 'item:zhixuegao'],
+    services: ['shop', 'heal']
+  },
+  kezhan: {
+    id: 'kezhan', name: '山寨客栈', region: '古月山寨', x: 10, y: 78,
+    links: { shijie: 30 },
+    day: '行脚商人与族人挤在木桌旁喝青竹酒，消息在这里传得最快。',
+    night: '灯火通明，角落里有人压低声音议论山外的风声。',
+    shop: ['item:qingzhujiu', 'item:tianjiu', 'item:lajiu'],
+    services: ['shop', 'rumor']
+  },
+  jucaifang: {
+    id: 'jucaifang', name: '聚材坊', region: '古月山寨', x: 26, y: 78,
+    links: { shijie: 30 },
+    day: '货架上堆着月兰花瓣、腌肉、蜂王蜜与各色一转炼材。',
+    night: '坊市入夜收摊，伙计正清点白日收来的兽皮与元石。',
+    shop: ['item:yuelanhua', 'item:shourou', 'item:fengmi', 'item:kuangshi', 'item:yuanshi_zha', 'gu:xiaoguang', 'gu:shipi', 'gu:bingzhen'],
+    services: ['shop']
+  },
+  liangu: {
+    id: 'liangu', name: '炼蛊房', region: '古月山寨', x: 42, y: 76,
+    links: { shijie: 30 },
+    day: '几座青铜蛊炉稳稳燃着地火，老炼蛊师在旁照看火候。',
+    night: '炉火幽暗，正是独自开炉合炼的好时候。',
+    services: ['refine']
+  },
+  jiazhuge: {
+    id: 'jiazhuge', name: '家主阁', region: '古月山寨', x: 42, y: 40,
+    links: { shijie: 30 },
+    lock: { flag: 'open:jiazhuge', msg: '族长重地，需二转以上或族中召见方可入内。' },
+    day: '朱漆木门紧闭，两名二转护卫按刀立在石阶两侧。',
+    night: '阁楼深处灯火未熄，隐约传出算盘与翻卷之声。',
+    services: ['clan_hall']
+  },
+  zhaimen: {
+    id: 'zhaimen', name: '青茅寨门', region: '青茅山', x: 58, y: 48,
+    links: { shijie: 30, zhulin: 45, xuefu: 60 },
+    lock: { flag: 'kaike', msg: '学堂尚未开课，不可擅出山寨。' },
+    day: '木栅门外便是十万大山的莽莽林海，守门蛊师正核对出寨令牌。',
+    night: '火把在山风里噼啪作响，山林深处不时传来兽嚎。',
+    services: []
+  },
+  zhulin: {
+    id: 'zhulin', name: '月下竹林', region: '青茅山外', x: 74, y: 26,
+    links: { zhaimen: 45, langchao: 60 },
+    lock: { flag: 'practiced', msg: '学堂家老：未在演武场练过手的新丁，不准进深山。' },
+    day: '翠竹遮天，林间落叶下藏着野猪拱出的新土与野生蛊材。',
+    night: '月色洒在竹叶上，酒香混着兽腥从深处飘来。',
+    exploreEnemy: 'yezhu',
+    bossEnemy: 'zhuwang',
+    services: ['explore', 'gather']
+  },
+  xuefu: {
+    id: 'xuefu', name: '血蝠洞', region: '青茅山外', x: 74, y: 72,
+    links: { zhaimen: 60, huajiu: 45 },
+    lock: { flag: 'practiced', msg: '学堂家老：未在演武场练过手的新丁，不准进深山。' },
+    day: '洞口阴风阵阵，岩壁上挂着成片的赤眼血蝠。',
+    night: '洞内腥风大作，正是血蝠群出洞觅食的时辰。',
+    exploreEnemy: 'xuefu',
+    bossEnemy: 'xuefu_king',
+    services: ['explore', 'gather']
+  },
+  langchao: {
+    id: 'langchao', name: '电狼坡', region: '青茅山外', x: 90, y: 34,
+    links: { zhulin: 60 },
+    lock: { flag: 'clear:xuefu', msg: '电狼群凶悍成阵，须先扫清血蝠洞积攒实战经验。' },
+    day: '焦黑的草坡上闪动着蓝白电弧，几头电狼正伏在石后窥伺。',
+    night: '坡顶雷光频闪，豪电狼王的啸声震得山石作响。',
+    exploreEnemy: 'dianlang',
+    bossEnemy: 'langwang',
+    services: ['explore', 'gather']
+  },
+  huajiu: {
+    id: 'huajiu', name: '暗涧遗洞', region: '青茅山外', x: 90, y: 80,
+    links: { xuefu: 45 },
+    hidden: 'clue:huajiu',
+    nightOnly: '遗洞入口隐在瀑布暗流之后，须入夜避开山寨耳目方可潜入。',
+    day: '山涧水声轰鸣，日光下看不出任何异样。',
+    night: '水帘后隐约透出一线微光，石壁上刻着花酒行者的遗言。',
+    services: ['huajiu_explore']
+  }
+};
+
+
+/* === src/data/gu.js === */
+const ITEMS = {
+  yuelanhua: { id: 'yuelanhua', name: '月兰花瓣', kind: '口粮', price: 2, desc: '月光蛊、月芒蛊、小光蛊的食料。' },
+  shourou: { id: 'shourou', name: '兽肉', kind: '口粮', price: 3, desc: '黑豕蛊、白豕蛊、血蝠蛊、电狼蛊的食料。' },
+  fengmi: { id: 'fengmi', name: '蜂王蜜', kind: '口粮', price: 4, desc: '玉皮蛊、白玉蛊、石皮蛊、铜皮蛊的食料。' },
+  qingzhujiu: { id: 'qingzhujiu', name: '青竹酒', kind: '口粮', price: 5, desc: '酒虫最喜的竹香米酒，也可略微活血。' },
+  tianjiu: { id: 'tianjiu', name: '甜果酒', kind: '口粮', price: 8, desc: '四味酒虫所需的四味之一。' },
+  lajiu: { id: 'lajiu', name: '烈辣烧酒', kind: '口粮', price: 10, desc: '四味酒虫所需的烈酒，饮之暖身。' },
+  kuangshi: { id: 'kuangshi', name: '青铁矿精', kind: '炼材', price: 8, desc: '合炼防御与金铁类蛊虫常用辅材。' },
+  yuanshi_zha: { id: 'yuanshi_zha', name: '元石碎晶', kind: '口粮', price: 6, desc: '探知、隐匿与部分奇蛊的食料，也可作炼蛊辅材。' },
+  zhixuegao: { id: 'zhixuegao', name: '止血草膏', kind: '伤药', price: 10, desc: '局外使用可恢复 35 点气血。', heal: 35 }
+};
+const GU_DEFS = {
+  yueguang: { id: 'yueguang', name: '月光蛊', rank: 1, school: '月道', kind: '攻击', cost: 4, cd: 0, power: 18, food: 'yuelanhua', price: 18, desc: '古月一族传承之蛊，催动后掌心发出弯月光刃斩敌。' },
+  xiaoguang: { id: 'xiaoguang', name: '小光蛊', rank: 1, school: '光道', kind: '增益', cost: 4, cd: 2, power: 12, food: 'yuelanhua', price: 16, desc: '增强下一次攻伐招式威能 +35%，常作月光蛊合炼辅材。' },
+  yuemang: { id: 'yuemang', name: '月芒蛊', rank: 2, school: '月道', kind: '攻击', cost: 8, cd: 1, power: 34, food: 'yuelanhua', price: 45, desc: '二转月道主力攻伐蛊，月芒凝成细线，穿甲破盾之力甚强。' },
+  yueren: { id: 'yueren', name: '月漩蛊', rank: 3, school: '月道', kind: '攻击', cost: 14, cd: 2, power: 62, food: 'yuelanhua', price: 120, desc: '三转月道蛊，催动出旋转月轮，连续撕裂敌方防线。' },
+  yupi: { id: 'yupi', name: '玉皮蛊', rank: 1, school: '土道', kind: '防御', cost: 4, cd: 2, power: 22, food: 'fengmi', price: 20, desc: '催动后皮肤泛起温润玉光，化作护盾抵挡来袭伤害。' },
+  baiyu: { id: 'baiyu', name: '白玉蛊', rank: 2, school: '土道', kind: '防御', cost: 7, cd: 2, power: 44, food: 'fengmi', price: 52, desc: '二转防御蛊，凝出厚实白玉光甲护盾，稳固空窍根基。' },
+  shipi: { id: 'shipi', name: '石皮蛊', rank: 1, school: '土道', kind: '防御', cost: 3, cd: 2, power: 18, food: 'fengmi', price: 15, desc: '以石质硬皮覆体，价廉耐耗，常与玉皮合炼白玉蛊。' },
+  tongpi: { id: 'tongpi', name: '铜皮蛊', rank: 2, school: '金道', kind: '防御', cost: 7, cd: 2, power: 40, food: 'fengmi', price: 48, desc: '铜皮铁骨，护盾之外更可令自身气血上限微增。' },
+  shengjiye: { id: 'shengjiye', name: '生机叶', rank: 1, school: '木道', kind: '治疗', cost: 5, cd: 2, power: 24, food: 'yuelanhua', price: 22, desc: '一转疗伤常用蛊，一片翠叶化作温和生机愈合伤势。' },
+  jiuyecao: { id: 'jiuyecao', name: '九叶生机草', rank: 2, school: '木道', kind: '治疗', cost: 8, cd: 2, power: 48, food: 'yuelanhua', price: 58, desc: '二转极品疗伤蛊，生机绵长，是保命续航之宝。' },
+  jiuchong: { id: 'jiuchong', name: '酒虫', rank: 1, school: '食道', kind: '奇蛊', cost: 0, cd: 0, power: 10, food: 'qingzhujiu', price: 65, desc: '可提纯空窍真元（日进修为 +25%，并助跨小境界温养）。' },
+  siwei_jiu: { id: 'siwei_jiu', name: '四味酒虫', rank: 2, school: '食道', kind: '奇蛊', cost: 0, cd: 0, power: 22, food: 'lajiu', price: 160, desc: '二转奇蛊，饮四味酒可提纯真元，修炼效率大幅提升（+45%）。' },
+  heishi: { id: 'heishi', name: '黑豕蛊', rank: 1, school: '力道', kind: '被动', cost: 0, cd: 0, power: 14, food: 'shourou', price: 26, desc: '增一猪之力：永久提升拳脚与力道攻伐威能。' },
+  baishi: { id: 'baishi', name: '白豕蛊', rank: 2, school: '力道', kind: '被动', cost: 0, cd: 0, power: 28, food: 'shourou', price: 64, desc: '再增一猪之力，肉身筋骨大成，抗击打能力显著增强。' },
+  bingzhen: { id: 'bingzhen', name: '冰针蛊', rank: 1, school: '冰雪道', kind: '攻击', cost: 4, cd: 1, power: 20, food: 'yuelanhua', price: 20, desc: '射出刺骨寒针，伤害不俗并有几率冻僵敌手使其跳过一轮行动。' },
+  xuefu_gu: { id: 'xuefu_gu', name: '血蝠蛊', rank: 2, school: '血道', kind: '攻击', cost: 8, cd: 2, power: 32, food: 'shourou', price: 55, desc: '吸食敌手精血，造成伤害的同时将部分血气反哺己身。' },
+  dianlang_gu: { id: 'dianlang_gu', name: '电狼蛊', rank: 2, school: '雷道', kind: '攻击', cost: 9, cd: 2, power: 38, food: 'shourou', price: 62, desc: '引动蓝白电弧扑击敌手，疾速暴烈，有概率麻痹对手。' },
+  nianxi: { id: 'nianxi', name: '念息蛊', rank: 1, school: '智道', kind: '探知', cost: 3, cd: 2, power: 15, food: 'yuanshi_zha', price: 24, desc: '战中催动可探明敌手确切气血、真元与下回合真意。' },
+  yinshi: { id: 'yinshi', name: '隐石蛊', rank: 1, school: '暗道', kind: '隐匿', cost: 3, cd: 2, power: 12, food: 'yuanshi_zha', price: 24, desc: '敛去自身气息，提高战中脱身成功率，并降低被巡山捕手盯上的风险。' },
+  xuanfeng: { id: 'xuanfeng', name: '旋风蛊', rank: 1, school: '风道', kind: '控制', cost: 4, cd: 2, power: 16, food: 'yuelanhua', price: 22, desc: '卷起山风扰乱敌方身法，造成伤害并有概率打断对手蓄势。' },
+  qingtong_sheli: { id: 'qingtong_sheli', name: '青铜舍利蛊', rank: 1, school: '天道', kind: '消耗', cost: 0, cd: 0, power: 0, food: '', price: 90, desc: '一转破境奇蛊，使用后可直接助一转蛊师连破小境界。' },
+  chitie_sheli: { id: 'chitie_sheli', name: '赤铁舍利蛊', rank: 2, school: '天道', kind: '消耗', cost: 0, cd: 0, power: 0, food: '', price: 210, desc: '二转破境奇蛊，使用后可直接助二转蛊师打破小境界壁垒。' },
+  chunqiuchan: { id: 'chunqiuchan', name: '春秋蝉（残）', rank: 3, school: '宙道', kind: '奇蛊', cost: 0, cd: 0, power: 0, food: '', price: 0, desc: '奇蛊榜第七，可于行纪中留下一道旧影；身殒时消耗它回到那一刻。' }
+};
+const REFINE_RECIPES = [
+  { id: 'r_yuemang', out: 'yuemang', main: 'yueguang', aux: 'xiaoguang', mat: 'kuangshi', rate: 0.68, cost: 25, desc: '月光蛊 + 小光蛊 + 青铁矿精 → 月芒蛊（二转）' },
+  { id: 'r_yueren', out: 'yueren', main: 'yuemang', aux: 'xuanfeng', mat: 'kuangshi', rate: 0.50, cost: 60, desc: '月芒蛊 + 旋风蛊 + 青铁矿精 → 月漩蛊（三转）' },
+  { id: 'r_baiyu', out: 'baiyu', main: 'yupi', aux: 'shipi', mat: 'fengmi', rate: 0.65, cost: 25, desc: '玉皮蛊 + 石皮蛊 + 蜂王蜜 → 白玉蛊（二转）' },
+  { id: 'r_jiuye', out: 'jiuyecao', main: 'shengjiye', aux: 'shengjiye', mat: 'yuelanhua', rate: 0.62, cost: 30, desc: '生机叶 ×2 + 月兰花瓣 → 九叶生机草（二转）' },
+  { id: 'r_siwei', out: 'siwei_jiu', main: 'jiuchong', aux: 'jiuchong', mat: 'tianjiu', rate: 0.58, cost: 45, desc: '酒虫 ×2 + 甜果酒 → 四味酒虫（二转）' }
+];
+
+
+/* === src/data/enemies.js === */
+const ENEMIES = {
+  caoren: {
+    id: 'caoren', name: '演武草人', rank: 1, hp: 55, zy: 20, speed: 4,
+    moves: [
+      { name: '木臂横扫', kind: 'attack', power: 8, weight: 3 },
+      { name: '草甲护身', kind: 'shield', power: 10, weight: 1 }
+    ],
+    reward: { yuanshi: 2 },
+    practice: true
+  },
+  yezhu: {
+    id: 'yezhu', name: '铁鬃野猪', rank: 1, hp: 78, zy: 24, speed: 6,
+    moves: [
+      { name: '獠牙顶撞', kind: 'attack', power: 13, weight: 3 },
+      { name: '厚皮蓄势', kind: 'shield', power: 12, weight: 1 }
+    ],
+    reward: { yuanshi: 8, item: 'shourou' }
+  },
+  zhuwang: {
+    id: 'zhuwang', name: '野猪王', rank: 1, hp: 115, zy: 35, speed: 8,
+    moves: [
+      { name: '蛮力冲撞', kind: 'attack', power: 18, weight: 3 },
+      { name: '狂暴践踏', kind: 'attack', power: 24, cd: 2, weight: 2 },
+      { name: '黑鬃护体', kind: 'shield', power: 18, weight: 1 }
+    ],
+    reward: { yuanshi: 20, item: 'shourou', gu: 'heishi' }
+  },
+  xuefu: {
+    id: 'xuefu', name: '赤眼血蝠', rank: 1, hp: 90, zy: 30, speed: 10,
+    moves: [
+      { name: '吸血扑击', kind: 'drain', power: 15, weight: 3 },
+      { name: '尖啸震神', kind: 'stun', power: 10, cd: 3, weight: 1 }
+    ],
+    reward: { yuanshi: 12, item: 'shourou' }
+  },
+  xuefu_king: {
+    id: 'xuefu_king', name: '千蝠王', rank: 2, hp: 165, zy: 60, speed: 12,
+    moves: [
+      { name: '血翼撕裂', kind: 'attack', power: 25, weight: 3 },
+      { name: '吸髓回生', kind: 'drain', power: 20, cd: 2, weight: 2 },
+      { name: '血雾护身', kind: 'shield', power: 24, weight: 1 }
+    ],
+    reward: { yuanshi: 36, gu: 'xuefu_gu' }
+  },
+  dianlang: {
+    id: 'dianlang', name: '青茅电狼', rank: 2, hp: 145, zy: 55, speed: 13,
+    moves: [
+      { name: '雷爪扑杀', kind: 'attack', power: 24, weight: 3 },
+      { name: '电弧嘶吼', kind: 'stun', power: 16, cd: 3, weight: 1 }
+    ],
+    reward: { yuanshi: 22, item: 'shourou' }
+  },
+  langwang: {
+    id: 'langwang', name: '豪电狼王', rank: 2, hp: 230, zy: 90, speed: 15,
+    moves: [
+      { name: '万雷狼牙', kind: 'attack', power: 34, weight: 3 },
+      { name: '狂雷扑阵', kind: 'attack', power: 44, cd: 3, weight: 2 },
+      { name: '雷铠护身', kind: 'shield', power: 32, weight: 1 }
+    ],
+    reward: { yuanshi: 65, gu: 'dianlang_gu' }
+  },
+  fangzheng: {
+    id: 'fangzheng', name: '古月方正', rank: 2, hp: 170, zy: 80, speed: 11,
+    moves: [
+      { name: '月芒斩', kind: 'attack', power: 26, weight: 3 },
+      { name: '白玉护体', kind: 'shield', power: 28, cd: 2, weight: 2 },
+      { name: '生机回春', kind: 'heal', power: 24, cd: 3, weight: 1 }
+    ],
+    reward: { yuanshi: 30 },
+    practice: true
+  },
+  modao: {
+    id: 'modao', name: '山外魔道蛊师', rank: 2, hp: 185, zy: 85, speed: 12,
+    moves: [
+      { name: '毒刺暗袭', kind: 'attack', power: 28, weight: 3 },
+      { name: '血遁借力', kind: 'drain', power: 22, cd: 2, weight: 2 },
+      { name: '铁皮护身', kind: 'shield', power: 26, weight: 1 }
+    ],
+    reward: { yuanshi: 45 }
+  },
+  tiexueleng: {
+    id: 'tiexueleng', name: '铁血冷捕手', rank: 3, hp: 270, zy: 120, speed: 15,
+    moves: [
+      { name: '铁索镇压', kind: 'stun', power: 28, cd: 3, weight: 2 },
+      { name: '正道斩邪', kind: 'attack', power: 38, weight: 3 },
+      { name: '玄铁护甲', kind: 'shield', power: 38, cd: 2, weight: 1 }
+    ],
+    reward: { yuanshi: 80 }
+  },
+  guyue_yidai: {
+    id: 'guyue_yidai', name: '古月一代（血魔残躯）', rank: 3, hp: 340, zy: 160, speed: 16,
+    moves: [
+      { name: '血颅狂斩', kind: 'attack', power: 44, weight: 3 },
+      { name: '血海吸元', kind: 'drain', power: 34, cd: 2, weight: 2 },
+      { name: '血煞护身', kind: 'shield', power: 42, cd: 2, weight: 1 }
+    ],
+    reward: { yuanshi: 120 }
+  },
+  tianhe: {
+    id: 'tianhe', name: '天鹤上人', rank: 3, hp: 380, zy: 180, speed: 18,
+    moves: [
+      { name: '飞鹤仙羽', kind: 'attack', power: 48, weight: 3 },
+      { name: '鹤唳震魂', kind: 'stun', power: 30, cd: 3, weight: 1 },
+      { name: '仙鹤云障', kind: 'shield', power: 46, cd: 2, weight: 2 }
+    ],
+    reward: { yuanshi: 150 }
+  }
+};
+
+
+/* === src/data/story.js === */
+const STORY_EVENTS = [
+  {
+    id: 'kaike',
+    title: '学堂开课',
+    cond: '!flag:kaike',
+    text: '开窍大典散后，学堂家老把今年新开窍的少年召到堂前。\n“从今日起，你们便是一转蛊师。去堂后蛊室挑一只本命蛊，谁先在三月三日之前炼化交卷，赏二十块元石。”\n人群顿时起了骚动。',
+    choices: [
+      { text: '记下规矩，前往学堂领蛊', effects: ['flag:kaike', 'flag:toumin_race', 'goal:前往「学堂」领取本命蛊，并赶在三月三日前交卷夺取头名赏'] }
+    ]
+  },
+  {
+    id: 'toumin_win',
+    title: '学堂头名',
+    cond: 'flag:toumin_race&benming&before:1-3-3-0&at:xuetang',
+    text: '你赶在众人之前步入学堂，将已经温顺下来的本命蛊气息放出一丝。\n家老抬眼打量了你片刻，点头记下名册：“头名归你，这是二十块元石。”',
+    choices: [
+      { text: '收下二十块元石', effects: ['yuanshi:+20', 'unflag:toumin_race', 'flag:toumin_won', 'goal:前往「演武场」找草人傀儡练手，再出寨去月下竹林历练'] }
+    ]
+  },
+  {
+    id: 'toumin_lost',
+    title: '头名旁落',
+    cond: 'flag:toumin_race&after:1-3-3-0',
+    text: '天刚蒙蒙亮，学堂外便传开了消息：昨夜半夜，古月方源敲开了家老的门，抢先领走了头名赏的二十块元石。\n谁也没想到，丙等资质的他竟比甲等的方正还快一步。',
+    choices: [
+      { text: '专心眼下修行', effects: ['unflag:toumin_race', 'goal:前往「演武场」练手，尽快攒够实力出寨历练'] }
+    ]
+  },
+  {
+    id: 'nianmo_exam',
+    title: '年末大考',
+    cond: 'after:1-12-15-0&!flag:nianmo_done',
+    text: '转眼已至腊月十五，古月山寨迎来一年一度的年末考核。全族长老坐在演武场高台之上，按修为、蛊虫与实战功绩评定甲乙丙丁。',
+    choices: [
+      { text: '登台应考（按当前实力评定赏格）', effects: ['exam:nianmo', 'flag:nianmo_done', 'goal:继续修行突破二转，或打听后山暗涧遗洞的传闻'] }
+    ]
+  },
+  {
+    id: 'langchao_start',
+    title: '青茅狼潮',
+    cond: 'after:2-6-1-0&!flag:langchao_seen',
+    text: '次年六月，黑压压的电狼群终于顺着山脊压向古月山寨！山脚木栅接连告急，族中下令所有二转以上蛊师轮值迎敌。\n混乱之中，有人在趁乱发财，也有人在死守寨门。',
+    choices: [
+      { text: '随族人登墙守寨（立功稳妥）', effects: ['flag:langchao_seen', 'yuanshi:+35', 'goal:前往「电狼坡」斩杀豪电狼王，平定狼潮锋芒'] },
+      { text: '趁夜暗中搜刮战死同族遗物（高收益，恶名上升）', effects: ['flag:langchao_seen', 'yuanshi:+75', 'mo:+25', 'goal:狼潮已起，山寨危局渐近，尽快冲击三转准备应对变局'] }
+    ]
+  },
+  {
+    id: 'qingmao_endgame',
+    title: '血海降世 · 天鹤来袭',
+    cond: 'after:2-10-1-0&!flag:qingmao_finished&flag:langchao_seen',
+    text: '十万大山骤然血光冲天！古月一族先祖「古月一代」于地下血池苏醒，欲屠戮全族血亲提炼资质；与此同时，中洲古魂门「天鹤上人」驾仙鹤破空而至，两位绝世强者即将在青茅山拼杀至死！\n山崩地裂，整座青茅山已成死地，这是你走出青茅山的最后时机。',
+    choices: [
+      { text: '先截击古月一代残躯，再夺路冲出青茅山（凶险，战利品极丰）', effects: ['battle:guyue_yidai', 'flag:qingmao_finished', 'flag:qingmao_hero', 'goal:已历血海大战！整顿行囊，随时可告别青茅山'] },
+      { text: '迎战天鹤上人外围弟子，趁两位强者死斗突围', effects: ['battle:tianhe', 'flag:qingmao_finished', 'goal:已从天鹤上人手下脱身，准备走出青茅山'] },
+      { text: '趁双方两败俱伤，潜行绕道直接翻山离去（稳妥脱身）', effects: ['flag:qingmao_finished', 'yuanshi:+40', 'goal:你已避开血海绝境，可于「寨门」或行纪中宣告走出青茅山'] }
+    ]
+  }
+];
+
+
+/* === src/core/calendar.js === */
+const MIN_PER_KE = 15;
+const MIN_PER_SHICHEN = 120;
+const MIN_PER_DAY = 1440;
+const DAYS_PER_MONTH = 30;
+const MONTHS_PER_YEAR = 12;
+const MIN_PER_MONTH = MIN_PER_DAY * DAYS_PER_MONTH;
+const MIN_PER_YEAR = MIN_PER_MONTH * MONTHS_PER_YEAR;
+const SHICHEN = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
+const MONTHS = ['正月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '冬月', '腊月'];
+const DIGITS = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十'];
+function makeTime(year, month, day, shichen = 0) {
+  return (((year - 1) * MONTHS_PER_YEAR + (month - 1)) * DAYS_PER_MONTH + (day - 1)) * MIN_PER_DAY + shichen * MIN_PER_SHICHEN;
+}
+function yearOf(m) { return Math.floor(m / MIN_PER_YEAR) + 1; }
+function monthOf(m) { return Math.floor(m / MIN_PER_MONTH) % MONTHS_PER_YEAR + 1; }
+function dayOf(m) { return Math.floor(m / MIN_PER_DAY) % DAYS_PER_MONTH + 1; }
+function minuteOfDay(m) { return ((m % MIN_PER_DAY) + MIN_PER_DAY) % MIN_PER_DAY; }
+function shichenOf(m) { return Math.floor(minuteOfDay(m) / MIN_PER_SHICHEN); }
+function keOf(m) { return Math.floor((minuteOfDay(m) % MIN_PER_SHICHEN) / MIN_PER_KE) + 1; }
+function isNight(m) { const mod = minuteOfDay(m); return mod < 360 || mod >= 1080; }
+function cnNum(n) {
+  if (n <= 10) return DIGITS[n] || String(n);
+  if (n < 20) return '十' + DIGITS[n - 10];
+  const t = DIGITS[Math.floor(n / 10)] + '十';
+  return n % 10 === 0 ? t : t + DIGITS[n % 10];
+}
+function dayName(d) {
+  if (d <= 10) return '初' + DIGITS[d];
+  if (d < 20) return '十' + DIGITS[d - 10];
+  if (d === 20) return '二十';
+  if (d < 30) return '廿' + DIGITS[d - 20];
+  return '三十';
+}
+function formatDateTime(m) {
+  return `第${cnNum(yearOf(m))}年 ${MONTHS[monthOf(m) - 1]}${dayName(dayOf(m))} · ${SHICHEN[shichenOf(m)]}时${keOf(m)}刻`;
+}
+function formatDuration(minutes) {
+  if (minutes >= MIN_PER_DAY) return `${Math.round(minutes / MIN_PER_DAY)} 日`;
+  if (minutes >= MIN_PER_SHICHEN && minutes % MIN_PER_SHICHEN === 0) return `${minutes / MIN_PER_SHICHEN} 时辰`;
+  return `${Math.max(1, Math.round(minutes / MIN_PER_KE))} 刻`;
+}
+function parseTimeExpr(str) {
+  const parts = String(str).split('-');
+  if (parts.length < 3) return 0;
+  return makeTime(Number(parts[0]) || 1, Number(parts[1]) || 1, Number(parts[2]) || 1, Number(parts[3]) || 0);
+}
+
+
+/* === src/core/state.js === */
+const SAVE_KEY = 'gujie_qingmaoshan_v1';
+const RANK_NAMES = ['', '一转', '二转', '三转', '四转'];
+const XIAO_NAMES = ['初阶', '中阶', '高阶', '巅峰'];
+const REALM_CAP_NEED = [0, 80, 260, 720];
+function createAptitude(rng = Math.random) {
+  const r = rng();
+  if (r < 0.14) return { grade: '甲', hai: Number((8.0 + rng() * 1.6).toFixed(1)), desc: '甲等资质，元海深厚，族中必定重点栽培。' };
+  if (r < 0.44) return { grade: '乙', hai: Number((6.0 + rng() * 1.9).toFixed(1)), desc: '乙等资质，修行稳健，足可冲击二三转。' };
+  if (r < 0.82) return { grade: '丙', hai: Number((4.0 + rng() * 1.9).toFixed(1)), desc: '丙等资质，元海平平，须靠奇遇与苦修补足。' };
+  return { grade: '丁', hai: Number((2.2 + rng() * 1.6).toFixed(1)), desc: '丁等资质，元海浅薄，每一步都要精打细算。' };
+}
+function createNewGame(name = '无名', apt = null) {
+  const a = apt || createAptitude();
+  const startMin = makeTime(1, 3, 1, 3); // 第一年 三月初一 卯时
+  const state = {
+    v: 1,
+    player: {
+      name: String(name || '无名').trim() || '无名',
+      rank: 1,
+      xiao: 0,
+      grade: a.grade,
+      hai: a.hai,
+      hp: 100,
+      hpMax: 100,
+      zy: 40,
+      zyMax: 40,
+      xp: 0,
+      yuanshi: 12,
+      mo: 0,
+      speed: 8,
+      powerBonus: 0,
+      benming: null,
+      gu: [],
+      equipped: [],
+      moves: [],
+      items: { yuelanhua: 6 },
+      attempts: 0,
+      dead: false,
+      escapedMountain: false
+    },
+    minutes: startMin,
+    startMinutes: startMin,
+    location: 'zhulou',
+    flags: {},
+    goal: '前往「学堂」参加开课，领取你的第一只本命蛊',
+    logs: [
+      { text: `开窍大典落定：测出${a.grade}等资质，元海 ${a.hai} 成。`, cls: 'log-gold' },
+      { text: '你回到竹楼，摸了摸钱袋里的 12 块元石，准备动身去学堂。', cls: '' }
+    ],
+    snapshot: null,
+    battle: null,
+    pendingEventId: 'kaike',
+    paused: false
+  };
+  recalcStats(state);
+  state.player.hp = state.player.hpMax;
+  state.player.zy = state.player.zyMax;
+  return state;
+}
+function recalcStats(gs) {
+  const p = gs.player;
+  const r = p.rank;
+  const x = p.xiao;
+  const haiMul = 0.65 + p.hai * 0.08;
+  const passiveHp = (hasGu(gs, 'heishi') ? 20 : 0) + (hasGu(gs, 'baishi') ? 35 : 0) + (hasGu(gs, 'tongpi') ? 25 : 0);
+  const passivePower = (hasGu(gs, 'heishi') ? 6 : 0) + (hasGu(gs, 'baishi') ? 12 : 0);
+  p.hpMax = Math.round((85 + r * 35 + x * 14) * (1 + (r - 1) * 0.18) + passiveHp);
+  p.zyMax = Math.round((28 + r * 18 + x * 6) * haiMul);
+  p.speed = 6 + r * 3 + x;
+  p.powerBonus = passivePower;
+  p.hp = Math.min(p.hp, p.hpMax);
+  p.zy = Math.min(p.zy, p.zyMax);
+}
+function esc(s) {
+  return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+function realmText(p) {
+  return `${RANK_NAMES[p.rank] || `${p.rank}转`}${XIAO_NAMES[p.xiao] || '初阶'}`;
+}
+function minorXpNeed(p) {
+  if (p.xiao >= 3) return 0;
+  return Math.round((REALM_CAP_NEED[p.rank] || 700) * (1 + p.xiao * 0.45));
+}
+function addLog(gs, text, cls = '') {
+  gs.logs.unshift({ text, cls, age: yearOf(gs.minutes) });
+  if (gs.logs.length > 80) gs.logs.length = 80;
+}
+function hasGu(gs, id) {
+  return gs.player.gu.some((g) => g.id === id);
+}
+function addGu(gs, id, satiety = 100) {
+  const def = GU_DEFS[id];
+  if (!def) return null;
+  const inst = { uid: Date.now() + Math.floor(Math.random() * 10000), id, satiety };
+  gs.player.gu.push(inst);
+  if (gs.player.equipped.length < 6 && ['攻击', '防御', '治疗', '增益', '控制', '探知', '隐匿'].includes(def.kind)) {
+    gs.player.equipped.push(inst.uid);
+  }
+  recalcStats(gs);
+  return inst;
+}
+function removeGuByUid(gs, uid) {
+  const idx = gs.player.gu.findIndex((g) => g.uid === uid);
+  if (idx < 0) return false;
+  const removed = gs.player.gu.splice(idx, 1)[0];
+  gs.player.equipped = gs.player.equipped.filter((u) => u !== uid);
+  if (gs.player.benming === uid) gs.player.benming = null;
+  recalcStats(gs);
+  return removed;
+}
+function addItem(gs, id, n = 1) {
+  if (!id || n <= 0) return;
+  gs.player.items[id] = (gs.player.items[id] || 0) + n;
+}
+function useItem(gs, id, n = 1) {
+  if ((gs.player.items[id] || 0) < n) return false;
+  gs.player.items[id] -= n;
+  if (gs.player.items[id] <= 0) delete gs.player.items[id];
+  return true;
+}
+function saveGame(gs, storage = typeof localStorage !== 'undefined' ? localStorage : null) {
+  if (!storage || !gs) return false;
+  try {
+    storage.setItem(SAVE_KEY, JSON.stringify(gs));
+    return true;
+  } catch {
+    return false;
+  }
+}
+function loadGame(storage = typeof localStorage !== 'undefined' ? localStorage : null) {
+  if (!storage) return null;
+  try {
+    const raw = storage.getItem(SAVE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || !parsed.player) return null;
+    recalcStats(parsed);
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+
+/* === src/core/killer.js === */
+function canCraftKillerMove(gs) {
+  return !!gs && gs.player.rank >= 2;
+}
+function buildKillerMove(coreId, auxIds = [], customName = '') {
+  const core = GU_DEFS[coreId];
+  if (!core) return null;
+  const cleanAux = [...new Set(auxIds)].filter((id) => id && id !== coreId && GU_DEFS[id]).slice(0, 2);
+  const all = [coreId, ...cleanAux];
+  let power = core.power * 1.45;
+  let cost = core.cost + 3;
+  let cd = Math.max(2, core.cd + 1);
+  let bonusShield = 0;
+  let bonusHeal = 0;
+  let stunChance = 0;
+  let boostMul = 1;
+
+  for (const aid of cleanAux) {
+    const ag = GU_DEFS[aid];
+    cost += Math.max(2, Math.round(ag.cost * 0.6));
+    if (ag.kind === '攻击') power += ag.power * 0.65;
+    else if (ag.kind === '防御') bonusShield += Math.round(ag.power * 0.75);
+    else if (ag.kind === '治疗') bonusHeal += Math.round(ag.power * 0.75);
+    else if (ag.kind === '增益') boostMul += 0.22;
+    else if (ag.kind === '控制') stunChance += 0.28;
+  }
+
+  power = Math.round(power * boostMul);
+  const name = String(customName || '').trim().slice(0, 10) || `自创·${core.name.replace(/蛊$/, '')}杀招`;
+  return {
+    id: `km_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+    name,
+    coreId,
+    auxIds: cleanAux,
+    guIds: all,
+    kind: core.kind === '防御' ? '防御' : (core.kind === '治疗' ? '治疗' : '攻击'),
+    power,
+    bonusShield,
+    bonusHeal,
+    stunChance,
+    cost,
+    cd
+  };
+}
+function createKillerMove(gs, coreId, auxIds, customName) {
+  if (!canCraftKillerMove(gs)) return { ok: false, reason: '须晋入二转，方可自创杀招' };
+  if (!hasGu(gs, coreId)) return { ok: false, reason: '未持有核心蛊' };
+  for (const aid of auxIds || []) {
+    if (!hasGu(gs, aid)) return { ok: false, reason: '未持有指定辅蛊' };
+  }
+  const move = buildKillerMove(coreId, auxIds, customName);
+  if (!move) return { ok: false, reason: '核心蛊无效' };
+  gs.player.moves.push(move);
+  addLog(gs, `【自创杀招】你以「${GU_DEFS[coreId].name}」为核心，推演成「${move.name}」。`, 'log-gold');
+  return { ok: true, move };
+}
+
+
+/* === src/core/combat.js === */
+
+
+
+function pickIntent(enemy, rng = Math.random) {
+  const pool = enemy.moves.filter((m) => (enemy.cds[m.name] || 0) <= 0);
+  const list = pool.length ? pool : [enemy.moves[0]];
+  const total = list.reduce((s, m) => s + (m.weight || 1), 0);
+  let r = rng() * total;
+  for (const m of list) {
+    r -= (m.weight || 1);
+    if (r <= 0) return m;
+  }
+  return list[0];
+}
+function startBattle(gs, enemyId, tag = '遭遇战', rng = Math.random) {
+  const tpl = ENEMIES[enemyId];
+  if (!tpl || gs.battle) return null;
+  const foe = {
+    id: tpl.id,
+    name: tpl.name,
+    rank: tpl.rank,
+    hp: tpl.hp,
+    hpMax: tpl.hp,
+    zy: tpl.zy,
+    zyMax: tpl.zy,
+    speed: tpl.speed,
+    shield: 0,
+    stunned: false,
+    moves: tpl.moves,
+    cds: {},
+    intent: null,
+    reward: tpl.reward || {},
+    practice: !!tpl.practice
+  };
+  foe.intent = pickIntent(foe, rng);
+
+  const b = {
+    tag,
+    round: 1,
+    state: 'ongoing', // ongoing | win | lose | fled
+    lethal: false,
+    scouted: false,
+    meShield: 0,
+    meBoost: 0,
+    cds: {},
+    foe,
+    logs: [`【${tag}】${foe.name}挡在前方。`]
+  };
+
+  if (foe.speed > gs.player.speed && !foe.practice) {
+    b.logs.push(`${foe.name}身法更快，抢先出手！`);
+    enemyTurn(gs, b, rng);
+  }
+  gs.battle = b;
+  return b;
+}
+
+function enemyTurn(gs, b, rng = Math.random) {
+  const foe = b.foe;
+  if (foe.hp <= 0) return;
+  for (const k of Object.keys(foe.cds)) {
+    if (foe.cds[k] > 0) foe.cds[k]--;
+  }
+  if (foe.stunned) {
+    foe.stunned = false;
+    b.logs.push(`${foe.name}身形一滞，错过了这一轮出手。`);
+    foe.intent = pickIntent(foe, rng);
+    return;
+  }
+  const mv = foe.intent || foe.moves[0];
+  if (mv.cd) foe.cds[mv.name] = mv.cd;
+  if (mv.kind === 'attack' || mv.kind === 'drain' || mv.kind === 'stun') {
+    const raw = Math.round(mv.power * (0.9 + rng() * 0.2));
+    const absorbed = Math.min(b.meShield, raw);
+    b.meShield -= absorbed;
+    const dmg = raw - absorbed;
+    gs.player.hp = Math.max(0, gs.player.hp - dmg);
+    b.logs.push(`${foe.name}使出「${mv.name}」，${absorbed ? `护盾挡下 ${absorbed}，` : ''}造成 ${dmg} 点伤害。`);
+    if (mv.kind === 'drain' && dmg > 0) {
+      const heal = Math.round(dmg * 0.4);
+      foe.hp = Math.min(foe.hpMax, foe.hp + heal);
+      b.logs.push(`${foe.name}吸取气血，恢复 ${heal} 点。`);
+    }
+    if (mv.kind === 'stun' && rng() < 0.35) {
+      b.logs.push('你身形微晃，好在强自稳住了心神。');
+    }
+  } else if (mv.kind === 'shield') {
+    foe.shield += mv.power;
+    b.logs.push(`${foe.name}催动「${mv.name}」，周身浮现 ${mv.power} 点护盾。`);
+  } else if (mv.kind === 'heal') {
+    foe.hp = Math.min(foe.hpMax, foe.hp + mv.power);
+    b.logs.push(`${foe.name}催动「${mv.name}」，气血恢复 ${mv.power} 点。`);
+  }
+
+  if (gs.player.hp <= 0) {
+    if (foe.practice) {
+      gs.player.hp = Math.max(10, Math.round(gs.player.hpMax * 0.2));
+      b.state = 'lose';
+      b.logs.push('切磋点到为止，你退后认输。');
+    } else {
+      b.state = 'lose';
+      gs.player.dead = true;
+      b.logs.push('你气血耗尽，倒在了血泊之中。');
+    }
+  } else {
+    foe.intent = pickIntent(foe, rng);
+  }
+}
+
+function dealDamageToFoe(b, rawDmg) {
+  const foe = b.foe;
+  const absorbed = Math.min(foe.shield, rawDmg);
+  foe.shield -= absorbed;
+  const dmg = rawDmg - absorbed;
+  foe.hp = Math.max(0, foe.hp - dmg);
+  return { dmg, absorbed };
+}
+function battleAct(gs, action, arg = '', rng = Math.random) {
+  const b = gs.battle;
+  if (!b || b.state !== 'ongoing') return b;
+  const p = gs.player;
+  const foe = b.foe;
+
+  for (const k of Object.keys(b.cds)) {
+    if (b.cds[k] > 0) b.cds[k]--;
+  }
+
+  if (action === 'lethal') {
+    b.lethal = true;
+    b.logs.push('你眼神转冷，彻底下了死手！此战不再留手，也再无退路。');
+    return b;
+  }
+
+  if (action === 'attack') {
+    const raw = Math.round((8 + p.rank * 4 + (p.powerBonus || 0) * 0.6) * (0.9 + rng() * 0.2));
+    const res = dealDamageToFoe(b, raw);
+    b.logs.push(`你挥拳直击，${res.absorbed ? `削去护盾 ${res.absorbed}，` : ''}造成 ${res.dmg} 点伤害。`);
+  } else if (action === 'stone') {
+    if (p.yuanshi < 2) return b;
+    p.yuanshi -= 2;
+    const gain = Math.min(p.zyMax - p.zy, Math.max(10, Math.round(p.zyMax * 0.4)));
+    p.zy += gain;
+    b.logs.push(`你捏碎 2 块元石吸纳真元，真元恢复 +${gain}。`);
+  } else if (action === 'flee') {
+    if (b.lethal) return b;
+    const chance = 0.55 + (p.speed - foe.speed) * 0.04 + (hasGu(gs, 'yinshi') ? 0.25 : 0);
+    if (rng() < Math.max(0.2, Math.min(0.95, chance))) {
+      b.state = 'fled';
+      b.logs.push('你虚晃一招，顺利脱离战局。');
+      return b;
+    }
+    b.logs.push('你想脱身退走，却被对方死死缠住！');
+  } else if (action === 'gu') {
+    const def = GU_DEFS[arg];
+    if (!def || !hasGu(gs, arg) || (b.cds[arg] || 0) > 0 || p.zy < def.cost) return b;
+    p.zy -= def.cost;
+    if (def.cd) b.cds[arg] = def.cd;
+    const mul = 1 + (b.meBoost > 0 ? 0.35 : 0);
+    if (def.kind === '攻击' || def.kind === '控制') {
+      if (b.meBoost > 0) b.meBoost--;
+      const raw = Math.round((def.power + (p.powerBonus || 0) * 0.4) * mul * (0.92 + rng() * 0.16));
+      const res = dealDamageToFoe(b, raw);
+      b.logs.push(`你催动「${def.name}」，${res.absorbed ? `破盾 ${res.absorbed}，` : ''}造成 ${res.dmg} 点伤害。`);
+      if (arg === 'xuefu_gu' && res.dmg > 0) {
+        const leach = Math.round(res.dmg * 0.35);
+        p.hp = Math.min(p.hpMax, p.hp + leach);
+        b.logs.push(`血蝠蛊反哺气血 +${leach}。`);
+      }
+      if ((def.kind === '控制' || arg === 'bingzhen' || arg === 'dianlang_gu') && rng() < 0.35) {
+        foe.stunned = true;
+        b.logs.push(`${foe.name}行动受制，下轮无法出手！`);
+      }
+    } else if (def.kind === '防御') {
+      b.meShield += def.power;
+      b.logs.push(`你催动「${def.name}」，获得 ${def.power} 点护盾。`);
+    } else if (def.kind === '治疗') {
+      p.hp = Math.min(p.hpMax, p.hp + def.power);
+      b.logs.push(`你催动「${def.name}」，气血恢复 +${def.power}。`);
+    } else if (def.kind === '增益') {
+      b.meBoost += 1;
+      b.logs.push(`你催动「${def.name}」，下一记攻伐威能大增！`);
+    } else if (def.kind === '探知') {
+      b.scouted = true;
+      b.logs.push(`你催动「${def.name}」，看清了${foe.name}的气血真元与下步动向。`);
+    } else if (def.kind === '隐匿') {
+      b.meShield += Math.round(def.power * 0.6);
+      b.logs.push(`你催动「${def.name}」隐去身形，下轮更易避实就虚。`);
+    }
+  } else if (action === 'move') {
+    const mv = p.moves.find((m) => m.id === arg);
+    if (!mv || (b.cds[mv.id] || 0) > 0 || p.zy < mv.cost) return b;
+    p.zy -= mv.cost;
+    b.cds[mv.id] = mv.cd;
+    if (mv.kind === '防御') {
+      b.meShield += mv.power;
+      b.logs.push(`你催动杀招「${mv.name}」，凝出 ${mv.power} 点厚盾！`);
+    } else if (mv.kind === '治疗') {
+      p.hp = Math.min(p.hpMax, p.hp + mv.power);
+      b.logs.push(`你催动杀招「${mv.name}」，生机涌动，气血 +${mv.power}！`);
+    } else {
+      const mul = 1 + (b.meBoost > 0 ? 0.35 : 0);
+      if (b.meBoost > 0) b.meBoost--;
+      const raw = Math.round((mv.power + (p.powerBonus || 0) * 0.5) * mul * (0.94 + rng() * 0.14));
+      const res = dealDamageToFoe(b, raw);
+      b.logs.push(`你催动杀招「${mv.name}」，${res.absorbed ? `破盾 ${res.absorbed}，` : ''}重创 ${foe.name} ${res.dmg} 点！`);
+      if (mv.bonusShield) { b.meShield += mv.bonusShield; b.logs.push(`辅蛊护体，附加护盾 +${mv.bonusShield}。`); }
+      if (mv.bonusHeal) { p.hp = Math.min(p.hpMax, p.hp + mv.bonusHeal); b.logs.push(`辅蛊回春，气血 +${mv.bonusHeal}。`); }
+      if (mv.stunChance > 0 && rng() < mv.stunChance) { foe.stunned = true; b.logs.push(`${foe.name}被杀招震慑，下轮无法行动！`); }
+    }
+  }
+
+  if (foe.hp <= 0) {
+    b.state = 'win';
+    const rw = foe.reward || {};
+    const ys = (rw.yuanshi || 0) + (b.lethal ? 15 : 0);
+    if (ys > 0) p.yuanshi += ys;
+    if (rw.item) addItem(gs, rw.item, 1);
+    if (rw.gu && !hasGu(gs, rw.gu)) {
+      addGu(gs, rw.gu);
+      b.logs.push(`战后缴获：「${GU_DEFS[rw.gu].name}」！`);
+    }
+    if (b.lethal && !foe.practice) {
+      p.mo += 18;
+      b.logs.push('你出手狠辣斩草除根，恶名 +18。');
+    }
+    if (foe.id === 'zhuwang') gs.flags['clear:zhulin'] = true;
+    if (foe.id === 'xuefu_king') gs.flags['clear:xuefu'] = true;
+    if (foe.id === 'langwang') gs.flags['clear:langchao'] = true;
+    b.logs.push(`胜负已分！击败 ${foe.name}${ys ? `，得元石 ${ys}` : ''}。`);
+    addLog(gs, `【胜出】击败 ${foe.name}${ys ? `，元石 +${ys}` : ''}。`, 'log-good');
+    recalcStats(gs);
+    return b;
+  }
+
+  enemyTurn(gs, b, rng);
+  b.round++;
+  if (b.logs.length > 24) b.logs = b.logs.slice(-24);
+  return b;
+}
+
+
+/* === src/core/story-engine.js === */
+
+
+
+
+function evalToken(gs, token) {
+  if (!token) return true;
+  if (token === 'benming') return !!gs.player.benming;
+  if (token.startsWith('flag:')) return !!gs.flags[token.slice(5)];
+  if (token.startsWith('at:')) return gs.location === token.slice(3);
+  if (token.startsWith('before:')) return gs.minutes < parseTimeExpr(token.slice(7));
+  if (token.startsWith('after:')) return gs.minutes >= parseTimeExpr(token.slice(6));
+  return false;
+}
+function evalCond(gs, cond) {
+  if (!cond) return true;
+  return cond.split('&').every((raw) => {
+    const t = raw.trim();
+    if (!t) return true;
+    const neg = t.startsWith('!');
+    const ok = evalToken(gs, neg ? t.slice(1) : t);
+    return neg ? !ok : ok;
+  });
+}
+function checkStoryTriggers(gs) {
+  if (!gs || gs.player.dead || gs.pendingEventId || gs.battle) return null;
+  for (const ev of STORY_EVENTS) {
+    if (gs.flags[`event_done:${ev.id}`]) continue;
+    if (evalCond(gs, ev.cond)) {
+      gs.pendingEventId = ev.id;
+      return ev;
+    }
+  }
+  return null;
+}
+function applyEventChoice(gs, eventId, choiceIdx) {
+  const ev = STORY_EVENTS.find((e) => e.id === eventId);
+  if (!ev) { gs.pendingEventId = null; return; }
+  const choice = ev.choices[choiceIdx] || ev.choices[0];
+  gs.flags[`event_done:${ev.id}`] = true;
+  gs.pendingEventId = null;
+
+  for (const eff of choice.effects || []) {
+    if (eff.startsWith('flag:')) {
+      gs.flags[eff.slice(5)] = true;
+    } else if (eff.startsWith('unflag:')) {
+      delete gs.flags[eff.slice(7)];
+    } else if (eff.startsWith('goal:')) {
+      gs.goal = eff.slice(5);
+    } else if (eff.startsWith('yuanshi:+')) {
+      const add = Number(eff.slice(9)) || 0;
+      gs.player.yuanshi += add;
+      addLog(gs, `【${ev.title}】获得元石 +${add}。`, 'log-gold');
+    } else if (eff.startsWith('mo:+')) {
+      const add = Number(eff.slice(4)) || 0;
+      gs.player.mo += add;
+      addLog(gs, `【${ev.title}】恶名 +${add}。`, 'log-bad');
+    } else if (eff === 'exam:nianmo') {
+      const score = gs.player.rank * 25 + gs.player.xiao * 8 + gs.player.gu.length * 8 + (gs.flags['clear:zhulin'] ? 20 : 0);
+      let reward = 10, grade = '丙等';
+      if (score >= 85) { grade = '甲等'; reward = 45; }
+      else if (score >= 60) { grade = '乙等'; reward = 25; }
+      gs.player.yuanshi += reward;
+      addLog(gs, `【年末大考】评定为${grade}，获族中赏赐元石 +${reward}。`, 'log-gold');
+    } else if (eff.startsWith('battle:')) {
+      startBattle(gs, eff.slice(7), ev.title);
+    }
+  }
+  if (gs.player.rank >= 2) gs.flags['open:jiazhuge'] = true;
+}
+
+
+/* === src/core/clock.js === */
+function placeMoveList(gs) {
+  const here = PLACES[gs.location];
+  if (!here) return [];
+  const p = gs.player;
+  return Object.entries(here.links || {})
+    .filter(([id]) => {
+      const target = PLACES[id];
+      return target && (!target.hidden || gs.flags[target.hidden]);
+    })
+    .map(([id, minutes]) => {
+      const target = PLACES[id];
+      let blocked = '';
+      if (target.lock && !gs.flags[target.lock.flag]) blocked = target.lock.msg;
+      else if (target.nightOnly && !isNight(gs.minutes + minutes)) blocked = '须入夜后方可潜入';
+      return { id, name: target.name, minutes, blocked };
+    });
+}
+function moveToPlace(gs, targetId) {
+  if (!gs || gs.player.dead || gs.battle) return { ok: false, reason: '当前无法行脚' };
+  const route = placeMoveList(gs).find((m) => m.id === targetId);
+  if (!route) return { ok: false, reason: '此处无路可通' };
+  if (route.blocked) return { ok: false, reason: route.blocked };
+  advanceMinutes(gs, route.minutes);
+  if (gs.player.dead || gs.battle) return { ok: true };
+  gs.location = targetId;
+  addLog(gs, `你来到了「${PLACES[targetId].name}」。`);
+  checkStoryTriggers(gs);
+  return { ok: true };
+}
+function advanceMinutes(gs, minutes, rng = Math.random) {
+  if (!gs || gs.player.dead || minutes <= 0) return;
+  const oldDay = Math.floor(gs.minutes / MIN_PER_DAY);
+  const oldMonth = Math.floor(gs.minutes / (MIN_PER_DAY * 30));
+  gs.minutes += minutes;
+  const newDay = Math.floor(gs.minutes / MIN_PER_DAY);
+  const newMonth = Math.floor(gs.minutes / (MIN_PER_DAY * 30));
+
+  const p = gs.player;
+  const kes = minutes / MIN_PER_KE;
+  const inLodge = gs.location === 'zhulou';
+  const hpRegen = kes * (inLodge ? 1.2 : 0.4);
+  const zyRegen = kes * (0.25 + p.hai * 0.05) * (inLodge ? 1.4 : 1.0);
+  p.hp = Math.min(p.hpMax, Number((p.hp + hpRegen).toFixed(2)));
+  p.zy = Math.min(p.zyMax, Number((p.zy + zyRegen).toFixed(2)));
+
+  // 轻挂机修为缓涨（竹楼或正常时辰自然温养）
+  if (p.xiao < 3) {
+    const wineMul = hasGu(gs, 'siwei_jiu') ? 1.45 : (hasGu(gs, 'jiuchong') ? 1.25 : 1.0);
+    const xpGain = kes * (0.22 + p.hai * 0.04) * wineMul;
+    p.xp = Number((p.xp + xpGain).toFixed(2));
+  }
+
+  // 跨日结算蛊虫饱食
+  const daysPassed = newDay - oldDay;
+  if (daysPassed > 0) {
+    for (let i = gs.player.gu.length - 1; i >= 0; i--) {
+      const g = gs.player.gu[i];
+      const def = GU_DEFS[g.id];
+      if (!def || !def.food) continue;
+      g.satiety = Math.max(0, g.satiety - daysPassed * 12);
+      if (g.satiety === 0) {
+        addLog(gs, `【饥饿】「${def.name}」腹中空空，气息衰弱，须尽快喂食！`, 'log-warn');
+      }
+    }
+    // 魔道恶名追捕
+    if (p.mo >= 30 && !gs.battle && ['zhulin', 'xuefu', 'langchao', 'zhaimen'].includes(gs.location)) {
+      const cooldown = gs.flags['pursuit_cd'] || 0;
+      if (newDay >= cooldown && rng() < Math.min(0.45, (p.mo - 20) / 140) * (hasGu(gs, 'yinshi') ? 0.55 : 1)) {
+        gs.flags['pursuit_cd'] = newDay + 7;
+        addLog('【追捕】恶名招致正道捕手循迹而来！', 'log-bad');
+        startBattle(gs, p.mo >= 60 ? 'tiexueleng' : 'modao', '正道围捕', rng);
+      }
+    }
+  }
+
+  // 跨月发放学堂/家族月例
+  if (newMonth > oldMonth && gs.flags['kaike']) {
+    const base = { 甲: 18, 乙: 12, 丙: 8, 丁: 5 }[p.grade] || 8;
+    const stipend = base * p.rank;
+    p.yuanshi += stipend;
+    addLog(gs, `【月例】${dayOf(gs.minutes)}日发俸，按${p.grade}等资质与${p.rank}转修为领得元石 +${stipend}。`, 'log-gold');
+  }
+
+  if (p.rank >= 2) gs.flags['open:jiazhuge'] = true;
+  recalcStats(gs);
+  checkStoryTriggers(gs);
+}
+function saveSpringSnapshot(gs) {
+  if (!gs || !hasGu(gs, 'chunqiuchan')) return { ok: false, reason: '尚未持有春秋蝉' };
+  const copy = JSON.parse(JSON.stringify(gs));
+  copy.snapshot = null;
+  copy.battle = null;
+  gs.snapshot = copy;
+  addLog(gs, '【春秋蝉】你于光阴长河留下一道旧影，若此世身殒，可借蝉鸣重返此刻。', 'log-gold');
+  return { ok: true };
+}
+function rewindSpringCicada(gs) {
+  if (!gs || !gs.snapshot) return { ok: false, reason: '未曾留下春秋蝉旧影' };
+  const snap = JSON.parse(JSON.stringify(gs.snapshot));
+  // 消耗春秋蝉
+  const idx = snap.player.gu.findIndex((g) => g.id === 'chunqiuchan');
+  if (idx >= 0) snap.player.gu.splice(idx, 1);
+  snap.snapshot = null;
+  snap.player.dead = false;
+  addLog(snap, '【逆流重开】春秋蝉振翼长鸣，你自死亡前一瞬逆流回到旧影时刻！', 'log-gold');
+  return { ok: true, state: snap };
+}
+
+
+/* === src/core/refine.js === */
+function canStartRefine(gs, recipeId) {
+  const rc = REFINE_RECIPES.find((r) => r.id === recipeId);
+  if (!rc) return { ok: false, reason: '未知蛊方' };
+  if (gs.player.yuanshi < rc.cost) return { ok: false, reason: `元石不足（需 ${rc.cost}）` };
+  if ((gs.player.items[rc.mat] || 0) < 1) return { ok: false, reason: '缺少炼制辅材' };
+  const mainCount = gs.player.gu.filter((g) => g.id === rc.main).length;
+  const auxCount = gs.player.gu.filter((g) => g.id === rc.aux).length;
+  if (rc.main === rc.aux) {
+    if (mainCount < 2) return { ok: false, reason: `需要两只「${GU_DEFS[rc.main].name}」` };
+  } else {
+    if (mainCount < 1 || auxCount < 1) return { ok: false, reason: '缺少所需主蛊或辅蛊' };
+  }
+  return { ok: true, rc };
+}
+function createRefineSession(gs, recipeId) {
+  const chk = canStartRefine(gs, recipeId);
+  if (!chk.ok) return { error: chk.reason };
+  const rc = chk.rc;
+  gs.player.yuanshi -= rc.cost;
+  useItem(gs, rc.mat, 1);
+  return {
+    recipeId: rc.id,
+    outName: GU_DEFS[rc.out].name,
+    round: 1,
+    maxRounds: 3,
+    heat: 50,      // 最佳温区 45~75
+    rateBonus: 0,
+    baseRate: rc.rate,
+    state: 'ongoing', // ongoing | done | aborted
+    success: false,
+    lines: [`地火燃起，投入「${GU_DEFS[rc.main].name}」与辅材，共守三轮火候。`]
+  };
+}
+function stepRefineSession(gs, sess, mode, rng = Math.random) {
+  if (!sess || sess.state !== 'ongoing') return sess;
+  const rc = REFINE_RECIPES.find((r) => r.id === sess.recipeId);
+  if (!rc) return sess;
+
+  if (mode === 'abort') {
+    sess.state = 'aborted';
+    sess.lines.push('你果断撤去地火开炉，主蛊虽未升炼，却安然保住。');
+    addLog(gs, `【停炉】炼制「${sess.outName}」中途撤火，保住了主蛊。`, 'log-warn');
+    return sess;
+  }
+
+  if (mode === 'steady') {
+    sess.heat = Math.max(20, Math.min(90, sess.heat + (rng() * 14 - 5)));
+    sess.rateBonus += 0.05;
+    sess.lines.push(`第 ${sess.round} 轮稳火温养，炉温 ${Math.round(sess.heat)}°（成算 +5%）。`);
+  } else if (mode === 'fierce') {
+    sess.heat += 14 + Math.round(rng() * 14);
+    sess.rateBonus += 0.12;
+    sess.lines.push(`第 ${sess.round} 轮猛火催炼，炉温飙至 ${Math.round(sess.heat)}°（成算 +12%）。`);
+  } else if (mode === 'cool') {
+    sess.heat = Math.max(15, sess.heat - (14 + Math.round(rng() * 10)));
+    sess.rateBonus += 0.04;
+    sess.lines.push(`第 ${sess.round} 轮收火降温，炉温回落至 ${Math.round(sess.heat)}°（成算 +4%）。`);
+  }
+
+  if (sess.heat > 96 || sess.heat < 15) {
+    sess.state = 'done';
+    sess.success = false;
+    const auxInst = gs.player.gu.find((g) => g.id === rc.aux);
+    if (auxInst) removeGuByUid(gs, auxInst.uid);
+    sess.lines.push('炉温失控炸炉！辅蛊损毁，好在保住了主蛊。');
+    addLog(gs, `【炼蛊炸炉】「${sess.outName}」合炼失控，损毁了一只辅蛊。`, 'log-bad');
+    return sess;
+  }
+
+  if (sess.round >= sess.maxRounds) {
+    sess.state = 'done';
+    const sweetBonus = (sess.heat >= 45 && sess.heat <= 75) ? 0.10 : 0;
+    const finalRate = Math.min(0.95, sess.baseRate + sess.rateBonus + sweetBonus);
+    const mainInst = gs.player.gu.find((g) => g.id === rc.main);
+    const auxInst = gs.player.gu.find((g) => g.id === rc.aux && (!mainInst || g.uid !== mainInst.uid));
+    if (mainInst) removeGuByUid(gs, mainInst.uid);
+    if (auxInst) removeGuByUid(gs, auxInst.uid);
+
+    if (rng() < finalRate) {
+      sess.success = true;
+      addGu(gs, rc.out, 100);
+      sess.lines.push(`成算 ${Math.round(finalRate * 100)}% —— 炉盖掀开，一只「${sess.outName}」振翼而出！`);
+      addLog(gs, `【炼蛊大成】成功合炼出「${sess.outName}」！`, 'log-gold');
+    } else {
+      sess.success = false;
+      sess.lines.push(`成算 ${Math.round(finalRate * 100)}% —— 炉中青烟散尽，合炼功亏一篑。`);
+      addLog(gs, `【炼蛊失败】「${sess.outName}」合炼未成。`, 'log-bad');
+    }
+    return sess;
+  }
+
+  sess.round++;
+  return sess;
+}
+
+
+/* === src/core/breakthrough.js === */
+function washMinorWall(gs) {
+  const p = gs.player;
+  if (p.xiao >= 3) return { ok: false, reason: '已至本转巅峰，须破壁冲击大境界' };
+  const needXp = minorXpNeed(p);
+  const needZy = Math.round(p.zyMax * 0.6);
+  if (p.xp < needXp) return { ok: false, reason: `修为不足（需 ${needXp}）` };
+  if (p.zy < needZy) return { ok: false, reason: `真元不足（需 ${needZy}）` };
+  p.xp -= needXp;
+  p.zy -= needZy;
+  p.xiao++;
+  recalcStats(gs);
+  addLog(gs, `【冲刷窍壁】水磨功成，晋入${realmText(p)}！`, 'log-gold');
+  return { ok: true };
+}
+function createBreakSession(gs) {
+  const p = gs.player;
+  if (p.rank >= 4) return { error: '青茅山卷暂止于三/四转' };
+  if (p.xiao < 3) return { error: '须先修至本转巅峰，方可破壁' };
+  if (p.zy < Math.round(p.zyMax * 0.9)) return { error: '真元须温养至九成以上' };
+  const crackMult = Math.min(2.2, 1 + 0.2 * (p.attempts || 0));
+  return {
+    crack: 0,
+    hurt: 0,
+    zy: p.zy,
+    zyMax: p.zyMax,
+    stones: p.yuanshi,
+    stonesUsed: 0,
+    turn: p.rank,
+    wallHeal: p.hai < 4.5 ? 5 : 3,
+    crackMult,
+    steps: 0,
+    state: 'ongoing',
+    lines: [
+      '你盘膝坐定，心神沉入空窍。窍壁薄如晶膜，却坚韧异常。',
+      p.attempts ? `此前冲关 ${p.attempts} 次未成，此番心得令破壁裂痕多 ${Math.round((crackMult - 1) * 100)}%。` : '每次冲关后窍壁都会略微愈合，注意真元与震伤。'
+    ]
+  };
+}
+function stepBreakSession(gs, sess, key, rng = Math.random) {
+  if (!sess || sess.state !== 'ongoing') return sess;
+  sess.steps++;
+  const zyMax = sess.zyMax;
+  const hardNeed = Math.max(1, Math.round(zyMax * 0.55));
+  const softNeed = Math.max(1, Math.round(zyMax * 0.28));
+  const steadyNeed = Math.max(1, Math.round(zyMax * 0.15));
+  const stoneCost = sess.turn * 10;
+  let msg = '';
+
+  if (key === 'hard' || key === 'soft') {
+    const need = key === 'hard' ? hardNeed : softNeed;
+    const spend = Math.min(sess.zy, need);
+    if (spend <= 0) return sess;
+    const base = key === 'hard' ? 40 : 22;
+    const gain = base * (spend / need) * sess.crackMult * (0.9 + rng() * 0.2);
+    const hurtGain = key === 'hard' ? (7 + Math.floor(rng() * 5)) : (2 + Math.floor(rng() * 2));
+    sess.zy = Math.max(0, sess.zy - spend);
+    sess.crack = Math.min(100, sess.crack + gain);
+    sess.hurt = Math.min(100, sess.hurt + hurtGain);
+    msg = `${key === 'hard' ? '强行撞击' : '稳步冲击'}窍壁（真元 -${Math.round(spend)}），裂痕 +${gain.toFixed(1)}%，震伤 +${hurtGain}。`;
+  } else if (key === 'stone') {
+    if (sess.stones < stoneCost || sess.zy >= zyMax) return sess;
+    const zyGain = Math.min(zyMax - sess.zy, Math.max(8, Math.round(zyMax * 0.42)));
+    sess.stones -= stoneCost;
+    sess.stonesUsed += stoneCost;
+    sess.zy += zyGain;
+    msg = `捏碎 ${stoneCost} 块元石，空窍真元恢复 +${Math.round(zyGain)}。`;
+  } else if (key === 'steady') {
+    if (sess.zy < steadyNeed || sess.hurt <= 0) return sess;
+    const heal = Math.min(sess.hurt, 16);
+    sess.zy -= steadyNeed;
+    sess.hurt -= heal;
+    msg = `催动真元温养空窍（真元 -${steadyNeed}），震伤 -${heal}。`;
+  } else if (key === 'stop') {
+    sess.state = 'stopped';
+    gs.player.attempts = (gs.player.attempts || 0) + 1;
+    gs.player.yuanshi = Math.max(0, gs.player.yuanshi - sess.stonesUsed);
+    gs.player.zy = Math.round(sess.zy);
+    sess.lines.push('你主动散去真元退关，此番心得已留存。');
+    addLog(gs, '【退关】破壁暂止，已积攒冲关心得。', 'log-warn');
+    return sess;
+  }
+
+  if (sess.crack >= 100) {
+    sess.crack = 100;
+    sess.state = 'win';
+    gs.player.yuanshi = Math.max(0, gs.player.yuanshi - sess.stonesUsed);
+    gs.player.rank++;
+    gs.player.xiao = 0;
+    gs.player.xp = 0;
+    gs.player.attempts = 0;
+    recalcStats(gs);
+    gs.player.zy = Math.round(gs.player.zyMax * 0.5);
+    if (gs.player.rank >= 2) gs.flags['open:jiazhuge'] = true;
+    sess.lines.push(msg, `轰然一声脆响，窍壁彻底碎裂，你晋入${realmText(gs.player)}！`);
+    addLog(gs, `【破境】成功碎壁，晋入${realmText(gs.player)}！`, 'log-gold');
+    return sess;
+  }
+
+  if (sess.hurt >= 100) {
+    sess.hurt = 100;
+    sess.state = 'lose';
+    gs.player.attempts = (gs.player.attempts || 0) + 1;
+    gs.player.yuanshi = Math.max(0, gs.player.yuanshi - sess.stonesUsed);
+    gs.player.hp = Math.max(5, Math.round(gs.player.hp * 0.5));
+    gs.player.zy = 0;
+    sess.lines.push(msg, '空窍震伤过重，真元反噬，被迫中止冲关！');
+    addLog(gs, '【冲关受挫】震伤过重，退回养伤（已攒下冲关心得）。', 'log-bad');
+    return sess;
+  }
+
+  const healed = Math.min(sess.crack, sess.wallHeal);
+  sess.crack = Math.max(0, sess.crack - healed);
+  sess.zy = Math.min(zyMax, sess.zy + Math.max(2, Math.round(zyMax * 0.06)));
+  sess.lines.push(`${msg} 窍壁自愈 ${healed.toFixed(1)}%。`);
+  if (sess.lines.length > 6) sess.lines = sess.lines.slice(-6);
+  return sess;
+}
+
+
+/* === src/ui/rituals.js === */
+function renderStartScreen(startState) {
+  if (startState.phase === 'kaiqiao') {
+    const step = startState.step;
+    const pct = Math.min(100, Math.round(step / 50 * 100));
+    let beat = '暗河幽蓝，花海深处便是元泉。';
+    if (step >= 45) beat = '腹中光团愈发明亮，元泉近在眼前，岸上屏息以待。';
+    else if (step >= 40) beat = '四十步！岸上鸦雀无声。';
+    else if (step >= 30) beat = '“三十步了……”岸上起了一阵骚动。';
+    else if (step >= 20) beat = '“二十步！”岸上响起一阵低语，双腿愈发沉重。';
+    else if (step >= 10) beat = '有人低声道：“十步了，有资质。”';
+    else if (step >= 1) beat = '微光自花丛升起没入体内，那是希望蛊。';
+
+    const apt = startState.apt;
+    const body = startState.done
+      ? `<div class="card">
+          <h3>开窍落定 · ${esc(startState.name)}</h3>
+          <p><b class="log-gold">${esc(apt.grade)}等资质 · 元海 ${apt.hai} 成</b></p>
+          <p class="muted">${esc(apt.desc)}</p>
+          <button class="primary" data-action="kaiqiaoFinish">踏入古月山寨</button>
+        </div>`
+      : `<div class="row">
+          <button class="gold" data-action="kaiqiaoStep">迈步向前（${step} 步）</button>
+          <button class="ghost" data-action="kaiqiaoSkip">跳过演出</button>
+        </div>`;
+
+    return `<div class="shell" style="padding:20px;justify-content:center">
+      <div class="stage">
+        <div class="stage-loc">南疆 · 青茅山 · 古月山寨地下溶洞</div>
+        <h1>开窍大典</h1>
+        <p class="stage-desc">${esc(beat)}</p>
+        <div class="kv"><span>希望蛊共鸣</span><b>${step} / 50 步</b></div>
+        <div class="bar"><i style="width:${pct}%"></i></div>
+      </div>
+      ${body}
+    </div>`;
+  }
+
+  return `<div class="shell" style="padding:20px;justify-content:center">
+    <div class="stage">
+      <div class="stage-loc">南疆 · 青茅山篇</div>
+      <h1>蛊界</h1>
+      <p class="stage-desc">春雨初歇，青茅山的竹楼还滴着水。今天是古月山寨的开窍大典，也是你踏入蛊师之路的第一天——直至狼潮降临、血海与天鹤决战，走出青茅山。</p>
+      <div class="card">
+        <h3>立命开窍</h3>
+        <div style="margin-bottom:10px">
+          <label class="muted" for="startName">姓名</label>
+          <input id="startName" type="text" maxlength="8" placeholder="输入姓名" value="${esc(startState.name)}">
+        </div>
+        <div class="row">
+          <button class="gold" data-action="startKaiqiao">前往开窍大典</button>
+          ${startState.hasSave ? '<button class="primary" data-action="continueSave">继续上一世</button>' : ''}
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+function renderBreakModal(sess) {
+  const zyPct = Math.min(100, Math.round(sess.zy / Math.max(1, sess.zyMax) * 100));
+  const stoneCost = sess.turn * 10;
+  const hardNeed = Math.max(1, Math.round(sess.zyMax * 0.55));
+  const softNeed = Math.max(1, Math.round(sess.zyMax * 0.28));
+  const steadyNeed = Math.max(1, Math.round(sess.zyMax * 0.15));
+
+  const actions = sess.state === 'ongoing'
+    ? `<div class="row">
+        <button class="blood" ${sess.zy < 1 ? 'disabled' : ''} data-action="breakAct" data-id="hard">强行冲关（-${hardNeed} 真元）</button>
+        <button class="gold" ${sess.zy < 1 ? 'disabled' : ''} data-action="breakAct" data-id="soft">稳步冲关（-${softNeed} 真元）</button>
+        <button ${sess.stones < stoneCost || sess.zy >= sess.zyMax ? 'disabled' : ''} data-action="breakAct" data-id="stone">元石回元（-${stoneCost} 元石）</button>
+        <button class="ghost" ${sess.zy < steadyNeed || sess.hurt <= 0 ? 'disabled' : ''} data-action="breakAct" data-id="steady">温养护窍（-${steadyNeed} 真元）</button>
+        <button class="ghost" data-action="breakAct" data-id="stop">散气退关</button>
+      </div>`
+    : `<button class="primary" data-action="closeModal">收功</button>`;
+
+  return `<h2>破壁冲关 · ${sess.turn}转 → ${sess.turn + 1}转</h2>
+    <div class="muted">第 ${sess.steps} 息 · 窍壁每息愈合 ${sess.wallHeal}%</div>
+    <div class="kv"><span>窍壁裂痕</span><b>${sess.crack.toFixed(1)}%</b></div>
+    <div class="bar"><i style="width:${Math.min(100, Math.round(sess.crack))}%"></i></div>
+    <div class="kv"><span>空窍真元</span><b>${Math.round(sess.zy)} / ${sess.zyMax}（${zyPct}%）</b></div>
+    <div class="kv"><span>空窍震伤</span><b style="color:${sess.hurt >= 70 ? 'var(--blood)' : 'var(--warn)'}">${sess.hurt} / 100</b></div>
+    <div class="kv"><span>元石余额</span><b>${sess.stones}</b></div>
+    <div class="card loglist">${sess.lines.map((l) => `<div>${esc(l)}</div>`).join('')}</div>
+    ${actions}`;
+}
+function renderRefineModal(sess) {
+  const actions = sess.state === 'ongoing'
+    ? `<div class="row">
+        <button class="primary" data-action="refineAct" data-id="steady">稳火温养</button>
+        <button class="blood" data-action="refineAct" data-id="fierce">猛火催炼</button>
+        <button data-action="refineAct" data-id="cool">收火降温</button>
+        <button class="ghost" data-action="refineAct" data-id="abort">停炉保蛊</button>
+      </div>`
+    : `<button class="primary" data-action="closeModal">收炉</button>`;
+
+  return `<h2>开炉炼蛊 · ${esc(sess.outName)}</h2>
+    <div class="muted">第 ${sess.round} / ${sess.maxRounds} 轮 · 最佳火候 45°～75°（过热炸炉）</div>
+    <div class="kv"><span>当前炉温</span><b>${Math.round(sess.heat)}°</b></div>
+    <div class="bar"><i style="width:${Math.min(100, Math.round(sess.heat))}%"></i></div>
+    <div class="kv"><span>额外成算</span><b>+${Math.round(sess.rateBonus * 100)}%</b></div>
+    <div class="card loglist">${sess.lines.map((l) => `<div>${esc(l)}</div>`).join('')}</div>
+    ${actions}`;
+}
+function renderEventModal(eventId) {
+  const ev = STORY_EVENTS.find((e) => e.id === eventId);
+  if (!ev) return '';
+  return `<h2>${esc(ev.title)}</h2>
+    <div class="card" style="white-space:pre-line">${esc(ev.text)}</div>
+    <div class="row">${ev.choices.map((c, idx) => `<button class="primary" data-action="chooseEvent" data-id="${esc(ev.id)}" data-idx="${idx}">${esc(c.text)}</button>`).join('')}</div>`;
+}
+function renderCustomKillerModal(gs, draft) {
+  const guList = gs.player.gu.filter((g) => ['攻击', '防御', '治疗', '增益', '控制'].includes(GU_DEFS[g.id]?.kind));
+  const uniqueIds = [...new Set(guList.map((g) => g.id))];
+  const coreButtons = uniqueIds.map((id) => `<button class="sm ${draft.coreId === id ? 'primary' : ''}" data-action="kmPickCore" data-id="${id}">${esc(GU_DEFS[id].name)}</button>`).join('');
+  const auxButtons = uniqueIds.filter((id) => id !== draft.coreId).map((id) => `<button class="sm ${draft.auxIds.includes(id) ? 'gold' : ''}" data-action="kmToggleAux" data-id="${id}">${esc(GU_DEFS[id].name)}</button>`).join('');
+  return `<h2>自创杀招（二转解锁）</h2>
+    <div class="muted">选定 1 只核心蛊与至多 2 只辅蛊，辅蛊的攻/盾/疗/控效果会融入杀招。当前境界：${esc(realmText(gs.player))}</div>
+    <div><b>核心蛊</b><div class="row" style="margin-top:6px">${coreButtons || '<span class="muted">暂无可用蛊虫</span>'}</div></div>
+    <div><b>辅蛊（已选 ${draft.auxIds.length}/2）</b><div class="row" style="margin-top:6px">${auxButtons || '<span class="muted">暂无其他辅蛊</span>'}</div></div>
+    <div><input id="kmName" type="text" maxlength="10" placeholder="杀招名称（留空自动命名）" value="${esc(draft.name || '')}"></div>
+    <div class="row">
+      <button class="primary" ${draft.coreId ? '' : 'disabled'} data-action="kmCreate">推演成招</button>
+      <button class="ghost" data-action="closeModal">取消</button>
+    </div>`;
+}
+
+
+/* === src/ui/battle-view.js === */
+function renderBattleView(gs) {
+  const b = gs.battle;
+  const p = gs.player;
+  const foe = b.foe;
+  const hpPct = Math.round(p.hp / Math.max(1, p.hpMax) * 100);
+  const zyPct = Math.round(p.zy / Math.max(1, p.zyMax) * 100);
+  const foeHpText = b.scouted ? `${foe.hp} / ${foe.hpMax}` : (foe.hp > foe.hpMax * 0.6 ? '气息强盛' : foe.hp > foe.hpMax * 0.25 ? '已有伤势' : '摇摇欲坠');
+  const intentText = foe.stunned
+    ? '敌方本轮受制，无法出手'
+    : (b.scouted && foe.intent ? `敌方下步：${foe.intent.name}（${foe.intent.kind === 'shield' ? '护盾' : foe.intent.kind === 'heal' ? '疗伤' : `威能约 ${foe.intent.power}`}）` : '敌方意图未明（可用念息蛊探知，或稳扎稳打）');
+
+  const equippedIds = [...new Set(p.equipped.map((uid) => p.gu.find((g) => g.uid === uid)?.id).filter(Boolean))];
+  const guButtons = equippedIds.map((id) => {
+    const def = GU_DEFS[id];
+    const cd = b.cds[id] || 0;
+    const disabled = cd > 0 || p.zy < def.cost;
+    return `<button class="sm" ${disabled ? 'disabled' : ''} data-action="battleAct" data-kind="gu" data-id="${id}">
+      ${esc(def.name)} <span class="muted">${cd > 0 ? `冷却${cd}` : `耗${def.cost}`}</span>
+    </button>`;
+  }).join('');
+
+  const moveButtons = p.moves.map((m) => {
+    const cd = b.cds[m.id] || 0;
+    const disabled = cd > 0 || p.zy < m.cost;
+    return `<button class="sm gold" ${disabled ? 'disabled' : ''} data-action="battleAct" data-kind="move" data-id="${esc(m.id)}">
+      ${esc(m.name)} <span class="muted">${cd > 0 ? `冷却${cd}` : `耗${m.cost}`}</span>
+    </button>`;
+  }).join('');
+
+  const footer = b.state === 'ongoing'
+    ? `<div class="card">
+        <h3>出手抉择</h3>
+        <div class="row" style="margin-bottom:8px">
+          <button class="primary" data-action="battleAct" data-kind="attack">拳脚试探</button>
+          <button ${p.yuanshi < 2 ? 'disabled' : ''} data-action="battleAct" data-kind="stone">碎元石回元（-2元石）</button>
+          ${!b.lethal ? '<button class="blood" data-action="battleAct" data-kind="lethal">下死手</button>' : '<span class="badge blood">死斗中 · 不可逃</span>'}
+          ${!b.lethal ? '<button class="ghost" data-action="battleAct" data-kind="flee">脱身逃走</button>' : ''}
+        </div>
+        ${guButtons ? `<div class="muted" style="margin-bottom:4px">催动蛊虫</div><div class="row" style="margin-bottom:8px">${guButtons}</div>` : ''}
+        ${moveButtons ? `<div class="muted" style="margin-bottom:4px">催动杀招</div><div class="row">${moveButtons}</div>` : ''}
+      </div>`
+    : `<div class="card">
+        <button class="primary" data-action="finishBattle">${b.state === 'win' ? '打扫战场离开' : b.state === 'fled' ? '脱身离开' : '查看结局'}</button>
+      </div>`;
+
+  return `<div class="card">
+      <div class="kv">
+        <strong>${esc(foe.name)} <span class="badge">${foe.rank}转</span></strong>
+        <span>气血：${esc(foeHpText)}${foe.shield > 0 ? ` · 护盾 ${foe.shield}` : ''}</span>
+      </div>
+      <div class="intent-box">${esc(intentText)}</div>
+    </div>
+    <div class="card">
+      <div class="kv"><span>我方气血 <b>${Math.round(p.hp)} / ${p.hpMax}</b></span><span>真元 <b>${Math.round(p.zy)} / ${p.zyMax}</b>${b.meShield ? ` · 护盾 ${b.meShield}` : ''}</span></div>
+      <div class="bar hp" style="margin-bottom:6px"><i style="width:${hpPct}%"></i></div>
+      <div class="bar zy"><i style="width:${zyPct}%"></i></div>
+    </div>
+    ${footer}
+    <div class="card loglist">${b.logs.slice(-10).map((l) => `<div>${esc(l)}</div>`).join('')}</div>`;
+}
+
+
+/* === src/ui/map-view.js === */
+function renderMapPanel(gs, title = '青茅山舆图 · 可去之处') {
+  const moves = placeMoveList(gs);
+  const moveMap = Object.fromEntries(moves.map((m) => [m.id, m]));
+  const visibleIds = Object.keys(PLACES).filter((id) => !PLACES[id].hidden || gs.flags[PLACES[id].hidden]);
+  const drawn = {};
+  let edges = '', nodes = '';
+
+  for (const pid of visibleIds) {
+    const place = PLACES[pid];
+    for (const tid of Object.keys(place.links || {})) {
+      if (!PLACES[tid] || (PLACES[tid].hidden && !gs.flags[PLACES[tid].hidden])) continue;
+      const key = pid < tid ? `${pid}|${tid}` : `${tid}|${pid}`;
+      if (drawn[key]) continue;
+      drawn[key] = true;
+      const target = PLACES[tid];
+      const active = pid === gs.location || tid === gs.location;
+      const other = pid === gs.location ? tid : pid;
+      const cls = active ? (moveMap[other]?.blocked ? 'map-edge is-blocked' : 'map-edge is-active') : 'map-edge';
+      edges += `<line class="${cls}" x1="${place.x}" y1="${place.y}" x2="${target.x}" y2="${target.y}"/>`;
+    }
+
+    const mv = moveMap[pid];
+    const style = `left:${place.x}%;top:${place.y}%`;
+    if (pid === gs.location) {
+      nodes += `<div class="map-node is-here" style="${style}"><b>${esc(place.name)}</b><small>在此</small></div>`;
+    } else if (mv) {
+      nodes += `<button type="button" class="map-node is-move" style="${style}" data-action="walkTo" data-id="${pid}" ${mv.blocked ? 'disabled title="' + esc(mv.blocked) + '"' : ''}>
+        <b>${esc(place.name)}</b><small>${esc(mv.blocked ? '受阻' : formatDuration(mv.minutes))}</small>
+      </button>`;
+    } else {
+      nodes += `<div class="map-node is-far" style="${style}"><b>${esc(place.name)}</b></div>`;
+    }
+  }
+
+  const blockedHints = moves.filter((m) => m.blocked).map((m) => `<div>· ${esc(m.name)}：${esc(m.blocked)}</div>`).join('');
+
+  return `<div class="card">
+    <div class="kv"><h3>${esc(title)}</h3><span class="muted">点击金框相邻地点行脚</span></div>
+    <div class="map-scroll">
+      <div class="map-canvas ${isNight(gs.minutes) ? 'is-night' : ''}">
+        <svg class="map-lines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${edges}</svg>
+        ${nodes}
+      </div>
+    </div>
+    ${blockedHints ? `<div class="muted" style="margin-top:8px;font-size:.82rem">${blockedHints}</div>` : ''}
+  </div>`;
+}
+
+
+/* === src/ui/place-view.js === */
+function renderPlaceView(gs, mode = 'place') {
+  if (mode === 'explore') {
+    const outPlaces = ['zhulin', 'xuefu', 'langchao', 'huajiu'];
+    const cards = outPlaces.filter((id) => !PLACES[id].hidden || gs.flags[PLACES[id].hidden]).map((id) => {
+      const pl = PLACES[id];
+      const cleared = gs.flags[`clear:${id}`];
+      const locked = pl.lock && !gs.flags[pl.lock.flag];
+      return `<div class="card">
+        <div class="kv"><b>${esc(pl.name)}</b><span class="badge ${cleared ? 'jade' : ''}">${cleared ? '已扫清' : locked ? '未开放' : '可历练'}</span></div>
+        <div class="muted" style="margin-bottom:8px">${esc(locked ? pl.lock.msg : pl.day)}</div>
+        ${gs.location === id ? '<span class="badge gold">当前所在</span>' : '<span class="muted">请从下方舆图循路前往</span>'}
+      </div>`;
+    }).join('');
+    return `<div class="grid2">${cards}</div>` + renderMapPanel(gs, '青茅山外 · 历练舆图');
+  }
+
+  const place = PLACES[gs.location] || PLACES.zhulou;
+  const night = isNight(gs.minutes);
+  const actions = [];
+
+  if (place.services.includes('cultivate')) {
+    actions.push('<button class="primary" data-action="placeAct" data-id="meditate">打坐吐纳 · 1 时辰</button>');
+    actions.push('<button data-action="placeAct" data-id="rest">歇息养伤 · 4 时辰</button>');
+    if (gs.player.xiao < 3) actions.push('<button class="gold" data-action="washMinor">冲刷窍壁</button>');
+    else actions.push('<button class="gold" data-action="openBreak">破壁冲关</button>');
+  }
+  if (place.services.includes('xuetang_gu')) {
+    if (!gs.player.benming) actions.push('<button class="gold" data-action="placeAct" data-id="pickBenming">进蛊室领本命蛊（月光蛊）</button>');
+    if (gs.flags['toumin_race'] && gs.player.benming) actions.push('<button class="primary" data-action="checkEvents">向家老交卷夺头名</button>');
+  }
+  if (place.services.includes('practice_caoren')) {
+    actions.push('<button class="gold" data-action="placeAct" data-id="caoren">与草人傀儡对练 · 2 刻</button>');
+    actions.push('<button data-action="placeAct" data-id="sparring">与同窗切磋（古月方正）</button>');
+  }
+  if (place.services.includes('heal')) {
+    actions.push('<button data-action="placeAct" data-id="docHeal">药堂疗伤（10 元石回满）</button>');
+  }
+  if (place.services.includes('rumor')) {
+    actions.push('<button class="gold" data-action="placeAct" data-id="rumor">打听后山消息（12 元石）</button>');
+  }
+  if (place.services.includes('refine')) {
+    actions.push('<button class="primary" data-action="navTab" data-tab="refine">开炉炼蛊</button>');
+  }
+  if (place.services.includes('clan_hall')) {
+    actions.push('<button class="gold" data-action="placeAct" data-id="clanGift">接取族中任务 / 领赏</button>');
+  }
+  if (place.services.includes('explore')) {
+    actions.push('<button class="blood" data-action="placeAct" data-id="exploreFight">深入搜山（遭遇战）</button>');
+    if (place.bossEnemy && !gs.flags[`clear:${place.id}`]) {
+      actions.push('<button class="gold" data-action="placeAct" data-id="exploreBoss">直捣兽王巢穴</button>');
+    }
+    actions.push('<button data-action="placeAct" data-id="gather">采集山材 · 1 时辰</button>');
+  }
+  if (place.services.includes('huajiu_explore')) {
+    actions.push('<button class="gold" data-action="placeAct" data-id="huajiuLoot">搜寻花酒行者遗藏</button>');
+  }
+  if (place.id === 'zhaimen' && gs.flags['qingmao_finished']) {
+    actions.push('<button class="gold" data-action="placeAct" data-id="escapeMountain">告别青茅山（卷一通关）</button>');
+  }
+  actions.push('<button class="ghost" data-action="placeAct" data-id="wait">静候 · 1 时辰</button>');
+
+  let shopHtml = '';
+  if (place.shop && place.shop.length) {
+    const closed = night && place.id === 'jucaifang';
+    const rows = place.shop.map((entry) => {
+      const [kind, id] = entry.split(':');
+      const def = kind === 'gu' ? GU_DEFS[id] : ITEMS[id];
+      if (!def) return '';
+      return `<div class="kv">
+        <span><b>${esc(def.name)}</b> <span class="muted">${esc(def.desc)}</span></span>
+        <button class="sm" ${closed || gs.player.yuanshi < def.price ? 'disabled' : ''} data-action="buyItem" data-id="${esc(entry)}">买 · ${def.price}元石</button>
+      </div>`;
+    }).join('');
+    shopHtml = `<div class="card"><h3>${esc(place.name)}货架 ${closed ? '<span class="badge">入夜收摊</span>' : ''}</h3>${rows}</div>`;
+  }
+
+  return `<section class="stage ${night ? 'is-night' : ''}">
+      <div class="stage-loc">${esc(formatDateTime(gs.minutes))} · ${esc(place.region)}</div>
+      <h1>${esc(place.name)}</h1>
+      <p class="stage-desc">${esc(night ? place.night : place.day)}</p>
+      <div class="row">${actions.join('')}</div>
+    </section>
+    ${shopHtml}
+    ${renderMapPanel(gs)}`;
+}
+
+
+/* === src/ui/aperture-view.js === */
+function renderApertureView(gs) {
+  const p = gs.player;
+  const needXp = minorXpNeed(p);
+  const xpPct = needXp ? Math.min(100, Math.round(p.xp / needXp * 100)) : 100;
+
+  const chips = p.gu.map((g) => {
+    const def = GU_DEFS[g.id];
+    if (!def) return '';
+    const isBm = p.benming === g.uid;
+    return `<span class="gu-chip ${g.satiety <= 20 ? 'weak' : ''}">${isBm ? '★' : ''}${esc(def.name)} <small>${g.satiety}%</small></span>`;
+  }).join('');
+
+  const guRows = p.gu.map((g) => {
+    const def = GU_DEFS[g.id];
+    if (!def) return '';
+    const eq = p.equipped.includes(g.uid);
+    const isBm = p.benming === g.uid;
+    const isSheli = g.id === 'qingtong_sheli' || g.id === 'chitie_sheli';
+    const foodCount = def.food ? (p.items[def.food] || 0) : 0;
+    return `<div class="card">
+      <div class="kv">
+        <b>${isBm ? '★ ' : ''}${esc(def.name)} <span class="badge">${def.rank}转 · ${esc(def.kind)}</span></b>
+        <span class="muted">饱食 ${g.satiety}%</span>
+      </div>
+      <div class="muted" style="margin-bottom:8px">${esc(def.desc)}</div>
+      <div class="row">
+        ${def.food ? `<button class="sm" ${foodCount <= 0 || g.satiety >= 100 ? 'disabled' : ''} data-action="feedGu" data-id="${g.uid}">喂食(${foodCount})</button>` : ''}
+        ${['攻击', '防御', '治疗', '增益', '控制', '探知', '隐匿'].includes(def.kind) ? `<button class="sm ${eq ? 'primary' : ''}" data-action="toggleEquip" data-id="${g.uid}">${eq ? '已出战' : '设出战'}</button>` : ''}
+        ${isSheli ? `<button class="sm gold" data-action="useSheli" data-id="${g.uid}">炼化破境</button>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  const movesHtml = p.moves.length
+    ? p.moves.map((m) => `<div class="card">
+        <div class="kv"><b>${esc(m.name)}</b><span class="badge gold">${esc(m.kind)} · 耗${m.cost}</span></div>
+        <div class="muted">威能 ${m.power}${m.bonusShield ? ` · 盾+${m.bonusShield}` : ''}${m.bonusHeal ? ` · 疗+${m.bonusHeal}` : ''} · 冷却 ${m.cd}</div>
+      </div>`).join('')
+    : '<div class="muted">尚未创出杀招。</div>';
+
+  return `<div class="aperture-canvas">
+      <div class="kv">
+        <b>${esc(realmText(p))} · ${esc(p.grade)}等资质（元海 ${p.hai} 成）</b>
+        <span>${p.xiao < 3 ? `修为 ${Math.floor(p.xp)} / ${needXp}` : '本转巅峰 · 可破壁'}</span>
+      </div>
+      <div class="aperture-gu-list">${chips || '<span class="muted">空窍尚空</span>'}</div>
+      <div class="bar"><i style="width:${xpPct}%"></i></div>
+    </div>
+    <div class="card">
+      <div class="row">
+        ${p.xiao < 3 ? '<button class="primary" data-action="washMinor">冲刷窍壁</button>' : '<button class="gold" data-action="openBreak">破壁冲关</button>'}
+        <button data-action="feedAll">一键喂饱</button>
+        <button class="gold" ${p.rank >= 2 ? '' : 'disabled'} data-action="openCustomKiller">自创杀招${p.rank < 2 ? '（需二转）' : ''}</button>
+      </div>
+    </div>
+    <div class="card"><h3>杀招</h3><div class="grid2">${movesHtml}</div></div>
+    <div class="card"><h3>蛊囊（${p.gu.length} 只）</h3><div class="grid2">${guRows || '<span class="muted">暂无蛊虫</span>'}</div></div>`;
+}
+
+
+/* === src/ui/refine-view.js === */
+function renderRefineView(gs) {
+  const atForge = gs.location === 'liangu';
+  const cards = REFINE_RECIPES.map((r) => {
+    const chk = canStartRefine(gs, r.id);
+    const out = GU_DEFS[r.out];
+    return `<div class="card">
+      <div class="kv"><b>${esc(out.name)}</b><span class="badge">${out.rank}转 · 基础 ${Math.round(r.rate * 100)}%</span></div>
+      <div class="muted" style="margin-bottom:8px">${esc(r.desc)} · 费用 ${r.cost} 元石</div>
+      <button class="primary" ${!atForge || !chk.ok ? 'disabled' : ''} data-action="startRefine" data-id="${r.id}">
+        ${!atForge ? '须在「炼蛊房」开炉' : chk.ok ? '开炉控火' : esc(chk.reason)}
+      </button>
+    </div>`;
+  }).join('');
+
+  return `<div class="card">
+      <h3>炼蛊房 · 三轮控火</h3>
+      <div class="muted">${atForge ? '地火已备，合炼时需守三轮火候（45°～75°最佳），若觉不稳可中途停炉保住主蛊。' : '请先前往山寨「炼蛊房」再开炉。'}</div>
+    </div>
+    <div class="grid2">${cards}</div>`;
+}
+
+
+/* === src/ui/bag-view.js === */
+function renderBagView(gs, tab) {
+  const p = gs.player;
+  if (tab === 'bag') {
+    const entries = Object.entries(p.items);
+    const rows = entries.map(([id, cnt]) => {
+      const def = ITEMS[id];
+      if (!def) return '';
+      return `<div class="card">
+        <div class="kv"><b>${esc(def.name)} ×${cnt}</b><span class="badge">${esc(def.kind)}</span></div>
+        <div class="muted" style="margin-bottom:6px">${esc(def.desc)}</div>
+        ${def.heal ? `<button class="sm primary" data-action="useHealItem" data-id="${id}">敷药疗伤（+${def.heal}血）</button>` : ''}
+      </div>`;
+    }).join('');
+    const moDesc = p.mo >= 60 ? '正道公敌（铁血冷随时围捕）' : p.mo >= 30 ? '恶名昭彰（魔道捕手巡查）' : '清白';
+    return `<div class="card">
+        <h3>人物档案</h3>
+        <div class="kv"><span>姓名 / 境界</span><b>${esc(p.name)} · ${esc(realmText(p))}</b></div>
+        <div class="kv"><span>资质 / 元海</span><b>${esc(p.grade)}等 · ${p.hai} 成</b></div>
+        <div class="kv"><span>元石 / 恶名</span><b>${p.yuanshi} 元石 · 恶名 ${p.mo}（${moDesc}）</b></div>
+      </div>
+      <div class="card"><h3>行囊物品</h3><div class="grid2">${rows || '<span class="muted">行囊空空如也</span>'}</div></div>`;
+  }
+
+  const hasCicada = hasGu(gs, 'chunqiuchan');
+  return `<div class="card">
+      <h3>春秋蝉与存档</h3>
+      <div class="row" style="margin-bottom:8px">
+        ${hasCicada ? '<button class="gold" data-action="saveCicada">留下春秋蝉旧影</button>' : '<span class="muted">未持有春秋蝉</span>'}
+        ${gs.snapshot ? '<button class="blood" data-action="rewindCicada">催动春秋蝉逆流重来</button>' : ''}
+      </div>
+      <div class="row">
+        <button class="primary" data-action="manualSave">保存进度</button>
+        <button data-action="exportSave">导出存档</button>
+        <button class="blood" data-action="resetGame">重开一世</button>
+      </div>
+    </div>
+    <div class="card">
+      <h3>青茅山行纪</h3>
+      <div class="loglist">${gs.logs.map((l) => `<div class="${esc(l.cls || '')}">[第${l.age || 1}年] ${esc(l.text)}</div>`).join('')}</div>
+    </div>`;
+}
+
+
+/* === src/ui/app.js === */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+let G = null;
+let TAB = 'place';
+let MODAL = null; // { kind: 'break'|'refine'|'killer'|'event'|'dead'|'win', data: ... }
+let START = { phase: 'intro', name: '方源', apt: null, step: 0, target: 25, done: false, hasSave: false };
+let KM_DRAFT = { coreId: '', auxIds: [], name: '' };
+
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+function openModal(kind, data) {
+  MODAL = { kind, data };
+  render();
+}
+
+function closeModal() {
+  MODAL = null;
+  render();
+}
+
+function renderTopBar() {
+  const p = G.player;
+  const hpPct = Math.round(p.hp / Math.max(1, p.hpMax) * 100);
+  const zyPct = Math.round(p.zy / Math.max(1, p.zyMax) * 100);
+  const placeName = PLACES[G.location]?.name || '青茅山';
+  return `<header class="topbar">
+    <div class="top-row">
+      <div class="top-id">
+        <strong>${esc(p.name)}</strong>
+        <span class="badge gold">${esc(realmText(p))}</span>
+        <span class="badge">${esc(placeName)}</span>
+      </div>
+      <div class="clock-box">
+        <span>${esc(formatDateTime(G.minutes))}</span>
+        <button class="sm ghost" data-action="togglePause">${G.paused ? '▶ 继续流逝' : '⏸ 暂停'}</button>
+      </div>
+    </div>
+    <div class="goal-bar"><b>当下目标：</b>${esc(G.goal)}</div>
+    <div class="res-row">
+      <div class="res-item"><div class="res-head"><span>气血</span><span>${Math.round(p.hp)}/${p.hpMax}</span></div><div class="bar hp"><i style="width:${hpPct}%"></i></div></div>
+      <div class="res-item"><div class="res-head"><span>真元</span><span>${Math.round(p.zy)}/${p.zyMax}</span></div><div class="bar zy"><i style="width:${zyPct}%"></i></div></div>
+      <div class="res-item"><div class="res-head"><span>元石</span><span>${p.yuanshi}</span></div><div class="muted" style="font-size:.75rem">${p.mo >= 30 ? `恶名 ${p.mo}` : `${p.grade}等资质`}</div></div>
+    </div>
+  </header>`;
+}
+
+function renderModal() {
+  const modalEl = document.getElementById('modal');
+  const sheetEl = document.getElementById('sheet');
+  if (!modalEl || !sheetEl) return;
+
+  if (G && G.pendingEventId && !G.battle && !MODAL) {
+    sheetEl.innerHTML = renderEventModal(G.pendingEventId);
+    modalEl.hidden = false;
+    return;
+  }
+  if (!MODAL) {
+    modalEl.hidden = true;
+    sheetEl.innerHTML = '';
+    return;
+  }
+  let html = '';
+  if (MODAL.kind === 'break') html = renderBreakModal(MODAL.data);
+  else if (MODAL.kind === 'refine') html = renderRefineModal(MODAL.data);
+  else if (MODAL.kind === 'killer') html = renderCustomKillerModal(G, KM_DRAFT);
+  else if (MODAL.kind === 'dead') {
+    html = `<h2>身殒青茅山</h2>
+      <p>你的修行止步于${esc(realmText(G.player))}。</p>
+      <div class="row">
+        ${G.snapshot ? '<button class="gold" data-action="rewindCicada">催动春秋蝉回到旧影</button>' : ''}
+        <button class="blood" data-action="resetGame">重开一世</button>
+      </div>`;
+  } else if (MODAL.kind === 'win') {
+    html = `<h2>走出青茅山 · 卷一圆满</h2>
+      <p>血海翻涌、仙鹤坠落，你在两位三转强者的死斗边缘活了下来，终于踏出十万大山，走向五域天地！</p>
+      <div class="card">
+        <div class="kv"><span>最终境界</span><b>${esc(realmText(G.player))}</b></div>
+        <div class="kv"><span>持有蛊虫</span><b>${G.player.gu.length} 只</b></div>
+        <div class="kv"><span>剩余元石</span><b>${G.player.yuanshi}</b></div>
+      </div>
+      <div class="row">
+        <button class="primary" data-action="closeModal">继续游历青茅余烬</button>
+        <button class="gold" data-action="resetGame">再开新的一世</button>
+      </div>`;
+  }
+  sheetEl.innerHTML = html;
+  modalEl.hidden = false;
+}
+function render() {
+  const app = document.getElementById('app');
+  if (!app) return;
+  if (!G) {
+    START.hasSave = !!loadGame();
+    app.innerHTML = renderStartScreen(START);
+    renderModal();
+    return;
+  }
+
+  let body = '';
+  if (G.battle) {
+    body = renderBattleView(G);
+  } else if (TAB === 'place') {
+    body = renderPlaceView(G, 'place');
+  } else if (TAB === 'explore') {
+    body = renderPlaceView(G, 'explore');
+  } else if (TAB === 'aperture') {
+    body = renderApertureView(G);
+  } else if (TAB === 'refine') {
+    body = renderRefineView(G);
+  } else {
+    body = renderBagView(G, TAB);
+  }
+
+  const navButtons = [
+    ['place', '据点'], ['explore', '历练'], ['aperture', '空窍'],
+    ['refine', '炼蛊'], ['bag', '行囊'], ['journal', '行纪']
+  ].map(([id, label]) => `<button class="${TAB === id ? 'on' : ''}" data-action="navTab" data-tab="${id}">${label}</button>`).join('');
+
+  app.innerHTML = `<div class="shell">
+    ${renderTopBar()}
+    <main class="main">${body}</main>
+    <nav class="nav">${navButtons}</nav>
+  </div>`;
+  renderModal();
+}
+
+function handlePlaceAction(id) {
+  const p = G.player;
+  if (id === 'meditate') { advanceMinutes(G, 120); addLog(G, '你盘膝打坐一个时辰，吐纳天地灵气。'); }
+  else if (id === 'rest') { advanceMinutes(G, 480); addLog(G, '你在竹楼安歇四个时辰，精神恢复了不少。'); }
+  else if (id === 'wait') { advanceMinutes(G, 120); }
+  else if (id === 'pickBenming') {
+    if (p.benming) return;
+    const inst = addGu(G, 'yueguang', 100);
+    p.benming = inst.uid;
+    addItem(G, 'yuelanhua', 8);
+    addLog(G, '【本命蛊】你在学堂蛊室选定并炼化了「月光蛊」，附赠 8 片月兰花瓣。', 'log-gold');
+    G.goal = G.flags['toumin_race'] ? '赶在三月三日前向家老交卷夺取头名赏' : '前往「演武场」找草人傀儡练手';
+    checkStoryTriggers(G);
+  } else if (id === 'caoren') {
+    advanceMinutes(G, 30);
+    G.flags['practiced'] = true;
+    startBattle(G, 'caoren', '演武场练手');
+  } else if (id === 'sparring') {
+    advanceMinutes(G, 60);
+    startBattle(G, 'fangzheng', '同窗切磋');
+  } else if (id === 'docHeal') {
+    if (p.yuanshi < 10) { showToast('元石不足 10 块'); return; }
+    p.yuanshi -= 10;
+    p.hp = p.hpMax;
+    addLog(G, '你在药堂敷药调理，气血已然回满。', 'log-good');
+  } else if (id === 'rumor') {
+    if (p.yuanshi < 12) { showToast('元石不足 12 块'); return; }
+    p.yuanshi -= 12;
+    advanceMinutes(G, 30);
+    if (!G.flags['clue:huajiu']) {
+      G.flags['clue:huajiu'] = true;
+      addLog(G, '【密闻】酒客低声提起：血蝠洞下游瀑布后，藏着花酒行者的暗涧遗洞，须入夜方可潜入！', 'log-gold');
+    } else {
+      addLog(G, '【传闻】听说山外狼群正在集结，明年夏天怕是要闹狼潮。');
+    }
+  } else if (id === 'clanGift') {
+    if (!G.flags['clan_gift_r2']) {
+      G.flags['clan_gift_r2'] = true;
+      p.yuanshi += 40;
+      addGu(G, 'qingtong_sheli');
+      addLog(G, '【家族赏赐】族长嘉许你晋入二转，赏元石 40、青铜舍利蛊 1 只！', 'log-gold');
+    } else {
+      showToast('族中近来暂无新赏格');
+      return;
+    }
+  } else if (id === 'exploreFight') {
+    const place = PLACES[G.location];
+    advanceMinutes(G, 60);
+    if (!G.battle && place.exploreEnemy) startBattle(G, place.exploreEnemy, `${place.name}遭遇`);
+  } else if (id === 'exploreBoss') {
+    const place = PLACES[G.location];
+    advanceMinutes(G, 60);
+    if (!G.battle && place.bossEnemy) startBattle(G, place.bossEnemy, `讨伐${place.name}`);
+  } else if (id === 'gather') {
+    advanceMinutes(G, 120);
+    const pool = ['yuelanhua', 'shourou', 'fengmi', 'kuangshi', 'yuanshi_zha'];
+    const got = pool[Math.floor(Math.random() * pool.length)];
+    addItem(G, got, 2);
+    addLog(G, `你在山间采集了 2 份「${ITEMS[got].name}」。`, 'log-good');
+  } else if (id === 'huajiuLoot') {
+    if (G.flags['looted:huajiu']) { showToast('遗洞宝藏已被你取空'); return; }
+    G.flags['looted:huajiu'] = true;
+    advanceMinutes(G, 60);
+    p.yuanshi += 45;
+    addGu(G, 'jiuchong', 100);
+    addGu(G, 'chunqiuchan', 100);
+    addItem(G, 'qingzhujiu', 5);
+    addLog(G, '【遗洞奇遇】你在石室酒坛中觅得「酒虫」、45 元石，以及一只气息微弱的「春秋蝉（残）」！', 'log-gold');
+  } else if (id === 'escapeMountain') {
+    p.escapedMountain = true;
+    openModal('win', {});
+  }
+  saveGame(G);
+  render();
+}
+
+function handleAction(el) {
+  const act = el.dataset.action;
+  if (!act) return;
+  const id = el.dataset.id || '';
+
+  if (act === 'startKaiqiao') {
+    const input = document.getElementById('startName');
+    START.name = (input?.value || '').trim() || '方源';
+    START.apt = createAptitude();
+    START.step = 0;
+    START.target = Math.max(10, Math.min(48, Math.round(START.apt.hai * 5)));
+    START.done = false;
+    START.phase = 'kaiqiao';
+    render();
+  } else if (act === 'kaiqiaoStep') {
+    START.step = Math.min(START.target, START.step + 5);
+    if (START.step >= START.target) START.done = true;
+    render();
+  } else if (act === 'kaiqiaoSkip') {
+    START.step = START.target;
+    START.done = true;
+    render();
+  } else if (act === 'kaiqiaoFinish') {
+    G = createNewGame(START.name, START.apt);
+    START.phase = 'intro';
+    TAB = 'place';
+    saveGame(G);
+    render();
+  } else if (act === 'continueSave') {
+    G = loadGame();
+    if (!G) { showToast('未找到可用存档'); return; }
+    TAB = 'place';
+    render();
+  } else if (act === 'navTab') {
+    TAB = el.dataset.tab || 'place';
+    render();
+  } else if (act === 'togglePause') {
+    G.paused = !G.paused;
+    render();
+  } else if (act === 'walkTo') {
+    const res = moveToPlace(G, id);
+    if (!res.ok) showToast(res.reason);
+    saveGame(G);
+    render();
+  } else if (act === 'placeAct') {
+    handlePlaceAction(id);
+  } else if (act === 'buyItem') {
+    const [kind, itemId] = id.split(':');
+    const def = kind === 'gu' ? GU_DEFS[itemId] : ITEMS[itemId];
+    if (!def || G.player.yuanshi < def.price) { showToast('元石不足'); return; }
+    G.player.yuanshi -= def.price;
+    if (kind === 'gu') addGu(G, itemId, 100);
+    else addItem(G, itemId, 1);
+    addLog(G, `购入「${def.name}」（-${def.price} 元石）。`);
+    saveGame(G);
+    render();
+  } else if (act === 'checkEvents') {
+    checkStoryTriggers(G);
+    render();
+  } else if (act === 'chooseEvent') {
+    applyEventChoice(G, id, Number(el.dataset.idx) || 0);
+    saveGame(G);
+    render();
+  } else if (act === 'washMinor') {
+    const res = washMinorWall(G);
+    if (!res.ok) showToast(res.reason);
+    saveGame(G);
+    render();
+  } else if (act === 'openBreak') {
+    const sess = createBreakSession(G);
+    if (sess.error) { showToast(sess.error); return; }
+    openModal('break', sess);
+  } else if (act === 'breakAct' && MODAL?.kind === 'break') {
+    stepBreakSession(G, MODAL.data, id);
+    saveGame(G);
+    render();
+  } else if (act === 'startRefine') {
+    const sess = createRefineSession(G, id);
+    if (sess.error) { showToast(sess.error); return; }
+    openModal('refine', sess);
+  } else if (act === 'refineAct' && MODAL?.kind === 'refine') {
+    stepRefineSession(G, MODAL.data, id);
+    saveGame(G);
+    render();
+  } else if (act === 'openCustomKiller') {
+    KM_DRAFT = { coreId: '', auxIds: [], name: '' };
+    openModal('killer', {});
+  } else if (act === 'kmPickCore') {
+    KM_DRAFT.coreId = id;
+    KM_DRAFT.auxIds = KM_DRAFT.auxIds.filter((x) => x !== id);
+    render();
+  } else if (act === 'kmToggleAux') {
+    const i = KM_DRAFT.auxIds.indexOf(id);
+    if (i >= 0) KM_DRAFT.auxIds.splice(i, 1);
+    else if (KM_DRAFT.auxIds.length < 2) KM_DRAFT.auxIds.push(id);
+    render();
+  } else if (act === 'kmCreate') {
+    const nm = document.getElementById('kmName')?.value || '';
+    const res = createKillerMove(G, KM_DRAFT.coreId, KM_DRAFT.auxIds, nm);
+    if (!res.ok) { showToast(res.reason); return; }
+    closeModal();
+    saveGame(G);
+    render();
+  } else if (act === 'feedGu') {
+    const g = G.player.gu.find((x) => String(x.uid) === id);
+    const def = g && GU_DEFS[g.id];
+    if (!g || !def?.food || !useItem(G, def.food, 1)) return;
+    g.satiety = Math.min(100, g.satiety + 50);
+    saveGame(G);
+    render();
+  } else if (act === 'feedAll') {
+    let fed = 0;
+    for (const g of G.player.gu) {
+      const def = GU_DEFS[g.id];
+      if (def?.food && g.satiety < 85 && useItem(G, def.food, 1)) {
+        g.satiety = Math.min(100, g.satiety + 50);
+        fed++;
+      }
+    }
+    showToast(fed ? `已喂养 ${fed} 只蛊虫` : '无需喂养或口粮不足');
+    saveGame(G);
+    render();
+  } else if (act === 'toggleEquip') {
+    const uid = Number(id);
+    const i = G.player.equipped.indexOf(uid);
+    if (i >= 0) G.player.equipped.splice(i, 1);
+    else if (G.player.equipped.length < 6) G.player.equipped.push(uid);
+    else showToast('至多同时出战 6 只蛊');
+    saveGame(G);
+    render();
+  } else if (act === 'useSheli') {
+    const uid = Number(id);
+    const g = G.player.gu.find((x) => x.uid === uid);
+    if (!g) return;
+    const targetRank = g.id === 'qingtong_sheli' ? 1 : 2;
+    if (G.player.rank !== targetRank || G.player.xiao >= 3) {
+      showToast('仅限对应转数未达巅峰时使用');
+      return;
+    }
+    G.player.gu = G.player.gu.filter((x) => x.uid !== uid);
+    G.player.xiao++;
+    recalcStats(G);
+    addLog(G, `【舍利破境】炼化「${GU_DEFS[g.id].name}」，直接晋入${realmText(G.player)}！`, 'log-gold');
+    saveGame(G);
+    render();
+  } else if (act === 'useHealItem') {
+    const def = ITEMS[id];
+    if (!def?.heal || !useItem(G, id, 1)) return;
+    G.player.hp = Math.min(G.player.hpMax, G.player.hp + def.heal);
+    saveGame(G);
+    render();
+  } else if (act === 'battleAct') {
+    battleAct(G, el.dataset.kind, id);
+    saveGame(G);
+    render();
+  } else if (act === 'finishBattle') {
+    const dead = G.player.dead;
+    G.battle = null;
+    if (dead) openModal('dead', {});
+    else checkStoryTriggers(G);
+    saveGame(G);
+    render();
+  } else if (act === 'saveCicada') {
+    const res = saveSpringSnapshot(G);
+    showToast(res.ok ? '已留下春秋蝉旧影' : res.reason);
+    saveGame(G);
+    render();
+  } else if (act === 'rewindCicada') {
+    const res = rewindSpringCicada(G);
+    if (!res.ok) { showToast(res.reason); return; }
+    G = res.state;
+    closeModal();
+    saveGame(G);
+    render();
+  } else if (act === 'manualSave') {
+    saveGame(G);
+    showToast('进度已保存');
+  } else if (act === 'exportSave') {
+    const text = JSON.stringify(G, null, 2);
+    if (navigator.clipboard) navigator.clipboard.writeText(text).then(() => showToast('存档 JSON 已复制到剪贴板'));
+    else showToast('请从控制台查看存档');
+  } else if (act === 'resetGame') {
+    if (typeof localStorage !== 'undefined') localStorage.removeItem('gujie_qingmaoshan_v1');
+    G = null;
+    MODAL = null;
+    START = { phase: 'intro', name: '方源', apt: null, step: 0, target: 25, done: false, hasSave: false };
+    render();
+  } else if (act === 'closeModal') {
+    closeModal();
+  }
+}
+
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-action]');
+  if (btn) handleAction(btn);
+});
+
+// 轻实时时间流：现实 1 秒 = 游戏 1 刻 (15 分钟)
+setInterval(() => {
+  if (!G || G.paused || G.player.dead || G.battle || G.pendingEventId || MODAL) return;
+  advanceMinutes(G, 15);
+  if (G.player.dead) openModal('dead', {});
+  render();
+}, 1000);
+
+G = loadGame();
+render();
+
+</script>
+</body>
+</html>

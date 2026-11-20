@@ -1,0 +1,91 @@
+import { GU_DEFS, ITEMS } from '../data/gu.js';
+import { PLACES } from '../data/places.js';
+import { formatDateTime, isNight } from '../core/calendar.js';
+import { esc } from '../core/state.js';
+import { renderMapPanel } from './map-view.js';
+
+export function renderPlaceView(gs, mode = 'place') {
+  if (mode === 'explore') {
+    const outPlaces = ['zhulin', 'xuefu', 'langchao', 'huajiu'];
+    const cards = outPlaces.filter((id) => !PLACES[id].hidden || gs.flags[PLACES[id].hidden]).map((id) => {
+      const pl = PLACES[id];
+      const cleared = gs.flags[`clear:${id}`];
+      const locked = pl.lock && !gs.flags[pl.lock.flag];
+      return `<div class="card">
+        <div class="kv"><b>${esc(pl.name)}</b><span class="badge ${cleared ? 'jade' : ''}">${cleared ? '已扫清' : locked ? '未开放' : '可历练'}</span></div>
+        <div class="muted" style="margin-bottom:8px">${esc(locked ? pl.lock.msg : pl.day)}</div>
+        ${gs.location === id ? '<span class="badge gold">当前所在</span>' : '<span class="muted">请从下方舆图循路前往</span>'}
+      </div>`;
+    }).join('');
+    return `<div class="grid2">${cards}</div>` + renderMapPanel(gs, '青茅山外 · 历练舆图');
+  }
+
+  const place = PLACES[gs.location] || PLACES.zhulou;
+  const night = isNight(gs.minutes);
+  const actions = [];
+
+  if (place.services.includes('cultivate')) {
+    actions.push('<button class="primary" data-action="placeAct" data-id="meditate">打坐吐纳 · 1 时辰</button>');
+    actions.push('<button data-action="placeAct" data-id="rest">歇息养伤 · 4 时辰</button>');
+    if (gs.player.xiao < 3) actions.push('<button class="gold" data-action="washMinor">冲刷窍壁</button>');
+    else actions.push('<button class="gold" data-action="openBreak">破壁冲关</button>');
+  }
+  if (place.services.includes('xuetang_gu')) {
+    if (!gs.player.benming) actions.push('<button class="gold" data-action="placeAct" data-id="pickBenming">进蛊室领本命蛊（月光蛊）</button>');
+    if (gs.flags['toumin_race'] && gs.player.benming) actions.push('<button class="primary" data-action="checkEvents">向家老交卷夺头名</button>');
+  }
+  if (place.services.includes('practice_caoren')) {
+    actions.push('<button class="gold" data-action="placeAct" data-id="caoren">与草人傀儡对练 · 2 刻</button>');
+    actions.push('<button data-action="placeAct" data-id="sparring">与同窗切磋（古月方正）</button>');
+  }
+  if (place.services.includes('heal')) {
+    actions.push('<button data-action="placeAct" data-id="docHeal">药堂疗伤（10 元石回满）</button>');
+  }
+  if (place.services.includes('rumor')) {
+    actions.push('<button class="gold" data-action="placeAct" data-id="rumor">打听后山消息（12 元石）</button>');
+  }
+  if (place.services.includes('refine')) {
+    actions.push('<button class="primary" data-action="navTab" data-tab="refine">开炉炼蛊</button>');
+  }
+  if (place.services.includes('clan_hall')) {
+    actions.push('<button class="gold" data-action="placeAct" data-id="clanGift">接取族中任务 / 领赏</button>');
+  }
+  if (place.services.includes('explore')) {
+    actions.push('<button class="blood" data-action="placeAct" data-id="exploreFight">深入搜山（遭遇战）</button>');
+    if (place.bossEnemy && !gs.flags[`clear:${place.id}`]) {
+      actions.push('<button class="gold" data-action="placeAct" data-id="exploreBoss">直捣兽王巢穴</button>');
+    }
+    actions.push('<button data-action="placeAct" data-id="gather">采集山材 · 1 时辰</button>');
+  }
+  if (place.services.includes('huajiu_explore')) {
+    actions.push('<button class="gold" data-action="placeAct" data-id="huajiuLoot">搜寻花酒行者遗藏</button>');
+  }
+  if (place.id === 'zhaimen' && gs.flags['qingmao_finished']) {
+    actions.push('<button class="gold" data-action="placeAct" data-id="escapeMountain">告别青茅山（卷一通关）</button>');
+  }
+  actions.push('<button class="ghost" data-action="placeAct" data-id="wait">静候 · 1 时辰</button>');
+
+  let shopHtml = '';
+  if (place.shop && place.shop.length) {
+    const closed = night && place.id === 'jucaifang';
+    const rows = place.shop.map((entry) => {
+      const [kind, id] = entry.split(':');
+      const def = kind === 'gu' ? GU_DEFS[id] : ITEMS[id];
+      if (!def) return '';
+      return `<div class="kv">
+        <span><b>${esc(def.name)}</b> <span class="muted">${esc(def.desc)}</span></span>
+        <button class="sm" ${closed || gs.player.yuanshi < def.price ? 'disabled' : ''} data-action="buyItem" data-id="${esc(entry)}">买 · ${def.price}元石</button>
+      </div>`;
+    }).join('');
+    shopHtml = `<div class="card"><h3>${esc(place.name)}货架 ${closed ? '<span class="badge">入夜收摊</span>' : ''}</h3>${rows}</div>`;
+  }
+
+  return `<section class="stage ${night ? 'is-night' : ''}">
+      <div class="stage-loc">${esc(formatDateTime(gs.minutes))} · ${esc(place.region)}</div>
+      <h1>${esc(place.name)}</h1>
+      <p class="stage-desc">${esc(night ? place.night : place.day)}</p>
+      <div class="row">${actions.join('')}</div>
+    </section>
+    ${shopHtml}
+    ${renderMapPanel(gs)}`;
+}

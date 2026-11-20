@@ -1,0 +1,159 @@
+import { GU_DEFS } from '../data/gu.js';
+import { makeTime, yearOf } from './calendar.js';
+
+export const SAVE_KEY = 'gujie_qingmaoshan_v1';
+export const RANK_NAMES = ['', '一转', '二转', '三转', '四转'];
+export const XIAO_NAMES = ['初阶', '中阶', '高阶', '巅峰'];
+export const REALM_CAP_NEED = [0, 80, 260, 720];
+
+export function createAptitude(rng = Math.random) {
+  const r = rng();
+  if (r < 0.14) return { grade: '甲', hai: Number((8.0 + rng() * 1.6).toFixed(1)), desc: '甲等资质，元海深厚，族中必定重点栽培。' };
+  if (r < 0.44) return { grade: '乙', hai: Number((6.0 + rng() * 1.9).toFixed(1)), desc: '乙等资质，修行稳健，足可冲击二三转。' };
+  if (r < 0.82) return { grade: '丙', hai: Number((4.0 + rng() * 1.9).toFixed(1)), desc: '丙等资质，元海平平，须靠奇遇与苦修补足。' };
+  return { grade: '丁', hai: Number((2.2 + rng() * 1.6).toFixed(1)), desc: '丁等资质，元海浅薄，每一步都要精打细算。' };
+}
+
+export function createNewGame(name = '无名', apt = null) {
+  const a = apt || createAptitude();
+  const startMin = makeTime(1, 3, 1, 3); // 第一年 三月初一 卯时
+  const state = {
+    v: 1,
+    player: {
+      name: String(name || '无名').trim() || '无名',
+      rank: 1,
+      xiao: 0,
+      grade: a.grade,
+      hai: a.hai,
+      hp: 100,
+      hpMax: 100,
+      zy: 40,
+      zyMax: 40,
+      xp: 0,
+      yuanshi: 12,
+      mo: 0,
+      speed: 8,
+      powerBonus: 0,
+      benming: null,
+      gu: [],
+      equipped: [],
+      moves: [],
+      items: { yuelanhua: 6 },
+      attempts: 0,
+      dead: false,
+      escapedMountain: false
+    },
+    minutes: startMin,
+    startMinutes: startMin,
+    location: 'zhulou',
+    flags: {},
+    goal: '前往「学堂」参加开课，领取你的第一只本命蛊',
+    logs: [
+      { text: `开窍大典落定：测出${a.grade}等资质，元海 ${a.hai} 成。`, cls: 'log-gold' },
+      { text: '你回到竹楼，摸了摸钱袋里的 12 块元石，准备动身去学堂。', cls: '' }
+    ],
+    snapshot: null,
+    battle: null,
+    pendingEventId: 'kaike',
+    paused: false
+  };
+  recalcStats(state);
+  state.player.hp = state.player.hpMax;
+  state.player.zy = state.player.zyMax;
+  return state;
+}
+
+export function recalcStats(gs) {
+  const p = gs.player;
+  const r = p.rank;
+  const x = p.xiao;
+  const haiMul = 0.65 + p.hai * 0.08;
+  const passiveHp = (hasGu(gs, 'heishi') ? 20 : 0) + (hasGu(gs, 'baishi') ? 35 : 0) + (hasGu(gs, 'tongpi') ? 25 : 0);
+  const passivePower = (hasGu(gs, 'heishi') ? 6 : 0) + (hasGu(gs, 'baishi') ? 12 : 0);
+  p.hpMax = Math.round((85 + r * 35 + x * 14) * (1 + (r - 1) * 0.18) + passiveHp);
+  p.zyMax = Math.round((28 + r * 18 + x * 6) * haiMul);
+  p.speed = 6 + r * 3 + x;
+  p.powerBonus = passivePower;
+  p.hp = Math.min(p.hp, p.hpMax);
+  p.zy = Math.min(p.zy, p.zyMax);
+}
+
+export function esc(s) {
+  return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+export function realmText(p) {
+  return `${RANK_NAMES[p.rank] || `${p.rank}转`}${XIAO_NAMES[p.xiao] || '初阶'}`;
+}
+
+export function minorXpNeed(p) {
+  if (p.xiao >= 3) return 0;
+  return Math.round((REALM_CAP_NEED[p.rank] || 700) * (1 + p.xiao * 0.45));
+}
+
+export function addLog(gs, text, cls = '') {
+  gs.logs.unshift({ text, cls, age: yearOf(gs.minutes) });
+  if (gs.logs.length > 80) gs.logs.length = 80;
+}
+
+export function hasGu(gs, id) {
+  return gs.player.gu.some((g) => g.id === id);
+}
+
+export function addGu(gs, id, satiety = 100) {
+  const def = GU_DEFS[id];
+  if (!def) return null;
+  const inst = { uid: Date.now() + Math.floor(Math.random() * 10000), id, satiety };
+  gs.player.gu.push(inst);
+  if (gs.player.equipped.length < 6 && ['攻击', '防御', '治疗', '增益', '控制', '探知', '隐匿'].includes(def.kind)) {
+    gs.player.equipped.push(inst.uid);
+  }
+  recalcStats(gs);
+  return inst;
+}
+
+export function removeGuByUid(gs, uid) {
+  const idx = gs.player.gu.findIndex((g) => g.uid === uid);
+  if (idx < 0) return false;
+  const removed = gs.player.gu.splice(idx, 1)[0];
+  gs.player.equipped = gs.player.equipped.filter((u) => u !== uid);
+  if (gs.player.benming === uid) gs.player.benming = null;
+  recalcStats(gs);
+  return removed;
+}
+
+export function addItem(gs, id, n = 1) {
+  if (!id || n <= 0) return;
+  gs.player.items[id] = (gs.player.items[id] || 0) + n;
+}
+
+export function useItem(gs, id, n = 1) {
+  if ((gs.player.items[id] || 0) < n) return false;
+  gs.player.items[id] -= n;
+  if (gs.player.items[id] <= 0) delete gs.player.items[id];
+  return true;
+}
+
+export function saveGame(gs, storage = typeof localStorage !== 'undefined' ? localStorage : null) {
+  if (!storage || !gs) return false;
+  try {
+    storage.setItem(SAVE_KEY, JSON.stringify(gs));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function loadGame(storage = typeof localStorage !== 'undefined' ? localStorage : null) {
+  if (!storage) return null;
+  try {
+    const raw = storage.getItem(SAVE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || !parsed.player) return null;
+    recalcStats(parsed);
+    return parsed;
+  } catch {
+    return null;
+  }
+}
