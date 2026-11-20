@@ -1075,7 +1075,8 @@ function battleAct(gs, action, arg = '', rng = Math.random) {
     const mul = 1 + (b.meBoost > 0 ? 0.35 : 0);
     if (def.kind === '攻击' || def.kind === '控制') {
       if (b.meBoost > 0) b.meBoost--;
-      const raw = Math.round((def.power + (p.powerBonus || 0) * 0.4) * mul * (0.92 + rng() * 0.16));
+      const strengthBonus = def.school === '力道' ? p.powerBonus * 0.4 : 0;
+      const raw = Math.round((def.power + strengthBonus) * mul * (0.92 + rng() * 0.16));
       const res = dealDamageToFoe(b, raw);
       b.logs.push(`你催动「${def.name}」，${res.absorbed ? `破盾 ${res.absorbed}，` : ''}造成 ${res.dmg} 点伤害。`);
       if (arg === 'xuefu_gu' && res.dmg > 0) {
@@ -1117,7 +1118,8 @@ function battleAct(gs, action, arg = '', rng = Math.random) {
     } else {
       const mul = 1 + (b.meBoost > 0 ? 0.35 : 0);
       if (b.meBoost > 0) b.meBoost--;
-      const raw = Math.round((mv.power + (p.powerBonus || 0) * 0.5) * mul * (0.94 + rng() * 0.14));
+      const strengthBonus = GU_DEFS[mv.coreId]?.school === '力道' ? p.powerBonus * 0.5 : 0;
+      const raw = Math.round((mv.power + strengthBonus) * mul * (0.94 + rng() * 0.14));
       const res = dealDamageToFoe(b, raw);
       b.logs.push(`你催动杀招「${mv.name}」，${res.absorbed ? `破盾 ${res.absorbed}，` : ''}重创 ${foe.name} ${res.dmg} 点！`);
       if (mv.bonusShield) { b.meShield += mv.bonusShield; b.logs.push(`辅蛊护体，附加护盾 +${mv.bonusShield}。`); }

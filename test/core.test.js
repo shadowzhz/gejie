@@ -9,6 +9,25 @@ import { battleAct, startBattle } from '../src/core/combat.js';
 import { createBreakSession, stepBreakSession } from '../src/core/breakthrough.js';
 import { createRefineSession, stepRefineSession } from '../src/core/refine.js';
 
+test('豕蛊加伤只作用于拳脚和力道攻伐', () => {
+  const gs = createNewGame();
+  gs.player.rank = 2;
+  for (const id of ['yueguang', 'heishi', 'baishi']) addGu(gs, id);
+  const moon = createKillerMove(gs, 'yueguang', ['heishi']).move;
+  const strength = createKillerMove(gs, 'heishi', []).move;
+  const damage = (action, id) => {
+    gs.battle = null;
+    gs.player.zy = gs.player.zyMax;
+    const battle = startBattle(gs, 'caoren', '', () => 0.5);
+    battleAct(gs, action, id, () => 0.5);
+    return battle.foe.hpMax - battle.foe.hp;
+  };
+  assert.equal(damage('attack'), 27);
+  assert.equal(damage('gu', 'yueguang'), 18);
+  assert.equal(damage('move', moon.id), Math.round(moon.power * 1.01));
+  assert.equal(damage('move', strength.id), Math.round((strength.power + 9) * 1.01));
+});
+
 test('轻实时时钟推进与头名之争死线截胡', () => {
   const gs = createNewGame('测试者', { grade: '丙', hai: 5.0, desc: '' });
   applyEventChoice(gs, 'kaike', 0);
