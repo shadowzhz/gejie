@@ -32,6 +32,12 @@ export function guEffectText(def) {
 }
 
 export const GU_DEFS = {
+  zhuci: { id: 'zhuci', name: '竹刺蛊', rank: 1, school: '木道', kind: '攻击', cost: 2, cd: 0, power: 14, food: 'yuelanhua', price: 9, desc: '凝出竹刺，催动时消耗的真元较少。' },
+  minghuo: { id: 'minghuo', name: '明火蛊', rank: 1, school: '炎道', kind: '攻击', cost: 6, cd: 2, power: 26, food: 'fengmi', price: 18, desc: '骤然喷出一团明火，焚灼对手。' },
+  zhujia: { id: 'zhujia', name: '竹甲蛊', rank: 1, school: '木道', kind: '防御', cost: 2, cd: 2, power: 13, food: 'yuelanhua', price: 10, desc: '催生一层轻薄的竹甲抵挡攻击。' },
+  luzhu: { id: 'luzhu', name: '露珠蛊', rank: 1, school: '水道', kind: '治疗', cost: 3, cd: 2, power: 14, food: 'yuelanhua', price: 12, desc: '化出一滴清露，即刻缓和伤势。' },
+  yunmu: { id: 'yunmu', name: '云幕蛊', rank: 3, school: '云道', kind: '防御', cost: 12, cd: 2, power: 56, food: 'fengmi', price: 96, desc: '聚起层层云幕，消解来袭的攻势。' },
+  xuanjia: { id: 'xuanjia', name: '玄甲蛊', rank: 4, school: '金道', kind: '防御', cost: 18, cd: 3, power: 82, food: 'fengmi', price: 180, desc: '真元凝成玄甲，可挡重击。' },
   yueguang: { id: 'yueguang', name: '月光蛊', rank: 1, school: '月道', kind: '攻击', cost: 4, cd: 0, power: 18, food: 'yuelanhua', price: 18, desc: '古月一族传承之蛊，催动后掌心发出弯月光刃斩敌。' },
   xiaoguang: { id: 'xiaoguang', name: '小光蛊', rank: 1, school: '光道', kind: '增益', cost: 4, cd: 2, power: 12, food: 'yuelanhua', price: 16, desc: '增强下一次攻伐招式威能 +35%，常作月光蛊合炼辅材。' },
   yuemang: { id: 'yuemang', name: '月芒蛊', rank: 2, school: '月道', kind: '攻击', cost: 8, cd: 1, power: 34, food: 'yuelanhua', price: 45, desc: '二转月道主力攻伐蛊，月芒凝成细线，穿甲破盾之力甚强。' },

@@ -108,6 +108,8 @@ test('破壁冲关、三轮控火炼蛊与春秋蝉回溯', () => {
   assert.ok(createBreakSession(gs).error);
   for (const id of ['yupi', 'bingzhen', 'heishi', 'shipi']) addGu(gs, id);
   gs.player.zy = gs.player.zyMax;
+  assert.match(createBreakSession(gs).error, /2 转蛊虫/);
+  addGu(gs, 'baiyu');
   const brk = createBreakSession(gs);
   assert.ok(!brk.error);
   for (let i = 0; i < 12 && brk.state === 'ongoing'; i++) {
@@ -140,7 +142,7 @@ test('破壁冲关、三轮控火炼蛊与春秋蝉回溯', () => {
   assert.equal(realmText(rw.state.player).includes('转'), true);
 });
 
-test('自动喂蛊消耗口粮，升阶要求不同蛊种，委托只能领赏一次', () => {
+test('自动喂蛊消耗口粮，同种蛊虫计入升阶，委托只能领赏一次', () => {
   const gs = createNewGame();
   const p = gs.player;
   addGu(gs, 'yueguang', 60);
@@ -150,9 +152,10 @@ test('自动喂蛊消耗口粮，升阶要求不同蛊种，委托只能领赏�
   assert.equal(p.items.yuelanhua, 5);
 
   p.xp = 500;
-  addGu(gs, 'yueguang');
+  p.xiao = 2;
+  addGu(gs, 'baiyu');
   assert.equal(washMinorWall(gs).ok, false);
-  addGu(gs, 'yupi');
+  for (let i = 0; i < 3; i++) addGu(gs, 'yueguang');
   const result = washMinorWall(gs);
   assert.equal(result.ok, true);
   assert.match(result.message, /气血上限 .*真元上限 .*身法/);

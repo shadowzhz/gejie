@@ -8,7 +8,7 @@ export const PLACES = {
   },
   shijie: {
     id: 'shijie', name: '寨中石阶', region: '古月山寨', x: 26, y: 46,
-    links: { zhulou: 15, xuetang: 15, yanwu: 15, yaotang: 30, kezhan: 30, jucaifang: 30, renwutang: 30, jiazhuge: 30, zhaimen: 30 },
+    links: { zhulou: 15, xuetang: 15, yanwu: 15, yaotang: 30, kezhan: 30, jucaifang: 30, gupu: 30, renwutang: 30, jiazhuge: 30, zhaimen: 30 },
     day: '青石阶上人来人往，学堂的钟声与坊市的叫卖混在一处。',
     night: '石阶泛着夜露的潮气，家主阁方向亮着几盏高悬的灯笼。',
     services: []
@@ -30,9 +30,9 @@ export const PLACES = {
   yaotang: {
     id: 'yaotang', name: '药堂', region: '古月山寨', x: 10, y: 54,
     links: { shijie: 30 },
-    day: '药堂里弥漫着草药与生机叶的清香，专售疗伤之蛊。',
+    day: '药堂里弥漫着草药的清香，药师正在配制伤药。',
     night: '药堂已落了门栓，只留一扇小窗应对急症。',
-    shop: ['gu:shengjiye', 'gu:jiuyecao', 'gu:yupi', 'item:zhixuegao'],
+    shop: ['item:zhixuegao'],
     services: ['shop', 'heal']
   },
   kezhan: {
@@ -48,8 +48,17 @@ export const PLACES = {
     links: { shijie: 30 },
     day: '货架上堆着月兰花瓣、腌肉、蜂王蜜与各色一转炼材。',
     night: '坊市入夜收摊，伙计正清点白日收来的兽皮与元石。',
-    shop: ['item:yuelanhua', 'item:shourou', 'item:fengmi', 'item:kuangshi', 'item:yuanshi_zha', 'gu:xiaoguang', 'gu:shipi', 'gu:bingzhen'],
+    shop: ['item:yuelanhua', 'item:shourou', 'item:fengmi', 'item:kuangshi', 'item:yuanshi_zha'],
     services: ['shop']
+  },
+  gupu: {
+    id: 'gupu', name: '蛊铺', region: '古月山寨', x: 58, y: 77,
+    links: { shijie: 30 },
+    day: '掌柜将蛊虫分转陈列，蛊方收在柜后的木匣里。',
+    night: '柜台上点着一盏油灯，掌柜仍在照看蛊虫。',
+    shop: ['gu:xiaoguang', 'gu:shipi', 'gu:bingzhen', 'gu:shengjiye', 'gu:yupi', 'gu:xuanfeng', 'gu:jiuchong',
+      'gu:zhuci', 'gu:minghuo', 'gu:zhujia', 'gu:luzhu', 'gu:jiuyecao', 'gu:yunmu', 'gu:xuanjia'],
+    services: ['shop', 'recipes']
   },
   renwutang: {
     id: 'renwutang', name: '任务堂', region: '古月山寨', x: 42, y: 76,

@@ -313,7 +313,7 @@ const PLACES = {
   },
   shijie: {
     id: 'shijie', name: '寨中石阶', region: '古月山寨', x: 26, y: 46,
-    links: { zhulou: 15, xuetang: 15, yanwu: 15, yaotang: 30, kezhan: 30, jucaifang: 30, renwutang: 30, jiazhuge: 30, zhaimen: 30 },
+    links: { zhulou: 15, xuetang: 15, yanwu: 15, yaotang: 30, kezhan: 30, jucaifang: 30, gupu: 30, renwutang: 30, jiazhuge: 30, zhaimen: 30 },
     day: '青石阶上人来人往，学堂的钟声与坊市的叫卖混在一处。',
     night: '石阶泛着夜露的潮气，家主阁方向亮着几盏高悬的灯笼。',
     services: []
@@ -335,9 +335,9 @@ const PLACES = {
   yaotang: {
     id: 'yaotang', name: '药堂', region: '古月山寨', x: 10, y: 54,
     links: { shijie: 30 },
-    day: '药堂里弥漫着草药与生机叶的清香，专售疗伤之蛊。',
+    day: '药堂里弥漫着草药的清香，药师正在配制伤药。',
     night: '药堂已落了门栓，只留一扇小窗应对急症。',
-    shop: ['gu:shengjiye', 'gu:jiuyecao', 'gu:yupi', 'item:zhixuegao'],
+    shop: ['item:zhixuegao'],
     services: ['shop', 'heal']
   },
   kezhan: {
@@ -353,8 +353,17 @@ const PLACES = {
     links: { shijie: 30 },
     day: '货架上堆着月兰花瓣、腌肉、蜂王蜜与各色一转炼材。',
     night: '坊市入夜收摊，伙计正清点白日收来的兽皮与元石。',
-    shop: ['item:yuelanhua', 'item:shourou', 'item:fengmi', 'item:kuangshi', 'item:yuanshi_zha', 'gu:xiaoguang', 'gu:shipi', 'gu:bingzhen'],
+    shop: ['item:yuelanhua', 'item:shourou', 'item:fengmi', 'item:kuangshi', 'item:yuanshi_zha'],
     services: ['shop']
+  },
+  gupu: {
+    id: 'gupu', name: '蛊铺', region: '古月山寨', x: 58, y: 77,
+    links: { shijie: 30 },
+    day: '掌柜将蛊虫分转陈列，蛊方收在柜后的木匣里。',
+    night: '柜台上点着一盏油灯，掌柜仍在照看蛊虫。',
+    shop: ['gu:xiaoguang', 'gu:shipi', 'gu:bingzhen', 'gu:shengjiye', 'gu:yupi', 'gu:xuanfeng', 'gu:jiuchong',
+      'gu:zhuci', 'gu:minghuo', 'gu:zhujia', 'gu:luzhu', 'gu:jiuyecao', 'gu:yunmu', 'gu:xuanjia'],
+    services: ['shop', 'recipes']
   },
   renwutang: {
     id: 'renwutang', name: '任务堂', region: '古月山寨', x: 42, y: 76,
@@ -454,6 +463,12 @@ function guEffectText(def) {
   return `${effect}${extra} · 真元 ${def.cost} · ${wait ? `间隔 ${wait} 回合` : '可连续催动'}`;
 }
 const GU_DEFS = {
+  zhuci: { id: 'zhuci', name: '竹刺蛊', rank: 1, school: '木道', kind: '攻击', cost: 2, cd: 0, power: 14, food: 'yuelanhua', price: 9, desc: '凝出竹刺，催动时消耗的真元较少。' },
+  minghuo: { id: 'minghuo', name: '明火蛊', rank: 1, school: '炎道', kind: '攻击', cost: 6, cd: 2, power: 26, food: 'fengmi', price: 18, desc: '骤然喷出一团明火，焚灼对手。' },
+  zhujia: { id: 'zhujia', name: '竹甲蛊', rank: 1, school: '木道', kind: '防御', cost: 2, cd: 2, power: 13, food: 'yuelanhua', price: 10, desc: '催生一层轻薄的竹甲抵挡攻击。' },
+  luzhu: { id: 'luzhu', name: '露珠蛊', rank: 1, school: '水道', kind: '治疗', cost: 3, cd: 2, power: 14, food: 'yuelanhua', price: 12, desc: '化出一滴清露，即刻缓和伤势。' },
+  yunmu: { id: 'yunmu', name: '云幕蛊', rank: 3, school: '云道', kind: '防御', cost: 12, cd: 2, power: 56, food: 'fengmi', price: 96, desc: '聚起层层云幕，消解来袭的攻势。' },
+  xuanjia: { id: 'xuanjia', name: '玄甲蛊', rank: 4, school: '金道', kind: '防御', cost: 18, cd: 3, power: 82, food: 'fengmi', price: 180, desc: '真元凝成玄甲，可挡重击。' },
   yueguang: { id: 'yueguang', name: '月光蛊', rank: 1, school: '月道', kind: '攻击', cost: 4, cd: 0, power: 18, food: 'yuelanhua', price: 18, desc: '古月一族传承之蛊，催动后掌心发出弯月光刃斩敌。' },
   xiaoguang: { id: 'xiaoguang', name: '小光蛊', rank: 1, school: '光道', kind: '增益', cost: 4, cd: 2, power: 12, food: 'yuelanhua', price: 16, desc: '增强下一次攻伐招式威能 +35%，常作月光蛊合炼辅材。' },
   yuemang: { id: 'yuemang', name: '月芒蛊', rank: 2, school: '月道', kind: '攻击', cost: 8, cd: 1, power: 34, food: 'yuelanhua', price: 45, desc: '二转月道主力攻伐蛊，月芒凝成细线，穿甲破盾之力甚强。' },
@@ -1505,9 +1520,10 @@ function stepRefineSession(gs, sess, mode, rng = Math.random) {
 
 /* === src/core/breakthrough.js === */
 function realmGuRequirement(p) {
-  const need = p.xiao < 3 ? p.xiao + 2 : p.rank + 3;
-  const count = new Set(p.gu.map((g) => g.id)).size;
-  return { need, count, text: `持有不同蛊虫 ${count}/${need} 种` };
+  const rank = p.xiao < 3 ? p.rank : p.rank + 1;
+  const need = p.xiao < 3 ? p.xiao + 2 : 1;
+  const count = p.gu.filter((g) => GU_DEFS[g.id]?.rank === rank).length;
+  return { need, count, text: `持有 ${rank} 转蛊虫 ${count}/${need} 只` };
 }
 function realmGrowthText(before, after) {
   const stats = [['hpMax', '气血上限'], ['zyMax', '真元上限'], ['speed', '身法']];
@@ -1934,7 +1950,7 @@ function renderPlaceView(gs) {
       const def = kind === 'gu' ? GU_DEFS[id] : ITEMS[id];
       if (!def) return '';
       return `<div class="kv">
-        <span><b>${esc(def.name)}</b> <span class="muted">${esc(def.desc)}${kind === "gu" && guEffectText(def) ? `<br>${esc(guEffectText(def))}` : ''}</span></span>
+        <span><b>${esc(def.name)}</b> ${kind === 'gu' ? `<span class="badge">${def.rank}转</span>` : ''} <span class="muted">${esc(def.desc)}${kind === "gu" && guEffectText(def) ? `<br>${esc(guEffectText(def))}` : ''}</span></span>
         <button class="sm" ${closed || gs.player.yuanshi < def.price ? 'disabled' : ''} data-action="buyItem" data-id="${esc(entry)}">买 · ${def.price}元石</button>
       </div>`;
     }).join('');
@@ -1957,10 +1973,11 @@ function renderPlaceView(gs) {
         </button></div>`;
     }).join('')}</div>` : ''}
     ${shopHtml}
-    ${place.id === 'jucaifang' ? `<div class="card"><h3>蛊方</h3>${REFINE_RECIPES.map((r) => {
+    ${place.services.includes('recipes') ? `<div class="card"><h3>蛊方</h3>${REFINE_RECIPES.map((r) => {
       const owned = gs.player.recipes?.includes(r.id);
-      return `<div class="kv"><span>${esc(r.desc)}</span>
-        <button class="sm" ${owned || night || gs.player.yuanshi < r.price ? 'disabled' : ''} data-action="buyRecipe" data-id="${r.id}">${owned ? '已习得' : `买 · ${r.price} 元石`}</button></div>`;
+      const out = GU_DEFS[r.out];
+      return `<div class="kv"><span>${esc(out.name)}蛊方 · ${out.rank}转</span>
+        <button class="sm" ${owned || gs.player.yuanshi < r.price ? 'disabled' : ''} data-action="buyRecipe" data-id="${r.id}">${owned ? '已习得' : `买 · ${r.price} 元石`}</button></div>`;
     }).join('')}</div>` : ''}
     ${renderMapPanel(gs)}`;
 }
@@ -2016,7 +2033,7 @@ function renderApertureView(gs) {
       <div class="bar"><i style="width:${xpPct}%"></i></div>
     </div>
     <div class="card">
-      <div class="muted">${esc(realmGuRequirement(p).text)}</div>
+      <div class="muted">${p.rank >= 4 && p.xiao >= 3 ? '已达本卷境界上限' : esc(realmGuRequirement(p).text)}</div>
       <div class="row">
         ${p.xiao < 3 ? '<button class="primary" data-action="washMinor">冲刷窍壁</button>' : '<button class="gold" data-action="openBreak">破壁冲关</button>'}
         <button data-action="feedAll">一键喂饱</button>
@@ -2051,7 +2068,7 @@ function renderRefineView(gs) {
 
   return `<div class="card">
       <h3>合炼 · 三轮控火</h3>
-      <div class="muted">${cards ? "合炼需守三轮火候（45°～75°最佳）。" : "尚未习得蛊方，可前往聚财坊购买。"}</div>
+      <div class="muted">${cards ? "合炼需守三轮火候（45°～75°最佳）。" : "尚未习得蛊方，可前往蛊铺购买。"}</div>
     </div>
     <div class="grid2">${cards}</div>`;
 }
@@ -2370,13 +2387,15 @@ function handleAction(el) {
   } else if (act === 'buyRecipe') {
     const recipe = REFINE_RECIPES.find((r) => r.id === id);
     const p = G.player;
-    if (G.location !== 'jucaifang' || isNight(G.minutes) || !recipe || p.recipes?.includes(id) || p.yuanshi < recipe.price) return;
+    if (!PLACES[G.location]?.services.includes('recipes') || !recipe || p.recipes?.includes(id) || p.yuanshi < recipe.price) return;
     p.yuanshi -= recipe.price;
     (p.recipes ??= []).push(id);
     addLog(G, `【蛊方】习得「${GU_DEFS[recipe.out].name}」蛊方。`, 'log-gold');
     saveGame(G);
     render();
   } else if (act === 'buyItem') {
+    const place = PLACES[G.location];
+    if (!place?.shop?.includes(id) || (place.id === 'jucaifang' && isNight(G.minutes))) return;
     const [kind, itemId] = id.split(':');
     const def = kind === 'gu' ? GU_DEFS[itemId] : ITEMS[itemId];
     if (!def || G.player.yuanshi < def.price) { showToast('元石不足'); return; }

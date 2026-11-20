@@ -268,13 +268,15 @@ function handleAction(el) {
   } else if (act === 'buyRecipe') {
     const recipe = REFINE_RECIPES.find((r) => r.id === id);
     const p = G.player;
-    if (G.location !== 'jucaifang' || isNight(G.minutes) || !recipe || p.recipes?.includes(id) || p.yuanshi < recipe.price) return;
+    if (!PLACES[G.location]?.services.includes('recipes') || !recipe || p.recipes?.includes(id) || p.yuanshi < recipe.price) return;
     p.yuanshi -= recipe.price;
     (p.recipes ??= []).push(id);
     addLog(G, `【蛊方】习得「${GU_DEFS[recipe.out].name}」蛊方。`, 'log-gold');
     saveGame(G);
     render();
   } else if (act === 'buyItem') {
+    const place = PLACES[G.location];
+    if (!place?.shop?.includes(id) || (place.id === 'jucaifang' && isNight(G.minutes))) return;
     const [kind, itemId] = id.split(':');
     const def = kind === 'gu' ? GU_DEFS[itemId] : ITEMS[itemId];
     if (!def || G.player.yuanshi < def.price) { showToast('元石不足'); return; }

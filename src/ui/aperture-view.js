@@ -52,7 +52,7 @@ export function renderApertureView(gs) {
       <div class="bar"><i style="width:${xpPct}%"></i></div>
     </div>
     <div class="card">
-      <div class="muted">${esc(realmGuRequirement(p).text)}</div>
+      <div class="muted">${p.rank >= 4 && p.xiao >= 3 ? '已达本卷境界上限' : esc(realmGuRequirement(p).text)}</div>
       <div class="row">
         ${p.xiao < 3 ? '<button class="primary" data-action="washMinor">冲刷窍壁</button>' : '<button class="gold" data-action="openBreak">破壁冲关</button>'}
         <button data-action="feedAll">一键喂饱</button>

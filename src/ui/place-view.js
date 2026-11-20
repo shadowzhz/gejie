@@ -59,7 +59,7 @@ export function renderPlaceView(gs) {
       const def = kind === 'gu' ? GU_DEFS[id] : ITEMS[id];
       if (!def) return '';
       return `<div class="kv">
-        <span><b>${esc(def.name)}</b> <span class="muted">${esc(def.desc)}${kind === "gu" && guEffectText(def) ? `<br>${esc(guEffectText(def))}` : ''}</span></span>
+        <span><b>${esc(def.name)}</b> ${kind === 'gu' ? `<span class="badge">${def.rank}转</span>` : ''} <span class="muted">${esc(def.desc)}${kind === "gu" && guEffectText(def) ? `<br>${esc(guEffectText(def))}` : ''}</span></span>
         <button class="sm" ${closed || gs.player.yuanshi < def.price ? 'disabled' : ''} data-action="buyItem" data-id="${esc(entry)}">买 · ${def.price}元石</button>
       </div>`;
     }).join('');
@@ -82,10 +82,11 @@ export function renderPlaceView(gs) {
         </button></div>`;
     }).join('')}</div>` : ''}
     ${shopHtml}
-    ${place.id === 'jucaifang' ? `<div class="card"><h3>蛊方</h3>${REFINE_RECIPES.map((r) => {
+    ${place.services.includes('recipes') ? `<div class="card"><h3>蛊方</h3>${REFINE_RECIPES.map((r) => {
       const owned = gs.player.recipes?.includes(r.id);
-      return `<div class="kv"><span>${esc(r.desc)}</span>
-        <button class="sm" ${owned || night || gs.player.yuanshi < r.price ? 'disabled' : ''} data-action="buyRecipe" data-id="${r.id}">${owned ? '已习得' : `买 · ${r.price} 元石`}</button></div>`;
+      const out = GU_DEFS[r.out];
+      return `<div class="kv"><span>${esc(out.name)}蛊方 · ${out.rank}转</span>
+        <button class="sm" ${owned || gs.player.yuanshi < r.price ? 'disabled' : ''} data-action="buyRecipe" data-id="${r.id}">${owned ? '已习得' : `买 · ${r.price} 元石`}</button></div>`;
     }).join('')}</div>` : ''}
     ${renderMapPanel(gs)}`;
 }

@@ -1,9 +1,11 @@
+import { GU_DEFS } from '../data/gu.js';
 import { addLog, minorXpNeed, realmText, recalcStats } from './state.js';
 
 export function realmGuRequirement(p) {
-  const need = p.xiao < 3 ? p.xiao + 2 : p.rank + 3;
-  const count = new Set(p.gu.map((g) => g.id)).size;
-  return { need, count, text: `持有不同蛊虫 ${count}/${need} 种` };
+  const rank = p.xiao < 3 ? p.rank : p.rank + 1;
+  const need = p.xiao < 3 ? p.xiao + 2 : 1;
+  const count = p.gu.filter((g) => GU_DEFS[g.id]?.rank === rank).length;
+  return { need, count, text: `持有 ${rank} 转蛊虫 ${count}/${need} 只` };
 }
 
 export function realmGrowthText(before, after) {

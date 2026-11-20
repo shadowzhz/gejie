@@ -17,7 +17,7 @@ export function renderRefineView(gs) {
 
   return `<div class="card">
       <h3>合炼 · 三轮控火</h3>
-      <div class="muted">${cards ? "合炼需守三轮火候（45°～75°最佳）。" : "尚未习得蛊方，可前往聚财坊购买。"}</div>
+      <div class="muted">${cards ? "合炼需守三轮火候（45°～75°最佳）。" : "尚未习得蛊方，可前往蛊铺购买。"}</div>
     </div>
     <div class="grid2">${cards}</div>`;
 }
