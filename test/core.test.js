@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createNewGame, addGu, BENMING_ZY_COST, claimBenming, handleQuest, refineBenming, realmText, recordQuestVictory, useHealItem, useWhiteBoarGu } from '../src/core/state.js';
+import { createNewGame, addGu, BENMING_ZY_COST, claimBenming, handleQuest, questBoard, refineBenming, realmText, recordQuestProgress, useHealItem, useWhiteBoarGu } from '../src/core/state.js';
 import { placeShopEntries } from '../src/data/places.js';
 import { advanceMinutes, moveToPlace, rewindSpringCicada, saveSpringSnapshot } from '../src/core/clock.js';
 import { makeTime } from '../src/core/calendar.js';
@@ -107,18 +107,67 @@ test('月光蛊须消耗真元手动炼化，炼化后才能交卷', () => {
   assert.equal(checkStoryTriggers(gs, 'toumin_win')?.id, 'toumin_win');
 });
 
-test('舆图门禁与隐藏遗洞解锁', () => {
+test('任意已开放据点可直达，按最短路线推进时间', () => {
   const gs = createNewGame('行脚者');
   applyEventChoice(gs, 'kaike', 0);
-  moveToPlace(gs, 'shijie');
-  moveToPlace(gs, 'zhaimen');
+  const start = gs.minutes;
+  assert.equal(moveToPlace(gs, 'gupu').ok, true);
+  assert.equal(gs.location, 'gupu');
+  assert.equal(gs.minutes - start, 45);
   const blocked = moveToPlace(gs, 'zhulin');
   assert.equal(blocked.ok, false);
+  assert.equal(gs.minutes - start, 45);
 
   gs.flags.practiced = true;
   const ok = moveToPlace(gs, 'zhulin');
   assert.equal(ok.ok, true);
   assert.equal(gs.location, 'zhulin');
+  assert.equal(gs.minutes - start, 150);
+
+  assert.equal(moveToPlace(gs, 'huajiu').ok, false);
+  gs.flags['clue:huajiu'] = true;
+  gs.minutes = makeTime(1, 3, 1, 6);
+  assert.equal(moveToPlace(gs, 'huajiu').ok, true);
+  assert.equal(gs.location, 'huajiu');
+  assert.equal(gs.minutes - makeTime(1, 3, 1, 6), 150);
+});
+
+test('任务堂每三日轮换，已接委托可继续完成和领赏', () => {
+  const gs = createNewGame();
+  applyEventChoice(gs, 'kaike', 0);
+  gs.location = 'renwutang';
+  const stones = gs.player.yuanshi;
+  handleQuest(gs, 'yehua');
+  handleQuest(gs, 'yehua');
+  handleQuest(gs, 'yehua');
+  assert.equal(gs.player.items.yuelanhua, 3);
+  assert.equal(gs.player.yuanshi, stones + 9);
+
+  handleQuest(gs, 'xuetang_visit');
+  gs.minutes = makeTime(1, 3, 4);
+  const next = questBoard(gs).entries;
+  assert.ok(next.some((q) => q.id === 'zhulin_gather'));
+  assert.ok(next.some((q) => q.id === 'xuetang_visit' && q.accepted));
+  assert.ok(!next.some((q) => q.id === 'caoren'));
+  handleQuest(gs, 'caoren');
+  assert.equal(gs.player.quests.caoren, undefined);
+
+  handleQuest(gs, 'zhulin_gather');
+  recordQuestProgress(gs, 'gather', 'xuefu');
+  recordQuestProgress(gs, 'gather', 'zhulin');
+  assert.equal(gs.player.quests.zhulin_gather.progress, 1);
+  recordQuestProgress(gs, 'gather', 'zhulin');
+  moveToPlace(gs, 'xuetang');
+  moveToPlace(gs, 'renwutang');
+  handleQuest(gs, 'xuetang_visit');
+  handleQuest(gs, 'zhulin_gather');
+  assert.equal(gs.player.yuanshi, stones + 23);
+
+  gs.minutes = makeTime(1, 3, 10);
+  handleQuest(gs, 'yehua');
+  handleQuest(gs, 'yehua');
+  assert.equal(gs.player.yuanshi, stones + 32);
+  assert.equal(gs.player.items.yuelanhua, undefined);
 });
 
 test('二转自创杀招与常规战斗回合', () => {
@@ -243,11 +292,11 @@ test('自动喂蛊消耗口粮，同种蛊虫计入升阶，委托只能领赏�
 
   gs.location = 'renwutang';
   const stones = p.yuanshi;
-  recordQuestVictory(gs, 'caoren');
+  recordQuestProgress(gs, 'victory', 'caoren');
   handleQuest(gs, 'caoren');
   handleQuest(gs, 'caoren');
   assert.equal(p.yuanshi, stones);
-  recordQuestVictory(gs, 'caoren');
+  recordQuestProgress(gs, 'victory', 'caoren');
   handleQuest(gs, 'caoren');
   handleQuest(gs, 'caoren');
   assert.equal(p.yuanshi, stones + 8);

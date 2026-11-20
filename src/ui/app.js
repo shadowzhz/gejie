@@ -1,11 +1,11 @@
 import { GU_DEFS, ITEMS, REFINE_RECIPES } from '../data/gu.js';
 import { hasPlaceActions, placeShopEntries, PLACES } from '../data/places.js';
-import { formatDateTime } from '../core/calendar.js';
-import { addGu, addItem, addLog, claimBenming, createAptitude, createNewGame, esc, feedGu, handleQuest, loadGame, realmText, recalcStats, refineBenming, saveGame, useHealItem, useWhiteBoarGu } from '../core/state.js';
+import { formatDateTime, formatDuration } from '../core/calendar.js';
+import { addGu, addItem, addLog, claimBenming, createAptitude, createNewGame, esc, feedGu, handleQuest, loadGame, realmText, recalcStats, recordQuestProgress, refineBenming, saveGame, useHealItem, useWhiteBoarGu } from '../core/state.js';
 import { createKillerMove } from '../core/killer.js';
 import { battleAct, startBattle } from '../core/combat.js';
 import { applyEventChoice, checkStoryTriggers } from '../core/story-engine.js';
-import { advanceMinutes, moveToPlace, rewindSpringCicada, saveSpringSnapshot } from '../core/clock.js';
+import { advanceMinutes, moveToPlace, placeMoveList, rewindSpringCicada, saveSpringSnapshot } from '../core/clock.js';
 import { createRefineSession, stepRefineSession } from '../core/refine.js';
 import { createBreakSession, realmGrowthText, realmGuRequirement, stepBreakSession, washMinorWall } from '../core/breakthrough.js';
 import { renderBreakModal, renderCustomKillerModal, renderEventModal, renderRefineModal, renderStartScreen } from './rituals.js';
@@ -92,7 +92,14 @@ function renderModal() {
   }
   let html = '';
   if (MODAL.kind === 'place') {
-    html = `<div class="place-sheet-controls"><button class="sm" data-action="closeModal">返回地图</button></div>${renderPlaceView(G)}`;
+    const routes = placeMoveList(G).filter((route) => !route.blocked);
+    const travel = routes.length ? `
+      <select id="place-destination" aria-label="行脚目的地">
+        <option value="">选择目的地</option>
+        ${routes.map((route) => `<option value="${esc(route.id)}">${esc(route.name)} · ${formatDuration(route.minutes)}</option>`).join('')}
+      </select>
+      <button class="sm" data-action="walkTo">前往</button>` : '';
+    html = `<div class="place-sheet-controls">${travel}<button class="sm" data-action="closeModal">返回地图</button></div>${renderPlaceView(G)}`;
   } else if (MODAL.kind === 'break') html = renderBreakModal(MODAL.data);
   else if (MODAL.kind === 'refine') html = renderRefineModal(MODAL.data);
   else if (MODAL.kind === 'killer') html = renderCustomKillerModal(G, KM_DRAFT);
@@ -162,7 +169,6 @@ function handlePlaceAction(id) {
   const p = G.player;
   if (id === 'meditate') { advanceMinutes(G, 120); addLog(G, '你盘膝打坐一个时辰，吐纳天地灵气。'); }
   else if (id === 'rest') { advanceMinutes(G, 480); addLog(G, '你在竹楼安歇四个时辰，精神恢复了不少。'); }
-  else if (id === 'wait') { advanceMinutes(G, 120); }
   else if (id === 'pickBenming') {
     claimBenming(G);
   } else if (id === 'caoren') {
@@ -183,7 +189,7 @@ function handlePlaceAction(id) {
     advanceMinutes(G, 30);
     if (!G.flags['clue:huajiu']) {
       G.flags['clue:huajiu'] = true;
-      addLog(G, '【密闻】酒客低声提起：血蝠洞下游瀑布后，藏着花酒行者的暗涧遗洞，须入夜方可潜入！', 'log-gold');
+      addLog(G, '【密闻】酒客低声提起：血蝠洞下游瀑布后，藏着花酒行者的暗涧遗洞。', 'log-gold');
     } else {
       addLog(G, '【传闻】听说山外狼群正在集结，明年夏天怕是要闹狼潮。');
     }
@@ -211,6 +217,7 @@ function handlePlaceAction(id) {
     const pool = ['yuelanhua', 'shourou', 'fengmi', 'kuangshi', 'yuanshi_zha'];
     const got = pool[Math.floor(Math.random() * pool.length)];
     addItem(G, got, 2);
+    recordQuestProgress(G, 'gather', G.location);
     addLog(G, `你在山间采集了 2 份「${ITEMS[got].name}」。`, 'log-good');
   } else if (id === 'huajiuLoot') {
     if (G.flags['looted:huajiu']) { showToast('遗洞宝藏已被你取空'); return; }
@@ -273,9 +280,15 @@ function handleAction(el) {
     G.paused = !G.paused;
     render();
   } else if (act === 'walkTo') {
-    const res = moveToPlace(G, id);
+    const destination = id || document.getElementById('place-destination')?.value;
+    if (!destination) return;
+    const res = moveToPlace(G, destination);
     if (!res.ok) showToast(res.reason);
-    else if (G.location === id && !G.battle && !G.player.dead && hasPlaceActions(G)) MODAL = { kind: 'place' };
+    else if (G.location === destination) {
+      MODAL = hasPlaceActions(G) ? { kind: 'place' } : null;
+      const sheet = document.getElementById('sheet');
+      if (sheet) sheet.scrollTop = 0;
+    }
     saveGame(G);
     render();
   } else if (act === 'openPlace') {

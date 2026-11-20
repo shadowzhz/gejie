@@ -264,6 +264,17 @@ button.sm { min-height: 32px; padding: 4px 10px; font-size: .85rem; }
   z-index: 1;
   display: flex;
   justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.place-sheet-controls select {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 4px 8px;
+  background: var(--card);
+  color: inherit;
+  font: inherit;
 }
 .toast {
   position: fixed;
@@ -435,8 +446,7 @@ const PLACES = {
     id: 'huajiu', name: '暗涧遗洞', region: '青茅山外', x: 90, y: 80,
     links: { xuefu: 45 },
     hidden: 'clue:huajiu',
-    nightOnly: '遗洞入口隐在瀑布暗流之后，须入夜避开山寨耳目方可潜入。',
-    day: '山涧水声轰鸣，日光下看不出任何异样。',
+    day: '山涧水声轰鸣，循着线索便能找到水帘后隐蔽的入口。',
     night: '水帘后隐约透出一线微光，石壁上刻着花酒行者的遗言。',
     services: ['huajiu_explore']
   }
@@ -758,30 +768,72 @@ function parseTimeExpr(str) {
 
 
 /* === src/core/state.js === */
-const QUESTS = [
-  { id: 'caoren', name: '演武考核', desc: '领取后在演武场击败草人 1 次', target: 1, reward: 8 },
-  { id: 'yezhu', name: '竹林清患', desc: '领取后在月下竹林击败野猪 2 次', target: 2, reward: 14 }
+
+
+
+const QUEST_ROTATIONS = [
+  [
+    { id: 'caoren', name: '演武考核', desc: '击败演武草人 1 次', action: 'victory', subject: 'caoren', target: 1, reward: 8 },
+    { id: 'yehua', name: '补充蛊粮', desc: '交付月兰花瓣 3 份', action: 'deliver', subject: 'yuelanhua', target: 3, reward: 9 },
+    { id: 'xuetang_visit', name: '学堂巡查', desc: '前往学堂巡查 1 次', action: 'visit', subject: 'xuetang', target: 1, reward: 4 }
+  ],
+  [
+    { id: 'yezhu', name: '竹林清患', desc: '击败铁鬃野猪 2 次', action: 'victory', subject: 'yezhu', target: 2, reward: 14 },
+    { id: 'zhulin_gather', name: '竹林寻材', desc: '在月下竹林采集 2 次', action: 'gather', subject: 'zhulin', target: 2, reward: 10 },
+    { id: 'kezhan_visit', name: '客栈传讯', desc: '前往山寨客栈传讯 1 次', action: 'visit', subject: 'kezhan', target: 1, reward: 4 }
+  ],
+  [
+    { id: 'xuefu', name: '驱逐血蝠', desc: '击败赤眼血蝠 1 次', action: 'victory', subject: 'xuefu', target: 1, reward: 12 },
+    { id: 'yaotang_visit', name: '药堂问询', desc: '前往药堂问询 1 次', action: 'visit', subject: 'yaotang', target: 1, reward: 4 },
+    { id: 'rou', name: '补充兽肉', desc: '交付兽肉 2 份', action: 'deliver', subject: 'shourou', target: 2, reward: 10 }
+  ]
 ];
+const QUESTS = QUEST_ROTATIONS.flat();
+const QUEST_ROTATION_MINUTES = 3 * MIN_PER_DAY;
+function questBoard(gs) {
+  const firstDay = Math.floor(gs.startMinutes / MIN_PER_DAY) * MIN_PER_DAY;
+  const elapsed = Math.max(0, gs.minutes - firstDay);
+  const cycle = Math.floor(elapsed / QUEST_ROTATION_MINUTES);
+  const offers = QUEST_ROTATIONS[cycle % QUEST_ROTATIONS.length];
+  const active = QUESTS.filter((q) => {
+    const record = gs.player.quests?.[q.id];
+    return record?.progress !== undefined && record.claimedCycle === undefined && !offers.includes(q);
+  });
+  const entries = [...offers, ...active].map((quest) => {
+    const record = gs.player.quests?.[quest.id];
+    const claimed = record?.claimedCycle === cycle;
+    const accepted = record?.progress !== undefined && record.claimedCycle === undefined;
+    const progress = quest.action === 'deliver'
+      ? Math.min(quest.target, gs.player.items[quest.subject] ?? 0)
+      : record?.progress ?? 0;
+    return { ...quest, accepted, claimed, progress };
+  });
+  return { cycle, entries, remaining: QUEST_ROTATION_MINUTES - elapsed % QUEST_ROTATION_MINUTES };
+}
 function handleQuest(gs, id) {
-  const quest = QUESTS.find((entry) => entry.id === id);
-  if (gs.location !== 'renwutang' || !quest) return;
+  if (gs.location !== 'renwutang') return;
+  const { cycle, entries } = questBoard(gs);
+  const quest = entries.find((entry) => entry.id === id);
+  if (!quest || quest.claimed) return;
   const quests = (gs.player.quests ??= {});
-  const progress = quests[id];
-  if (progress === undefined) {
-    quests[id] = 0;
+  if (!quest.accepted) {
+    quests[id] = { progress: 0 };
     addLog(gs, `【委托】接取「${quest.name}」。`);
-  } else if (progress === quest.target) {
-    quests[id]++;
+  } else if (quest.progress === quest.target) {
+    if (quest.action === 'deliver' && !useItem(gs, quest.subject, quest.target)) return;
+    quests[id].claimedCycle = cycle;
     gs.player.yuanshi += quest.reward;
     addLog(gs, `【委托】交付「${quest.name}」，获得 ${quest.reward} 块元石。`, 'log-gold');
   }
 }
-function recordQuestVictory(gs, id) {
-  const quest = QUESTS.find((entry) => entry.id === id);
-  const quests = gs.player.quests;
-  if (!quest || quests?.[id] === undefined || quests[id] >= quest.target) return;
-  quests[id]++;
-  if (quests[id] === quest.target) addLog(gs, `【委托】「${quest.name}」已完成，可回任务堂交付。`, 'log-good');
+function recordQuestProgress(gs, action, subject) {
+  for (const quest of QUESTS) {
+    if (quest.action !== action || quest.subject !== subject) continue;
+    const record = gs.player.quests?.[quest.id];
+    if (record?.progress === undefined || record.claimedCycle !== undefined || record.progress >= quest.target) continue;
+    record.progress++;
+    if (record.progress === quest.target) addLog(gs, `【委托】「${quest.name}」已完成，可回任务堂交付。`, 'log-good');
+  }
 }
 const SAVE_KEY = 'gujie_qingmaoshan_v1';
 const RANK_NAMES = ['', '一转', '二转', '三转', '四转'];
@@ -1253,7 +1305,7 @@ function battleAct(gs, action, arg = '', rng = Math.random) {
 
   if (foe.hp <= 0) {
     b.state = 'win';
-    recordQuestVictory(gs, foe.id);
+    recordQuestProgress(gs, 'victory', foe.id);
     const rw = foe.reward || {};
     const ys = (rw.yuanshi || 0) + (b.lethal ? 15 : 0);
     if (ys > 0) p.yuanshi += ys;
@@ -1361,21 +1413,31 @@ function applyEventChoice(gs, eventId, choiceIdx) {
 
 /* === src/core/clock.js === */
 function placeMoveList(gs) {
-  const here = PLACES[gs.location];
-  if (!here) return [];
-  const p = gs.player;
-  return Object.entries(here.links || {})
-    .filter(([id]) => {
-      const target = PLACES[id];
-      return target && (!target.hidden || gs.flags[target.hidden]);
-    })
-    .map(([id, minutes]) => {
-      const target = PLACES[id];
-      let blocked = '';
-      if (target.lock && !gs.flags[target.lock.flag]) blocked = target.lock.msg;
-      else if (target.nightOnly && !isNight(gs.minutes + minutes)) blocked = '须入夜后方可潜入';
-      return { id, name: target.name, minutes, blocked };
-    });
+  if (!PLACES[gs.location]) return [];
+  const routes = new Map([[gs.location, { minutes: 0, blocked: '' }]]);
+  const pending = new Set([gs.location]);
+
+  while (pending.size) {
+    const id = [...pending].reduce((nearest, candidate) => (
+      routes.get(candidate).minutes < routes.get(nearest).minutes ? candidate : nearest
+    ));
+    pending.delete(id);
+    const route = routes.get(id);
+    if (route.blocked) continue;
+
+    for (const [next, duration] of Object.entries(PLACES[id].links)) {
+      const target = PLACES[next];
+      if (!target || (target.hidden && !gs.flags[target.hidden])) continue;
+      const minutes = route.minutes + duration;
+      if (minutes >= (routes.get(next)?.minutes ?? Infinity)) continue;
+      const blocked = target.lock && !gs.flags[target.lock.flag] ? target.lock.msg : '';
+      routes.set(next, { minutes, blocked });
+      pending.add(next);
+    }
+  }
+
+  routes.delete(gs.location);
+  return [...routes].map(([id, route]) => ({ id, name: PLACES[id].name, ...route }));
 }
 function moveToPlace(gs, targetId) {
   if (!gs || gs.player.dead || gs.battle) return { ok: false, reason: '当前无法行脚' };
@@ -1386,6 +1448,7 @@ function moveToPlace(gs, targetId) {
   if (gs.player.dead || gs.battle) return { ok: true };
   gs.location = targetId;
   addLog(gs, `你来到了「${PLACES[targetId].name}」。`);
+  recordQuestProgress(gs, 'visit', targetId);
   checkStoryTriggers(gs);
   return { ok: true };
 }
@@ -1438,7 +1501,7 @@ function advanceMinutes(gs, minutes, rng = Math.random) {
       const cooldown = gs.flags['pursuit_cd'] || 0;
       if (newDay >= cooldown && rng() < Math.min(0.45, (p.mo - 20) / 140) * (hasGu(gs, 'yinshi') ? 0.55 : 1)) {
         gs.flags['pursuit_cd'] = newDay + 7;
-        addLog('【追捕】恶名招致正道捕手循迹而来！', 'log-bad');
+        addLog(gs, '【追捕】恶名招致正道捕手循迹而来！', 'log-bad');
         startBattle(gs, p.mo >= 60 ? 'tiexueleng' : 'modao', '正道围捕', rng);
       }
     }
@@ -2005,7 +2068,6 @@ function renderPlaceView(gs) {
   if (place.id === 'zhaimen' && gs.flags['qingmao_finished']) {
     actions.push('<button class="gold" data-action="placeAct" data-id="escapeMountain">告别青茅山（卷一通关）</button>');
   }
-  actions.push('<button class="ghost" data-action="placeAct" data-id="wait">静候 · 1 时辰</button>');
 
   let shopHtml = '';
   const shop = placeShopEntries(gs);
@@ -2022,21 +2084,23 @@ function renderPlaceView(gs) {
     shopHtml = `<div class="card"><h3>${esc(place.name)}货架</h3>${rows}</div>`;
   }
 
+  const board = place.services.includes('quests') ? questBoard(gs) : null;
   return `<section class="stage ${night ? 'is-night' : ''}">
       <div class="stage-loc">${esc(formatDateTime(gs.minutes))} · ${esc(place.region)}</div>
       <h1 id="place-title">${esc(place.name)}</h1>
       <p class="stage-desc">${esc(night ? place.night : place.day)}</p>
       <div class="row">${actions.join('')}</div>
     </section>
-    ${place.services.includes('quests') ? `<div class="card"><h3>族中委托</h3>${QUESTS.map((q) => {
-      const progress = gs.player.quests?.[q.id];
-      const claimed = progress > q.target;
-      return `<div class="kv"><span><b>${esc(q.name)}</b> · ${esc(q.desc)} · 赏 ${q.reward} 元石
-        ${progress === undefined || claimed ? '' : ` · ${progress}/${q.target}`}</span>
-        <button class="sm" ${claimed || progress < q.target ? 'disabled' : ''} data-action="quest" data-id="${q.id}">
-          ${claimed ? '已交付' : progress === undefined ? '接取' : progress === q.target ? '交付领赏' : '进行中'}
-        </button></div>`;
-    }).join('')}</div>` : ''}
+    ${board ? `<div class="card"><h3>族中委托</h3>
+      <div class="muted">下次轮换 · ${esc(formatDateTime(gs.minutes + board.remaining))}</div>
+      ${board.entries.map((q) => {
+        const ready = q.progress === q.target;
+        return `<div class="kv"><span><b>${esc(q.name)}</b> · ${esc(q.desc)} · 赏 ${q.reward} 元石
+          ${q.accepted ? ` · ${q.progress}/${q.target}` : ''}</span>
+          <button class="sm" ${q.claimed || (q.accepted && !ready) ? 'disabled' : ''} data-action="quest" data-id="${q.id}">
+            ${q.claimed ? '已交付' : !q.accepted ? '接取' : ready ? '交付领赏' : '进行中'}
+          </button></div>`;
+      }).join('')}</div>` : ''}
     ${shopHtml}
     ${place.services.includes('recipes') ? `<div class="card"><h3>蛊方</h3>${REFINE_RECIPES.map((r) => {
       const owned = gs.player.recipes?.includes(r.id);
@@ -2278,7 +2342,14 @@ function renderModal() {
   }
   let html = '';
   if (MODAL.kind === 'place') {
-    html = `<div class="place-sheet-controls"><button class="sm" data-action="closeModal">返回地图</button></div>${renderPlaceView(G)}`;
+    const routes = placeMoveList(G).filter((route) => !route.blocked);
+    const travel = routes.length ? `
+      <select id="place-destination" aria-label="行脚目的地">
+        <option value="">选择目的地</option>
+        ${routes.map((route) => `<option value="${esc(route.id)}">${esc(route.name)} · ${formatDuration(route.minutes)}</option>`).join('')}
+      </select>
+      <button class="sm" data-action="walkTo">前往</button>` : '';
+    html = `<div class="place-sheet-controls">${travel}<button class="sm" data-action="closeModal">返回地图</button></div>${renderPlaceView(G)}`;
   } else if (MODAL.kind === 'break') html = renderBreakModal(MODAL.data);
   else if (MODAL.kind === 'refine') html = renderRefineModal(MODAL.data);
   else if (MODAL.kind === 'killer') html = renderCustomKillerModal(G, KM_DRAFT);
@@ -2347,7 +2418,6 @@ function handlePlaceAction(id) {
   const p = G.player;
   if (id === 'meditate') { advanceMinutes(G, 120); addLog(G, '你盘膝打坐一个时辰，吐纳天地灵气。'); }
   else if (id === 'rest') { advanceMinutes(G, 480); addLog(G, '你在竹楼安歇四个时辰，精神恢复了不少。'); }
-  else if (id === 'wait') { advanceMinutes(G, 120); }
   else if (id === 'pickBenming') {
     claimBenming(G);
   } else if (id === 'caoren') {
@@ -2368,7 +2438,7 @@ function handlePlaceAction(id) {
     advanceMinutes(G, 30);
     if (!G.flags['clue:huajiu']) {
       G.flags['clue:huajiu'] = true;
-      addLog(G, '【密闻】酒客低声提起：血蝠洞下游瀑布后，藏着花酒行者的暗涧遗洞，须入夜方可潜入！', 'log-gold');
+      addLog(G, '【密闻】酒客低声提起：血蝠洞下游瀑布后，藏着花酒行者的暗涧遗洞。', 'log-gold');
     } else {
       addLog(G, '【传闻】听说山外狼群正在集结，明年夏天怕是要闹狼潮。');
     }
@@ -2396,6 +2466,7 @@ function handlePlaceAction(id) {
     const pool = ['yuelanhua', 'shourou', 'fengmi', 'kuangshi', 'yuanshi_zha'];
     const got = pool[Math.floor(Math.random() * pool.length)];
     addItem(G, got, 2);
+    recordQuestProgress(G, 'gather', G.location);
     addLog(G, `你在山间采集了 2 份「${ITEMS[got].name}」。`, 'log-good');
   } else if (id === 'huajiuLoot') {
     if (G.flags['looted:huajiu']) { showToast('遗洞宝藏已被你取空'); return; }
@@ -2458,9 +2529,15 @@ function handleAction(el) {
     G.paused = !G.paused;
     render();
   } else if (act === 'walkTo') {
-    const res = moveToPlace(G, id);
+    const destination = id || document.getElementById('place-destination')?.value;
+    if (!destination) return;
+    const res = moveToPlace(G, destination);
     if (!res.ok) showToast(res.reason);
-    else if (G.location === id && !G.battle && !G.player.dead && hasPlaceActions(G)) MODAL = { kind: 'place' };
+    else if (G.location === destination) {
+      MODAL = hasPlaceActions(G) ? { kind: 'place' } : null;
+      const sheet = document.getElementById('sheet');
+      if (sheet) sheet.scrollTop = 0;
+    }
     saveGame(G);
     render();
   } else if (act === 'openPlace') {

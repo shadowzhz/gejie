@@ -1,7 +1,7 @@
 import { GU_DEFS, ITEMS, REFINE_RECIPES, guEffectText, recipeIngredientsText } from '../data/gu.js';
 import { PLACES, placeShopEntries } from '../data/places.js';
 import { formatDateTime, isNight } from '../core/calendar.js';
-import { esc, QUESTS } from '../core/state.js';
+import { esc, questBoard } from '../core/state.js';
 import { evalCond } from '../core/story-engine.js';
 import { STORY_EVENTS } from '../data/story.js';
 
@@ -48,7 +48,6 @@ export function renderPlaceView(gs) {
   if (place.id === 'zhaimen' && gs.flags['qingmao_finished']) {
     actions.push('<button class="gold" data-action="placeAct" data-id="escapeMountain">告别青茅山（卷一通关）</button>');
   }
-  actions.push('<button class="ghost" data-action="placeAct" data-id="wait">静候 · 1 时辰</button>');
 
   let shopHtml = '';
   const shop = placeShopEntries(gs);
@@ -65,21 +64,23 @@ export function renderPlaceView(gs) {
     shopHtml = `<div class="card"><h3>${esc(place.name)}货架</h3>${rows}</div>`;
   }
 
+  const board = place.services.includes('quests') ? questBoard(gs) : null;
   return `<section class="stage ${night ? 'is-night' : ''}">
       <div class="stage-loc">${esc(formatDateTime(gs.minutes))} · ${esc(place.region)}</div>
       <h1 id="place-title">${esc(place.name)}</h1>
       <p class="stage-desc">${esc(night ? place.night : place.day)}</p>
       <div class="row">${actions.join('')}</div>
     </section>
-    ${place.services.includes('quests') ? `<div class="card"><h3>族中委托</h3>${QUESTS.map((q) => {
-      const progress = gs.player.quests?.[q.id];
-      const claimed = progress > q.target;
-      return `<div class="kv"><span><b>${esc(q.name)}</b> · ${esc(q.desc)} · 赏 ${q.reward} 元石
-        ${progress === undefined || claimed ? '' : ` · ${progress}/${q.target}`}</span>
-        <button class="sm" ${claimed || progress < q.target ? 'disabled' : ''} data-action="quest" data-id="${q.id}">
-          ${claimed ? '已交付' : progress === undefined ? '接取' : progress === q.target ? '交付领赏' : '进行中'}
-        </button></div>`;
-    }).join('')}</div>` : ''}
+    ${board ? `<div class="card"><h3>族中委托</h3>
+      <div class="muted">下次轮换 · ${esc(formatDateTime(gs.minutes + board.remaining))}</div>
+      ${board.entries.map((q) => {
+        const ready = q.progress === q.target;
+        return `<div class="kv"><span><b>${esc(q.name)}</b> · ${esc(q.desc)} · 赏 ${q.reward} 元石
+          ${q.accepted ? ` · ${q.progress}/${q.target}` : ''}</span>
+          <button class="sm" ${q.claimed || (q.accepted && !ready) ? 'disabled' : ''} data-action="quest" data-id="${q.id}">
+            ${q.claimed ? '已交付' : !q.accepted ? '接取' : ready ? '交付领赏' : '进行中'}
+          </button></div>`;
+      }).join('')}</div>` : ''}
     ${shopHtml}
     ${place.services.includes('recipes') ? `<div class="card"><h3>蛊方</h3>${REFINE_RECIPES.map((r) => {
       const owned = gs.player.recipes?.includes(r.id);

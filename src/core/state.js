@@ -1,33 +1,73 @@
 import { GU_DEFS, ITEMS } from '../data/gu.js';
 import { PLACES } from '../data/places.js';
-import { makeTime, yearOf } from './calendar.js';
+import { MIN_PER_DAY, makeTime, yearOf } from './calendar.js';
 
-export const QUESTS = [
-  { id: 'caoren', name: '演武考核', desc: '领取后在演武场击败草人 1 次', target: 1, reward: 8 },
-  { id: 'yezhu', name: '竹林清患', desc: '领取后在月下竹林击败野猪 2 次', target: 2, reward: 14 }
+const QUEST_ROTATIONS = [
+  [
+    { id: 'caoren', name: '演武考核', desc: '击败演武草人 1 次', action: 'victory', subject: 'caoren', target: 1, reward: 8 },
+    { id: 'yehua', name: '补充蛊粮', desc: '交付月兰花瓣 3 份', action: 'deliver', subject: 'yuelanhua', target: 3, reward: 9 },
+    { id: 'xuetang_visit', name: '学堂巡查', desc: '前往学堂巡查 1 次', action: 'visit', subject: 'xuetang', target: 1, reward: 4 }
+  ],
+  [
+    { id: 'yezhu', name: '竹林清患', desc: '击败铁鬃野猪 2 次', action: 'victory', subject: 'yezhu', target: 2, reward: 14 },
+    { id: 'zhulin_gather', name: '竹林寻材', desc: '在月下竹林采集 2 次', action: 'gather', subject: 'zhulin', target: 2, reward: 10 },
+    { id: 'kezhan_visit', name: '客栈传讯', desc: '前往山寨客栈传讯 1 次', action: 'visit', subject: 'kezhan', target: 1, reward: 4 }
+  ],
+  [
+    { id: 'xuefu', name: '驱逐血蝠', desc: '击败赤眼血蝠 1 次', action: 'victory', subject: 'xuefu', target: 1, reward: 12 },
+    { id: 'yaotang_visit', name: '药堂问询', desc: '前往药堂问询 1 次', action: 'visit', subject: 'yaotang', target: 1, reward: 4 },
+    { id: 'rou', name: '补充兽肉', desc: '交付兽肉 2 份', action: 'deliver', subject: 'shourou', target: 2, reward: 10 }
+  ]
 ];
+const QUESTS = QUEST_ROTATIONS.flat();
+const QUEST_ROTATION_MINUTES = 3 * MIN_PER_DAY;
+
+export function questBoard(gs) {
+  const firstDay = Math.floor(gs.startMinutes / MIN_PER_DAY) * MIN_PER_DAY;
+  const elapsed = Math.max(0, gs.minutes - firstDay);
+  const cycle = Math.floor(elapsed / QUEST_ROTATION_MINUTES);
+  const offers = QUEST_ROTATIONS[cycle % QUEST_ROTATIONS.length];
+  const active = QUESTS.filter((q) => {
+    const record = gs.player.quests?.[q.id];
+    return record?.progress !== undefined && record.claimedCycle === undefined && !offers.includes(q);
+  });
+  const entries = [...offers, ...active].map((quest) => {
+    const record = gs.player.quests?.[quest.id];
+    const claimed = record?.claimedCycle === cycle;
+    const accepted = record?.progress !== undefined && record.claimedCycle === undefined;
+    const progress = quest.action === 'deliver'
+      ? Math.min(quest.target, gs.player.items[quest.subject] ?? 0)
+      : record?.progress ?? 0;
+    return { ...quest, accepted, claimed, progress };
+  });
+  return { cycle, entries, remaining: QUEST_ROTATION_MINUTES - elapsed % QUEST_ROTATION_MINUTES };
+}
 
 export function handleQuest(gs, id) {
-  const quest = QUESTS.find((entry) => entry.id === id);
-  if (gs.location !== 'renwutang' || !quest) return;
+  if (gs.location !== 'renwutang') return;
+  const { cycle, entries } = questBoard(gs);
+  const quest = entries.find((entry) => entry.id === id);
+  if (!quest || quest.claimed) return;
   const quests = (gs.player.quests ??= {});
-  const progress = quests[id];
-  if (progress === undefined) {
-    quests[id] = 0;
+  if (!quest.accepted) {
+    quests[id] = { progress: 0 };
     addLog(gs, `【委托】接取「${quest.name}」。`);
-  } else if (progress === quest.target) {
-    quests[id]++;
+  } else if (quest.progress === quest.target) {
+    if (quest.action === 'deliver' && !useItem(gs, quest.subject, quest.target)) return;
+    quests[id].claimedCycle = cycle;
     gs.player.yuanshi += quest.reward;
     addLog(gs, `【委托】交付「${quest.name}」，获得 ${quest.reward} 块元石。`, 'log-gold');
   }
 }
 
-export function recordQuestVictory(gs, id) {
-  const quest = QUESTS.find((entry) => entry.id === id);
-  const quests = gs.player.quests;
-  if (!quest || quests?.[id] === undefined || quests[id] >= quest.target) return;
-  quests[id]++;
-  if (quests[id] === quest.target) addLog(gs, `【委托】「${quest.name}」已完成，可回任务堂交付。`, 'log-good');
+export function recordQuestProgress(gs, action, subject) {
+  for (const quest of QUESTS) {
+    if (quest.action !== action || quest.subject !== subject) continue;
+    const record = gs.player.quests?.[quest.id];
+    if (record?.progress === undefined || record.claimedCycle !== undefined || record.progress >= quest.target) continue;
+    record.progress++;
+    if (record.progress === quest.target) addLog(gs, `【委托】「${quest.name}」已完成，可回任务堂交付。`, 'log-good');
+  }
 }
 
 export const SAVE_KEY = 'gujie_qingmaoshan_v1';

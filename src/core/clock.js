@@ -1,26 +1,36 @@
 import { GU_DEFS } from '../data/gu.js';
 import { PLACES } from '../data/places.js';
-import { MIN_PER_DAY, MIN_PER_KE, dayOf, isNight } from './calendar.js';
-import { addLog, feedGu, hasGu, recalcStats } from './state.js';
+import { MIN_PER_DAY, MIN_PER_KE, dayOf } from './calendar.js';
+import { addLog, feedGu, hasGu, recalcStats, recordQuestProgress } from './state.js';
 import { startBattle } from './combat.js';
 import { checkStoryTriggers } from './story-engine.js';
 
 export function placeMoveList(gs) {
-  const here = PLACES[gs.location];
-  if (!here) return [];
-  const p = gs.player;
-  return Object.entries(here.links || {})
-    .filter(([id]) => {
-      const target = PLACES[id];
-      return target && (!target.hidden || gs.flags[target.hidden]);
-    })
-    .map(([id, minutes]) => {
-      const target = PLACES[id];
-      let blocked = '';
-      if (target.lock && !gs.flags[target.lock.flag]) blocked = target.lock.msg;
-      else if (target.nightOnly && !isNight(gs.minutes + minutes)) blocked = '须入夜后方可潜入';
-      return { id, name: target.name, minutes, blocked };
-    });
+  if (!PLACES[gs.location]) return [];
+  const routes = new Map([[gs.location, { minutes: 0, blocked: '' }]]);
+  const pending = new Set([gs.location]);
+
+  while (pending.size) {
+    const id = [...pending].reduce((nearest, candidate) => (
+      routes.get(candidate).minutes < routes.get(nearest).minutes ? candidate : nearest
+    ));
+    pending.delete(id);
+    const route = routes.get(id);
+    if (route.blocked) continue;
+
+    for (const [next, duration] of Object.entries(PLACES[id].links)) {
+      const target = PLACES[next];
+      if (!target || (target.hidden && !gs.flags[target.hidden])) continue;
+      const minutes = route.minutes + duration;
+      if (minutes >= (routes.get(next)?.minutes ?? Infinity)) continue;
+      const blocked = target.lock && !gs.flags[target.lock.flag] ? target.lock.msg : '';
+      routes.set(next, { minutes, blocked });
+      pending.add(next);
+    }
+  }
+
+  routes.delete(gs.location);
+  return [...routes].map(([id, route]) => ({ id, name: PLACES[id].name, ...route }));
 }
 
 export function moveToPlace(gs, targetId) {
@@ -32,6 +42,7 @@ export function moveToPlace(gs, targetId) {
   if (gs.player.dead || gs.battle) return { ok: true };
   gs.location = targetId;
   addLog(gs, `你来到了「${PLACES[targetId].name}」。`);
+  recordQuestProgress(gs, 'visit', targetId);
   checkStoryTriggers(gs);
   return { ok: true };
 }
@@ -85,7 +96,7 @@ export function advanceMinutes(gs, minutes, rng = Math.random) {
       const cooldown = gs.flags['pursuit_cd'] || 0;
       if (newDay >= cooldown && rng() < Math.min(0.45, (p.mo - 20) / 140) * (hasGu(gs, 'yinshi') ? 0.55 : 1)) {
         gs.flags['pursuit_cd'] = newDay + 7;
-        addLog('【追捕】恶名招致正道捕手循迹而来！', 'log-bad');
+        addLog(gs, '【追捕】恶名招致正道捕手循迹而来！', 'log-bad');
         startBattle(gs, p.mo >= 60 ? 'tiexueleng' : 'modao', '正道围捕', rng);
       }
     }

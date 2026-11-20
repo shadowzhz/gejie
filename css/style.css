@@ -256,6 +256,17 @@ button.sm { min-height: 32px; padding: 4px 10px; font-size: .85rem; }
   z-index: 1;
   display: flex;
   justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.place-sheet-controls select {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 4px 8px;
+  background: var(--card);
+  color: inherit;
+  font: inherit;
 }
 .toast {
   position: fixed;

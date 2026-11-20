@@ -123,8 +123,7 @@ export const PLACES = {
     id: 'huajiu', name: '暗涧遗洞', region: '青茅山外', x: 90, y: 80,
     links: { xuefu: 45 },
     hidden: 'clue:huajiu',
-    nightOnly: '遗洞入口隐在瀑布暗流之后，须入夜避开山寨耳目方可潜入。',
-    day: '山涧水声轰鸣，日光下看不出任何异样。',
+    day: '山涧水声轰鸣，循着线索便能找到水帘后隐蔽的入口。',
     night: '水帘后隐约透出一线微光，石壁上刻着花酒行者的遗言。',
     services: ['huajiu_explore']
   }
