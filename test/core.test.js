@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createNewGame, addGu, BENMING_ZY_COST, claimBenming, refineBenming, realmText } from '../src/core/state.js';
+import { createNewGame, addGu, BENMING_ZY_COST, claimBenming, handleQuest, refineBenming, realmText, recordQuestVictory } from '../src/core/state.js';
 import { advanceMinutes, moveToPlace, rewindSpringCicada, saveSpringSnapshot } from '../src/core/clock.js';
 import { makeTime } from '../src/core/calendar.js';
 import { applyEventChoice, checkStoryTriggers } from '../src/core/story-engine.js';
 import { createKillerMove } from '../src/core/killer.js';
 import { battleAct, startBattle } from '../src/core/combat.js';
-import { createBreakSession, stepBreakSession } from '../src/core/breakthrough.js';
+import { createBreakSession, stepBreakSession, washMinorWall } from '../src/core/breakthrough.js';
 import { createRefineSession, stepRefineSession } from '../src/core/refine.js';
 
 test('豕蛊加伤只作用于拳脚和力道攻伐', () => {
@@ -105,6 +105,9 @@ test('破壁冲关、三轮控火炼蛊与春秋蝉回溯', () => {
   gs.player.xiao = 3;
   gs.player.zy = gs.player.zyMax;
   gs.player.yuanshi = 100;
+  assert.ok(createBreakSession(gs).error);
+  for (const id of ['yupi', 'bingzhen', 'heishi', 'shipi']) addGu(gs, id);
+  gs.player.zy = gs.player.zyMax;
   const brk = createBreakSession(gs);
   assert.ok(!brk.error);
   for (let i = 0; i < 12 && brk.state === 'ongoing'; i++) {
@@ -117,6 +120,10 @@ test('破壁冲关、三轮控火炼蛊与春秋蝉回溯', () => {
   addGu(gs, 'xiaoguang');
   gs.player.items.kuangshi = 1;
   gs.player.yuanshi = 100;
+  assert.equal(createRefineSession(gs, 'r_yuemang').error, '尚未习得此蛊方');
+  assert.equal(gs.player.yuanshi, 100);
+  assert.equal(gs.player.items.kuangshi, 1);
+  gs.player.recipes.push('r_yuemang');
   const ref = createRefineSession(gs, 'r_yuemang');
   assert.ok(!ref.error);
   stepRefineSession(gs, ref, 'steady', () => 0.2);
@@ -131,4 +138,33 @@ test('破壁冲关、三轮控火炼蛊与春秋蝉回溯', () => {
   assert.equal(rw.ok, true);
   assert.equal(rw.state.player.dead, false);
   assert.equal(realmText(rw.state.player).includes('转'), true);
+});
+
+test('自动喂蛊消耗口粮，升阶要求不同蛊种，委托只能领赏一次', () => {
+  const gs = createNewGame();
+  const p = gs.player;
+  addGu(gs, 'yueguang', 60);
+  p.autoFeed = true;
+  advanceMinutes(gs, 1440);
+  assert.equal(p.gu[0].satiety, 98);
+  assert.equal(p.items.yuelanhua, 5);
+
+  p.xp = 500;
+  addGu(gs, 'yueguang');
+  assert.equal(washMinorWall(gs).ok, false);
+  addGu(gs, 'yupi');
+  const result = washMinorWall(gs);
+  assert.equal(result.ok, true);
+  assert.match(result.message, /气血上限 .*真元上限 .*身法/);
+
+  gs.location = 'renwutang';
+  const stones = p.yuanshi;
+  recordQuestVictory(gs, 'caoren');
+  handleQuest(gs, 'caoren');
+  handleQuest(gs, 'caoren');
+  assert.equal(p.yuanshi, stones);
+  recordQuestVictory(gs, 'caoren');
+  handleQuest(gs, 'caoren');
+  handleQuest(gs, 'caoren');
+  assert.equal(p.yuanshi, stones + 8);
 });

@@ -1,6 +1,6 @@
 import { GU_DEFS } from '../data/gu.js';
 import { ENEMIES } from '../data/enemies.js';
-import { addGu, addItem, addLog, hasGu, recalcStats } from './state.js';
+import { addGu, addItem, addLog, hasGu, recalcStats, recordQuestVictory } from './state.js';
 
 function pickIntent(enemy, rng = Math.random) {
   const pool = enemy.moves.filter((m) => (enemy.cds[m.name] || 0) <= 0);
@@ -143,7 +143,7 @@ export function battleAct(gs, action, arg = '', rng = Math.random) {
     p.yuanshi -= 2;
     const gain = Math.min(p.zyMax - p.zy, Math.max(10, Math.round(p.zyMax * 0.4)));
     p.zy += gain;
-    b.logs.push(`你捏碎 2 块元石吸纳真元，真元恢复 +${gain}。`);
+    b.logs.push(`你消耗 2 块元石补充真元，真元恢复 +${gain}。`);
   } else if (action === 'flee') {
     if (b.lethal) return b;
     const chance = 0.55 + (p.speed - foe.speed) * 0.04 + (hasGu(gs, 'yinshi') ? 0.25 : 0);
@@ -188,7 +188,7 @@ export function battleAct(gs, action, arg = '', rng = Math.random) {
       b.logs.push(`你催动「${def.name}」，看清了${foe.name}的气血真元与下步动向。`);
     } else if (def.kind === '隐匿') {
       b.meShield += Math.round(def.power * 0.6);
-      b.logs.push(`你催动「${def.name}」隐去身形，下轮更易避实就虚。`);
+      b.logs.push(`你催动「${def.name}」隐去身形，获得 ${Math.round(def.power * 0.6)} 点护盾。`);
     }
   } else if (action === 'move') {
     const mv = p.moves.find((m) => m.id === arg);
@@ -216,6 +216,7 @@ export function battleAct(gs, action, arg = '', rng = Math.random) {
 
   if (foe.hp <= 0) {
     b.state = 'win';
+    recordQuestVictory(gs, foe.id);
     const rw = foe.reward || {};
     const ys = (rw.yuanshi || 0) + (b.lethal ? 15 : 0);
     if (ys > 0) p.yuanshi += ys;

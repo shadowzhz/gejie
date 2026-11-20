@@ -2,13 +2,13 @@ export const PLACES = {
   zhulou: {
     id: 'zhulou', name: '竹楼', region: '古月山寨', x: 10, y: 22,
     links: { shijie: 15 },
-    day: '晨光透进竹帘，案上摆着一只粗瓷碗和几块碎元石。',
+    day: '晨光透进竹帘，案上摆着一只粗瓷碗和几块元石。',
     night: '夜风吹动青竹，窗纸外偶尔掠过巡夜人的火把光。',
     services: ['rest', 'cultivate']
   },
   shijie: {
     id: 'shijie', name: '寨中石阶', region: '古月山寨', x: 26, y: 46,
-    links: { zhulou: 15, xuetang: 15, yanwu: 15, yaotang: 30, kezhan: 30, jucaifang: 30, liangu: 30, jiazhuge: 30, zhaimen: 30 },
+    links: { zhulou: 15, xuetang: 15, yanwu: 15, yaotang: 30, kezhan: 30, jucaifang: 30, renwutang: 30, jiazhuge: 30, zhaimen: 30 },
     day: '青石阶上人来人往，学堂的钟声与坊市的叫卖混在一处。',
     night: '石阶泛着夜露的潮气，家主阁方向亮着几盏高悬的灯笼。',
     services: []
@@ -30,7 +30,7 @@ export const PLACES = {
   yaotang: {
     id: 'yaotang', name: '药堂', region: '古月山寨', x: 10, y: 54,
     links: { shijie: 30 },
-    day: '药堂里弥漫着草药与生机叶的清香，专售疗伤之蛊与蛊方。',
+    day: '药堂里弥漫着草药与生机叶的清香，专售疗伤之蛊。',
     night: '药堂已落了门栓，只留一扇小窗应对急症。',
     shop: ['gu:shengjiye', 'gu:jiuyecao', 'gu:yupi', 'item:zhixuegao'],
     services: ['shop', 'heal']
@@ -44,19 +44,19 @@ export const PLACES = {
     services: ['shop', 'rumor']
   },
   jucaifang: {
-    id: 'jucaifang', name: '聚材坊', region: '古月山寨', x: 26, y: 78,
+    id: 'jucaifang', name: '聚财坊', region: '古月山寨', x: 26, y: 78,
     links: { shijie: 30 },
     day: '货架上堆着月兰花瓣、腌肉、蜂王蜜与各色一转炼材。',
     night: '坊市入夜收摊，伙计正清点白日收来的兽皮与元石。',
     shop: ['item:yuelanhua', 'item:shourou', 'item:fengmi', 'item:kuangshi', 'item:yuanshi_zha', 'gu:xiaoguang', 'gu:shipi', 'gu:bingzhen'],
     services: ['shop']
   },
-  liangu: {
-    id: 'liangu', name: '炼蛊房', region: '古月山寨', x: 42, y: 76,
+  renwutang: {
+    id: 'renwutang', name: '任务堂', region: '古月山寨', x: 42, y: 76,
     links: { shijie: 30 },
-    day: '几座青铜蛊炉稳稳燃着地火，老炼蛊师在旁照看火候。',
-    night: '炉火幽暗，正是独自开炉合炼的好时候。',
-    services: ['refine']
+    day: '族中执事正在告示板上张挂委托。',
+    night: '值夜执事仍在灯下登记委托。',
+    services: ['quests']
   },
   jiazhuge: {
     id: 'jiazhuge', name: '家主阁', region: '古月山寨', x: 42, y: 40,

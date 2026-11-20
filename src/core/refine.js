@@ -4,6 +4,7 @@ import { addGu, addLog, hasGu, removeGuByUid, useItem } from './state.js';
 export function canStartRefine(gs, recipeId) {
   const rc = REFINE_RECIPES.find((r) => r.id === recipeId);
   if (!rc) return { ok: false, reason: '未知蛊方' };
+  if (!gs.player.recipes?.includes(recipeId)) return { ok: false, reason: '尚未习得此蛊方' };
   if (gs.player.yuanshi < rc.cost) return { ok: false, reason: `元石不足（需 ${rc.cost}）` };
   if ((gs.player.items[rc.mat] || 0) < 1) return { ok: false, reason: '缺少炼制辅材' };
   const mainCount = gs.player.gu.filter((g) => g.id === rc.main).length;

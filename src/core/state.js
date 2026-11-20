@@ -1,5 +1,34 @@
 import { GU_DEFS } from '../data/gu.js';
+import { PLACES } from '../data/places.js';
 import { makeTime, yearOf } from './calendar.js';
+
+export const QUESTS = [
+  { id: 'caoren', name: '演武考核', desc: '领取后在演武场击败草人 1 次', target: 1, reward: 8 },
+  { id: 'yezhu', name: '竹林清患', desc: '领取后在月下竹林击败野猪 2 次', target: 2, reward: 14 }
+];
+
+export function handleQuest(gs, id) {
+  const quest = QUESTS.find((entry) => entry.id === id);
+  if (gs.location !== 'renwutang' || !quest) return;
+  const quests = (gs.player.quests ??= {});
+  const progress = quests[id];
+  if (progress === undefined) {
+    quests[id] = 0;
+    addLog(gs, `【委托】接取「${quest.name}」。`);
+  } else if (progress === quest.target) {
+    quests[id]++;
+    gs.player.yuanshi += quest.reward;
+    addLog(gs, `【委托】交付「${quest.name}」，获得 ${quest.reward} 块元石。`, 'log-gold');
+  }
+}
+
+export function recordQuestVictory(gs, id) {
+  const quest = QUESTS.find((entry) => entry.id === id);
+  const quests = gs.player.quests;
+  if (!quest || quests?.[id] === undefined || quests[id] >= quest.target) return;
+  quests[id]++;
+  if (quests[id] === quest.target) addLog(gs, `【委托】「${quest.name}」已完成，可回任务堂交付。`, 'log-good');
+}
 
 export const SAVE_KEY = 'gujie_qingmaoshan_v1';
 export const RANK_NAMES = ['', '一转', '二转', '三转', '四转'];
@@ -38,6 +67,9 @@ export function createNewGame(name = '无名', apt = null) {
       benming: null,
       unrefinedBenming: false,
       gu: [],
+      recipes: [],
+      autoFeed: false,
+      quests: {},
       equipped: [],
       moves: [],
       items: { yuelanhua: 6 },
@@ -150,6 +182,13 @@ export function addItem(gs, id, n = 1) {
   gs.player.items[id] = (gs.player.items[id] || 0) + n;
 }
 
+export function feedGu(gs, gu, threshold = 100) {
+  const food = GU_DEFS[gu?.id]?.food;
+  if (!food || gu.satiety >= threshold || !useItem(gs, food, 1)) return false;
+  gu.satiety = Math.min(100, gu.satiety + 50);
+  return true;
+}
+
 export function useItem(gs, id, n = 1) {
   if ((gs.player.items[id] || 0) < n) return false;
   gs.player.items[id] -= n;
@@ -174,6 +213,7 @@ export function loadGame(storage = typeof localStorage !== 'undefined' ? localSt
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (!parsed || !parsed.player) return null;
+    if (!PLACES[parsed.location]) parsed.location = 'shijie';
     recalcStats(parsed);
     return parsed;
   } catch {

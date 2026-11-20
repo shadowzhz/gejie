@@ -1,24 +1,41 @@
 import { addLog, minorXpNeed, realmText, recalcStats } from './state.js';
 
+export function realmGuRequirement(p) {
+  const need = p.xiao < 3 ? p.xiao + 2 : p.rank + 3;
+  const count = new Set(p.gu.map((g) => g.id)).size;
+  return { need, count, text: `持有不同蛊虫 ${count}/${need} 种` };
+}
+
+export function realmGrowthText(before, after) {
+  const stats = [['hpMax', '气血上限'], ['zyMax', '真元上限'], ['speed', '身法']];
+  return stats.map(([key, label]) => `${label} ${before[key]} → ${after[key]}`).join(' · ');
+}
+
 export function washMinorWall(gs) {
   const p = gs.player;
   if (p.xiao >= 3) return { ok: false, reason: '已至本转巅峰，须破壁冲击大境界' };
+  const gu = realmGuRequirement(p);
+  if (gu.count < gu.need) return { ok: false, reason: gu.text };
   const needXp = minorXpNeed(p);
   const needZy = Math.round(p.zyMax * 0.6);
   if (p.xp < needXp) return { ok: false, reason: `修为不足（需 ${needXp}）` };
   if (p.zy < needZy) return { ok: false, reason: `真元不足（需 ${needZy}）` };
+  const before = { ...p };
   p.xp -= needXp;
   p.zy -= needZy;
   p.xiao++;
   recalcStats(gs);
-  addLog(gs, `【冲刷窍壁】水磨功成，晋入${realmText(p)}！`, 'log-gold');
-  return { ok: true };
+  const message = `晋入${realmText(p)} · ${realmGrowthText(before, p)}`;
+  addLog(gs, `【冲刷窍壁】${message}`, 'log-gold');
+  return { ok: true, message };
 }
 
 export function createBreakSession(gs) {
   const p = gs.player;
   if (p.rank >= 4) return { error: '青茅山卷暂止于三/四转' };
   if (p.xiao < 3) return { error: '须先修至本转巅峰，方可破壁' };
+  const gu = realmGuRequirement(p);
+  if (gu.count < gu.need) return { error: gu.text };
   if (p.zy < Math.round(p.zyMax * 0.9)) return { error: '真元须温养至九成以上' };
   const crackMult = Math.min(2.2, 1 + 0.2 * (p.attempts || 0));
   return {
@@ -67,7 +84,7 @@ export function stepBreakSession(gs, sess, key, rng = Math.random) {
     sess.stones -= stoneCost;
     sess.stonesUsed += stoneCost;
     sess.zy += zyGain;
-    msg = `捏碎 ${stoneCost} 块元石，空窍真元恢复 +${Math.round(zyGain)}。`;
+    msg = `消耗 ${stoneCost} 块元石，空窍真元恢复 +${Math.round(zyGain)}。`;
   } else if (key === 'steady') {
     if (sess.zy < steadyNeed || sess.hurt <= 0) return sess;
     const heal = Math.min(sess.hurt, 16);
@@ -88,6 +105,7 @@ export function stepBreakSession(gs, sess, key, rng = Math.random) {
     sess.crack = 100;
     sess.state = 'win';
     gs.player.yuanshi = Math.max(0, gs.player.yuanshi - sess.stonesUsed);
+    const before = { ...gs.player };
     gs.player.rank++;
     gs.player.xiao = 0;
     gs.player.xp = 0;
@@ -96,7 +114,9 @@ export function stepBreakSession(gs, sess, key, rng = Math.random) {
     gs.player.zy = Math.round(gs.player.zyMax * 0.5);
     if (gs.player.rank >= 2) gs.flags['open:jiazhuge'] = true;
     sess.lines.push(msg, `轰然一声脆响，窍壁彻底碎裂，你晋入${realmText(gs.player)}！`);
-    addLog(gs, `【破境】成功碎壁，晋入${realmText(gs.player)}！`, 'log-gold');
+    const growth = realmGrowthText(before, gs.player);
+    sess.lines.push(growth);
+    addLog(gs, `【破境】晋入${realmText(gs.player)} · ${growth}`, 'log-gold');
     return sess;
   }
 

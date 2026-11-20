@@ -1,5 +1,7 @@
-import { GU_DEFS } from '../data/gu.js';
+import { GU_DEFS, guEffectText } from '../data/gu.js';
 import { BENMING_ZY_COST, esc, minorXpNeed, realmText } from '../core/state.js';
+
+import { realmGuRequirement } from '../core/breakthrough.js';
 
 export function renderApertureView(gs) {
   const p = gs.player;
@@ -25,7 +27,7 @@ export function renderApertureView(gs) {
         <b>${isBm ? '★ ' : ''}${esc(def.name)} <span class="badge">${def.rank}转 · ${esc(def.kind)}</span></b>
         <span class="muted">饱食 ${g.satiety}%</span>
       </div>
-      <div class="muted" style="margin-bottom:8px">${esc(def.desc)}</div>
+      <div class="muted" style="margin-bottom:8px">${esc(def.desc)}${guEffectText(def) ? `<br>${esc(guEffectText(def))}` : ''}</div>
       <div class="row">
         ${def.food ? `<button class="sm" ${foodCount <= 0 || g.satiety >= 100 ? 'disabled' : ''} data-action="feedGu" data-id="${g.uid}">喂食(${foodCount})</button>` : ''}
         ${['攻击', '防御', '治疗', '增益', '控制', '探知', '隐匿'].includes(def.kind) ? `<button class="sm ${eq ? 'primary' : ''}" data-action="toggleEquip" data-id="${g.uid}">${eq ? '已出战' : '设出战'}</button>` : ''}
@@ -50,9 +52,12 @@ export function renderApertureView(gs) {
       <div class="bar"><i style="width:${xpPct}%"></i></div>
     </div>
     <div class="card">
+      <div class="muted">${esc(realmGuRequirement(p).text)}</div>
       <div class="row">
         ${p.xiao < 3 ? '<button class="primary" data-action="washMinor">冲刷窍壁</button>' : '<button class="gold" data-action="openBreak">破壁冲关</button>'}
         <button data-action="feedAll">一键喂饱</button>
+        <button data-action="toggleAutoFeed" aria-pressed="${!!p.autoFeed}">自动喂蛊：${p.autoFeed ? '开' : '关'}</button>
+        <span class="muted">饱食降至 50% 或以下时，使用行囊口粮。</span>
         <button class="gold" ${p.rank >= 2 ? '' : 'disabled'} data-action="openCustomKiller">自创杀招${p.rank < 2 ? '（需二转）' : ''}</button>
       </div>
     </div>

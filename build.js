@@ -36,10 +36,10 @@ const ORDER = [
   'src/ui/app.js'
 ];
 
-const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
-const css = fs.readFileSync(path.join(ROOT, 'css/style.css'), 'utf8');
+const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
+const css = fs.readFileSync(path.join(ROOT, 'css/style.css'), 'utf8').replace(/\r\n/g, '\n');
 const bundledJs = ORDER.map((rel) => {
-  const raw = fs.readFileSync(path.join(ROOT, rel), 'utf8');
+  const raw = fs.readFileSync(path.join(ROOT, rel), 'utf8').replace(/\r\n/g, '\n');
   return `/* === ${rel} === */\n${stripEsm(raw)}`;
 }).join('\n\n');
 

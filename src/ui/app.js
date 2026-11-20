@@ -1,13 +1,13 @@
-import { GU_DEFS, ITEMS } from '../data/gu.js';
+import { GU_DEFS, ITEMS, REFINE_RECIPES } from '../data/gu.js';
 import { PLACES } from '../data/places.js';
-import { formatDateTime } from '../core/calendar.js';
-import { addGu, addItem, addLog, claimBenming, createAptitude, createNewGame, esc, loadGame, realmText, recalcStats, refineBenming, saveGame, useItem } from '../core/state.js';
+import { formatDateTime, isNight } from '../core/calendar.js';
+import { addGu, addItem, addLog, claimBenming, createAptitude, createNewGame, esc, feedGu, handleQuest, loadGame, realmText, recalcStats, refineBenming, saveGame, useItem } from '../core/state.js';
 import { createKillerMove } from '../core/killer.js';
 import { battleAct, startBattle } from '../core/combat.js';
 import { applyEventChoice, checkStoryTriggers } from '../core/story-engine.js';
 import { advanceMinutes, moveToPlace, rewindSpringCicada, saveSpringSnapshot } from '../core/clock.js';
 import { createRefineSession, stepRefineSession } from '../core/refine.js';
-import { createBreakSession, stepBreakSession, washMinorWall } from '../core/breakthrough.js';
+import { createBreakSession, realmGrowthText, realmGuRequirement, stepBreakSession, washMinorWall } from '../core/breakthrough.js';
 import { renderBreakModal, renderCustomKillerModal, renderEventModal, renderRefineModal, renderStartScreen } from './rituals.js';
 import { renderBattleView } from './battle-view.js';
 import { renderPlaceView } from './place-view.js';
@@ -124,8 +124,6 @@ export function render() {
     body = renderBattleView(G);
   } else if (TAB === 'place') {
     body = renderPlaceView(G, 'place');
-  } else if (TAB === 'explore') {
-    body = renderPlaceView(G, 'explore');
   } else if (TAB === 'aperture') {
     body = renderApertureView(G);
   } else if (TAB === 'refine') {
@@ -135,7 +133,7 @@ export function render() {
   }
 
   const navButtons = [
-    ['place', '据点'], ['explore', '历练'], ['aperture', '空窍'],
+    ['place', '地图'], ['aperture', '空窍'],
     ['refine', '炼蛊'], ['bag', '行囊'], ['journal', '行纪']
   ].map(([id, label]) => `<button class="${TAB === id ? 'on' : ''}" data-action="navTab" data-tab="${id}">${label}</button>`).join('');
 
@@ -263,6 +261,19 @@ function handleAction(el) {
     render();
   } else if (act === 'placeAct') {
     handlePlaceAction(id);
+  } else if (act === 'quest') {
+    handleQuest(G, id);
+    saveGame(G);
+    render();
+  } else if (act === 'buyRecipe') {
+    const recipe = REFINE_RECIPES.find((r) => r.id === id);
+    const p = G.player;
+    if (G.location !== 'jucaifang' || isNight(G.minutes) || !recipe || p.recipes?.includes(id) || p.yuanshi < recipe.price) return;
+    p.yuanshi -= recipe.price;
+    (p.recipes ??= []).push(id);
+    addLog(G, `【蛊方】习得「${GU_DEFS[recipe.out].name}」蛊方。`, 'log-gold');
+    saveGame(G);
+    render();
   } else if (act === 'buyItem') {
     const [kind, itemId] = id.split(':');
     const def = kind === 'gu' ? GU_DEFS[itemId] : ITEMS[itemId];
@@ -287,7 +298,7 @@ function handleAction(el) {
     render();
   } else if (act === 'washMinor') {
     const res = washMinorWall(G);
-    if (!res.ok) showToast(res.reason);
+    showToast(res.ok ? res.message : res.reason);
     saveGame(G);
     render();
   } else if (act === 'openBreak') {
@@ -325,23 +336,20 @@ function handleAction(el) {
     closeModal();
     saveGame(G);
     render();
-  } else if (act === 'feedGu') {
-    const g = G.player.gu.find((x) => String(x.uid) === id);
-    const def = g && GU_DEFS[g.id];
-    if (!g || !def?.food || !useItem(G, def.food, 1)) return;
-    g.satiety = Math.min(100, g.satiety + 50);
+  } else if (act === 'toggleAutoFeed') {
+    G.player.autoFeed = !G.player.autoFeed;
+    if (G.player.autoFeed) {
+      for (const gu of G.player.gu) feedGu(G, gu, 51);
+    }
     saveGame(G);
     render();
-  } else if (act === 'feedAll') {
-    let fed = 0;
-    for (const g of G.player.gu) {
-      const def = GU_DEFS[g.id];
-      if (def?.food && g.satiety < 85 && useItem(G, def.food, 1)) {
-        g.satiety = Math.min(100, g.satiety + 50);
-        fed++;
-      }
+  } else if (act === 'feedGu' || act === 'feedAll') {
+    if (act === 'feedGu') {
+      if (!feedGu(G, G.player.gu.find((g) => String(g.uid) === id))) return;
+    } else {
+      const fed = G.player.gu.filter((g) => feedGu(G, g, 85)).length;
+      showToast(fed ? `已喂养 ${fed} 只蛊虫` : '无需喂养或口粮不足');
     }
-    showToast(fed ? `已喂养 ${fed} 只蛊虫` : '无需喂养或口粮不足');
     saveGame(G);
     render();
   } else if (act === 'toggleEquip') {
@@ -356,15 +364,21 @@ function handleAction(el) {
     const uid = Number(id);
     const g = G.player.gu.find((x) => x.uid === uid);
     if (!g) return;
+    if (!['qingtong_sheli', 'chitie_sheli'].includes(g.id)) return;
     const targetRank = g.id === 'qingtong_sheli' ? 1 : 2;
     if (G.player.rank !== targetRank || G.player.xiao >= 3) {
       showToast('仅限对应转数未达巅峰时使用');
       return;
     }
+    const gu = realmGuRequirement({ ...G.player, gu: G.player.gu.filter((x) => x.uid !== uid) });
+    if (gu.count < gu.need) { showToast(gu.text); return; }
+    const before = { ...G.player };
     G.player.gu = G.player.gu.filter((x) => x.uid !== uid);
     G.player.xiao++;
     recalcStats(G);
-    addLog(G, `【舍利破境】炼化「${GU_DEFS[g.id].name}」，直接晋入${realmText(G.player)}！`, 'log-gold');
+    const message = `晋入${realmText(G.player)} · ${realmGrowthText(before, G.player)}`;
+    addLog(G, `【舍利破境】${message}`, 'log-gold');
+    showToast(message);
     saveGame(G);
     render();
   } else if (act === 'useHealItem') {

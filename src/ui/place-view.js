@@ -1,27 +1,12 @@
-import { GU_DEFS, ITEMS } from '../data/gu.js';
+import { GU_DEFS, ITEMS, REFINE_RECIPES, guEffectText } from '../data/gu.js';
 import { PLACES } from '../data/places.js';
 import { formatDateTime, isNight } from '../core/calendar.js';
-import { esc } from '../core/state.js';
+import { esc, QUESTS } from '../core/state.js';
 import { evalCond } from '../core/story-engine.js';
 import { STORY_EVENTS } from '../data/story.js';
 import { renderMapPanel } from './map-view.js';
 
-export function renderPlaceView(gs, mode = 'place') {
-  if (mode === 'explore') {
-    const outPlaces = ['zhulin', 'xuefu', 'langchao', 'huajiu'];
-    const cards = outPlaces.filter((id) => !PLACES[id].hidden || gs.flags[PLACES[id].hidden]).map((id) => {
-      const pl = PLACES[id];
-      const cleared = gs.flags[`clear:${id}`];
-      const locked = pl.lock && !gs.flags[pl.lock.flag];
-      return `<div class="card">
-        <div class="kv"><b>${esc(pl.name)}</b><span class="badge ${cleared ? 'jade' : ''}">${cleared ? '已扫清' : locked ? '未开放' : '可历练'}</span></div>
-        <div class="muted" style="margin-bottom:8px">${esc(locked ? pl.lock.msg : pl.day)}</div>
-        ${gs.location === id ? '<span class="badge gold">当前所在</span>' : '<span class="muted">请从下方舆图循路前往</span>'}
-      </div>`;
-    }).join('');
-    return `<div class="grid2">${cards}</div>` + renderMapPanel(gs, '青茅山外 · 历练舆图');
-  }
-
+export function renderPlaceView(gs) {
   const place = PLACES[gs.location] || PLACES.zhulou;
   const night = isNight(gs.minutes);
   const actions = [];
@@ -48,11 +33,8 @@ export function renderPlaceView(gs, mode = 'place') {
   if (place.services.includes('rumor')) {
     actions.push('<button class="gold" data-action="placeAct" data-id="rumor">打听后山消息（12 元石）</button>');
   }
-  if (place.services.includes('refine')) {
-    actions.push('<button class="primary" data-action="navTab" data-tab="refine">开炉炼蛊</button>');
-  }
   if (place.services.includes('clan_hall')) {
-    actions.push('<button class="gold" data-action="placeAct" data-id="clanGift">接取族中任务 / 领赏</button>');
+    actions.push('<button class="gold" data-action="placeAct" data-id="clanGift">领取二转赏赐</button>');
   }
   if (place.services.includes('explore')) {
     actions.push('<button class="blood" data-action="placeAct" data-id="exploreFight">深入搜山（遭遇战）</button>');
@@ -77,7 +59,7 @@ export function renderPlaceView(gs, mode = 'place') {
       const def = kind === 'gu' ? GU_DEFS[id] : ITEMS[id];
       if (!def) return '';
       return `<div class="kv">
-        <span><b>${esc(def.name)}</b> <span class="muted">${esc(def.desc)}</span></span>
+        <span><b>${esc(def.name)}</b> <span class="muted">${esc(def.desc)}${kind === "gu" && guEffectText(def) ? `<br>${esc(guEffectText(def))}` : ''}</span></span>
         <button class="sm" ${closed || gs.player.yuanshi < def.price ? 'disabled' : ''} data-action="buyItem" data-id="${esc(entry)}">买 · ${def.price}元石</button>
       </div>`;
     }).join('');
@@ -90,6 +72,20 @@ export function renderPlaceView(gs, mode = 'place') {
       <p class="stage-desc">${esc(night ? place.night : place.day)}</p>
       <div class="row">${actions.join('')}</div>
     </section>
+    ${place.services.includes('quests') ? `<div class="card"><h3>族中委托</h3>${QUESTS.map((q) => {
+      const progress = gs.player.quests?.[q.id];
+      const claimed = progress > q.target;
+      return `<div class="kv"><span><b>${esc(q.name)}</b> · ${esc(q.desc)} · 赏 ${q.reward} 元石
+        ${progress === undefined || claimed ? '' : ` · ${progress}/${q.target}`}</span>
+        <button class="sm" ${claimed || progress < q.target ? 'disabled' : ''} data-action="quest" data-id="${q.id}">
+          ${claimed ? '已交付' : progress === undefined ? '接取' : progress === q.target ? '交付领赏' : '进行中'}
+        </button></div>`;
+    }).join('')}</div>` : ''}
     ${shopHtml}
+    ${place.id === 'jucaifang' ? `<div class="card"><h3>蛊方</h3>${REFINE_RECIPES.map((r) => {
+      const owned = gs.player.recipes?.includes(r.id);
+      return `<div class="kv"><span>${esc(r.desc)}</span>
+        <button class="sm" ${owned || night || gs.player.yuanshi < r.price ? 'disabled' : ''} data-action="buyRecipe" data-id="${r.id}">${owned ? '已习得' : `买 · ${r.price} 元石`}</button></div>`;
+    }).join('')}</div>` : ''}
     ${renderMapPanel(gs)}`;
 }

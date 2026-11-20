@@ -1,7 +1,7 @@
 import { GU_DEFS } from '../data/gu.js';
 import { PLACES } from '../data/places.js';
 import { MIN_PER_DAY, MIN_PER_KE, dayOf, isNight } from './calendar.js';
-import { addLog, hasGu, recalcStats } from './state.js';
+import { addLog, feedGu, hasGu, recalcStats } from './state.js';
 import { startBattle } from './combat.js';
 import { checkStoryTriggers } from './story-engine.js';
 
@@ -66,7 +66,14 @@ export function advanceMinutes(gs, minutes, rng = Math.random) {
       const g = gs.player.gu[i];
       const def = GU_DEFS[g.id];
       if (!def || !def.food) continue;
-      g.satiety = Math.max(0, g.satiety - daysPassed * 12);
+      if (p.autoFeed) {
+        for (let day = 0; day < daysPassed; day++) {
+          g.satiety = Math.max(0, g.satiety - 12);
+          if (feedGu(gs, g, 51)) addLog(gs, `【自动喂养】已喂食「${def.name}」。`);
+        }
+      } else {
+        g.satiety = Math.max(0, g.satiety - daysPassed * 12);
+      }
       if (g.satiety === 0) {
         addLog(gs, `【饥饿】「${def.name}」腹中空空，气息衰弱，须尽快喂食！`, 'log-warn');
       }
@@ -113,6 +120,7 @@ export function rewindSpringCicada(gs) {
   if (idx >= 0) snap.player.gu.splice(idx, 1);
   snap.snapshot = null;
   snap.player.dead = false;
+  if (!PLACES[snap.location]) snap.location = 'shijie';
   addLog(snap, '【逆流重开】春秋蝉振翼长鸣，你自死亡前一瞬逆流回到旧影时刻！', 'log-gold');
   return { ok: true, state: snap };
 }

@@ -1,4 +1,4 @@
-import { GU_DEFS } from '../data/gu.js';
+import { GU_DEFS, guEffectText } from '../data/gu.js';
 import { esc } from '../core/state.js';
 
 export function renderBattleView(gs) {
@@ -15,15 +15,15 @@ export function renderBattleView(gs) {
   const equippedIds = [...new Set(p.equipped.map((uid) => p.gu.find((g) => g.uid === uid)?.id).filter(Boolean))];
   const guButtons = equippedIds.map((id) => {
     const def = GU_DEFS[id];
-    const cd = b.cds[id] || 0;
+    const cd = Math.max(0, (b.cds[id] || 0) - 1);
     const disabled = cd > 0 || p.zy < def.cost;
-    return `<button class="sm" ${disabled ? 'disabled' : ''} data-action="battleAct" data-kind="gu" data-id="${id}">
+    return `<button class="sm" title="${esc(guEffectText(def))}" ${disabled ? 'disabled' : ''} data-action="battleAct" data-kind="gu" data-id="${id}">
       ${esc(def.name)} <span class="muted">${cd > 0 ? `冷却${cd}` : `耗${def.cost}`}</span>
     </button>`;
   }).join('');
 
   const moveButtons = p.moves.map((m) => {
-    const cd = b.cds[m.id] || 0;
+    const cd = Math.max(0, (b.cds[m.id] || 0) - 1);
     const disabled = cd > 0 || p.zy < m.cost;
     return `<button class="sm gold" ${disabled ? 'disabled' : ''} data-action="battleAct" data-kind="move" data-id="${esc(m.id)}">
       ${esc(m.name)} <span class="muted">${cd > 0 ? `冷却${cd}` : `耗${m.cost}`}</span>
@@ -35,7 +35,7 @@ export function renderBattleView(gs) {
         <h3>出手抉择</h3>
         <div class="row" style="margin-bottom:8px">
           <button class="primary" data-action="battleAct" data-kind="attack">拳脚试探</button>
-          <button ${p.yuanshi < 2 ? 'disabled' : ''} data-action="battleAct" data-kind="stone">碎元石回元（-2元石）</button>
+          <button ${p.yuanshi < 2 ? 'disabled' : ''} data-action="battleAct" data-kind="stone">消耗元石回元（-2元石）</button>
           ${!b.lethal ? '<button class="blood" data-action="battleAct" data-kind="lethal">下死手</button>' : '<span class="badge blood">死斗中 · 不可逃</span>'}
           ${!b.lethal ? '<button class="ghost" data-action="battleAct" data-kind="flee">脱身逃走</button>' : ''}
         </div>

@@ -209,7 +209,7 @@ button.sm { min-height: 32px; padding: 4px 10px; font-size: .85rem; }
   background: rgba(12, 23, 21, .97);
   border-top: 1px solid var(--line);
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 4px;
   padding: 6px 8px;
 }
