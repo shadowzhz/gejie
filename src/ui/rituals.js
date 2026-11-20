@@ -1,6 +1,7 @@
-import { GU_DEFS } from '../data/gu.js';
 import { STORY_EVENTS } from '../data/story.js';
-import { esc, realmText } from '../core/state.js';
+import { KILLER_PATTERNS, killerCraftBlock, killerPatternSequence } from '../core/killer.js';
+import { OVERLOAD_PRESSURE, refineChance, refineTechniques } from '../core/refine.js';
+import { esc } from '../core/state.js';
 
 export function renderStartScreen(startState) {
   if (startState.phase === 'kaiqiao') {
@@ -88,22 +89,41 @@ export function renderBreakModal(sess) {
 }
 
 export function renderRefineModal(sess) {
-  const actions = sess.state === 'ongoing'
-    ? `<div class="row">
-        <button class="primary" data-action="refineAct" data-id="steady">稳火温养</button>
-        <button class="blood" data-action="refineAct" data-id="fierce">猛火催炼</button>
-        <button data-action="refineAct" data-id="cool">收火降温</button>
-        <button class="ghost" data-action="refineAct" data-id="abort">停炉保蛊</button>
-      </div>`
-    : `<button class="primary" data-action="closeModal">收炉</button>`;
+  const title = `<h2>${esc(sess.method)} · ${esc(sess.outName)}</h2>`;
+  const { flow } = sess;
+  const notes = `<div class="muted">${esc(flow.note)}${esc(flow.signature.hint)}炉压达 ${OVERLOAD_PRESSURE} 会炸炉。</div>`;
+  const names = sess.ingredients.map((gu) => esc(gu.name) + (gu.benming ? '（本命蛊）' : '')).join('、');
+  const lines = sess.lines.length ? `<div class="card loglist">${sess.lines.map((line) => `<div>${esc(line)}</div>`).join('')}</div>` : '';
+  if (sess.state === 'ready') return `${title}
+    <div class="card"><b>${esc(flow.name)}</b>${notes}
+      <div>安全收炉：炼成度至少 ${flow.target}，炉压至多 ${flow.safePressure}。可运炉 ${flow.turns} 次。</div>
+      <div class="muted">材料 · ${esc(sess.materials)}</div>
+      <div class="muted">入炉 · ${names}</div>
+    </div>
+    <div class="row">
+      <button class="primary" data-action="refineAct" data-id="ignite">开炉 · ${sess.cost} 元石</button>
+      <button class="ghost" data-action="closeModal">取消</button>
+    </div>`;
+  if (sess.state !== 'ongoing') return `${title}${lines}<button class="primary" data-action="closeModal">返回炼蛊</button>`;
 
-  return `<h2>开炉炼蛊 · ${esc(sess.outName)}</h2>
-    <div class="muted">第 ${sess.round} / ${sess.maxRounds} 轮 · 最佳火候 45°～75°（过热炸炉）</div>
-    <div class="kv"><span>当前炉温</span><b>${Math.round(sess.heat)}°</b></div>
-    <div class="bar"><i style="width:${Math.min(100, Math.round(sess.heat))}%"></i></div>
-    <div class="kv"><span>额外成算</span><b>+${Math.round(sess.rateBonus * 100)}%</b></div>
-    <div class="card loglist">${sess.lines.map((l) => `<div>${esc(l)}</div>`).join('')}</div>
-    ${actions}`;
+  const chance = refineChance(sess);
+  const techniques = refineTechniques(sess).map((technique) => `<button class="${technique.pressure >= OVERLOAD_PRESSURE ? 'blood' : ''}" ${technique.enabled ? '' : 'disabled'} data-action="refineAct" data-id="${technique.id}">${technique.name} · 炼成度 ${technique.progress} / 炉压 ${technique.pressure}${technique.pressure >= OVERLOAD_PRESSURE ? '（炸炉）' : ''}</button>`).join('');
+  const protectedGu = sess.ingredients.find((gu) => gu.uid === sess.protectedUid);
+  const protectOptions = sess.ingredients.filter((gu) => !gu.benming)
+    .map((gu) => `<button class="sm" ${sess.turns ? '' : 'disabled'} data-action="refineAct" data-id="protect:${gu.uid}">护住 ${esc(gu.name)}</button>`).join('');
+  return `${title}
+    <div class="card">
+      <div class="kv"><b>${esc(flow.name)}</b><span>还可运炉 ${sess.turns} 次</span></div>
+      ${notes}
+      <div class="kv"><span>炼成度 ${sess.progress} / ${flow.target}</span><span>炉压 ${sess.pressure} · 安全上限 ${flow.safePressure}</span></div>
+      <div class="row">${techniques}</div>
+    </div>
+    ${protectedGu ? `<div class="muted">受护 · ${esc(protectedGu.name)}</div>` : protectOptions ? `<div class="muted">护蛊耗一次运炉，保住一只普通蛊。</div><div class="row">${protectOptions}</div>` : ''}
+    <div class="row">
+      <button class="primary" ${chance ? '' : 'disabled'} data-action="refineAct" data-id="seal">${chance === 1 ? '安全收炉' : `强行收炉 · 成算 ${Math.round(chance * 100)}%`}</button>
+      <button class="ghost" data-action="refineAct" data-id="abort">撤火 · 保住蛊虫</button>
+    </div>
+    ${lines}`;
 }
 
 export function renderEventModal(eventId) {
@@ -114,18 +134,19 @@ export function renderEventModal(eventId) {
     <div class="row">${ev.choices.map((c, idx) => `<button class="primary" data-action="chooseEvent" data-id="${esc(ev.id)}" data-idx="${idx}">${esc(c.text)}</button>`).join('')}</div>`;
 }
 
-export function renderCustomKillerModal(gs, draft) {
-  const guList = gs.player.gu.filter((g) => ['攻击', '防御', '治疗', '增益', '控制'].includes(GU_DEFS[g.id]?.kind));
-  const uniqueIds = [...new Set(guList.map((g) => g.id))];
-  const coreButtons = uniqueIds.map((id) => `<button class="sm ${draft.coreId === id ? 'primary' : ''}" data-action="kmPickCore" data-id="${id}">${esc(GU_DEFS[id].name)}</button>`).join('');
-  const auxButtons = uniqueIds.filter((id) => id !== draft.coreId).map((id) => `<button class="sm ${draft.auxIds.includes(id) ? 'gold' : ''}" data-action="kmToggleAux" data-id="${id}">${esc(GU_DEFS[id].name)}</button>`).join('');
-  return `<h2>自创杀招（二转解锁）</h2>
-    <div class="muted">选定 1 只核心蛊与至多 2 只辅蛊，辅蛊的攻/盾/疗/控效果会融入杀招。当前境界：${esc(realmText(gs.player))}</div>
-    <div><b>核心蛊</b><div class="row" style="margin-top:6px">${coreButtons || '<span class="muted">暂无可用蛊虫</span>'}</div></div>
-    <div><b>辅蛊（已选 ${draft.auxIds.length}/2）</b><div class="row" style="margin-top:6px">${auxButtons || '<span class="muted">暂无其他辅蛊</span>'}</div></div>
-    <div><input id="kmName" type="text" maxlength="10" placeholder="杀招名称（留空自动命名）" value="${esc(draft.name || '')}"></div>
-    <div class="row">
-      <button class="primary" ${draft.coreId ? '' : 'disabled'} data-action="kmCreate">推演成招</button>
-      <button class="ghost" data-action="closeModal">取消</button>
+export function renderCustomKillerModal(gs) {
+  const rows = KILLER_PATTERNS.map((pattern) => {
+    const blocked = killerCraftBlock(gs, pattern);
+    return `<div class="card">
+      <div class="kv"><b>${esc(pattern.name)}</b><span class="badge">${pattern.kind} · 耗 ${pattern.cost} 真元</span></div>
+      <div>${esc(killerPatternSequence(pattern))}</div>
+      <div class="muted">${esc(pattern.desc)}</div>
+      <button class="sm primary" ${blocked ? 'disabled' : ''} data-action="kmCreate" data-id="${pattern.id}">${esc(blocked || `推演 · ${pattern.fee} 元石`)}</button>
     </div>`;
+  }).join('');
+  return `<h2>自创杀招</h2>
+    <div class="muted">二转后，在同一回合按所示顺序完整催动这组蛊虫，即可通过试阵。对练也算，胜负都记进度。未形成搭配的蛊虫仍可逐只催动。</div>
+    <input id="kmName" type="text" maxlength="10" aria-label="自定杀招名称" placeholder="自定杀招名称（可留空）">
+    ${rows}
+    <div class="row"><button class="ghost" data-action="closeModal">返回空窍</button></div>`;
 }

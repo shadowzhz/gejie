@@ -1,6 +1,7 @@
 import { GU_DEFS } from '../data/gu.js';
 import { ENEMIES } from '../data/enemies.js';
 import { addGu, addItem, addLog, hasGu, recalcStats, recordQuestProgress } from './state.js';
+import { killerMoveBlock, recordKillerSequence } from './killer.js';
 
 function pickIntent(enemy, rng = Math.random) {
   const pool = enemy.moves.filter((m) => (enemy.cds[m.name] || 0) <= 0);
@@ -211,7 +212,7 @@ export function battleAct(gs, action, arg = '', rng = Math.random) {
     if (queue.length || !['attack', 'stone', 'flee', 'move'].includes(action)) return b;
     if (action === 'stone' && p.yuanshi < 2) return b;
     if (action === 'flee' && b.lethal) return b;
-    if (action === 'move' && (!mv || (b.cds[mv.id] ?? 0) > 1 || p.zy < mv.cost)) return b;
+    if (action === 'move' && (!mv || killerMoveBlock(gs, mv) || (b.cds[mv.id] ?? 0) > 1 || p.zy < mv.cost)) return b;
   }
 
   for (const k of Object.keys(b.cds)) {
@@ -236,27 +237,24 @@ export function battleAct(gs, action, arg = '', rng = Math.random) {
     }
     b.logs.push('你想脱身退走，却被对方死死缠住！');
   } else if (action === 'resolveGu') {
+    const fired = [];
     for (const gu of plan.queued) {
       applyBattleGu(gs, b, gu, rng);
+      fired.push(gu.def.id);
       if (foe.hp <= 0) break;
     }
+    recordKillerSequence(gs, fired);
   } else if (action === 'move') {
     p.zy -= mv.cost;
     b.cds[mv.id] = mv.cd;
     if (mv.kind === '防御') {
       b.meShield += mv.power;
       b.logs.push(`你催动杀招「${mv.name}」，凝出 ${mv.power} 点厚盾！`);
-    } else if (mv.kind === '治疗') {
-      p.hp = Math.min(p.hpMax, p.hp + mv.power);
-      b.logs.push(`你催动杀招「${mv.name}」，生机涌动，气血 +${mv.power}！`);
     } else {
-      const strengthBonus = GU_DEFS[mv.coreId]?.school === '力道' ? p.powerBonus * 0.5 : 0;
-      const raw = Math.round((mv.power + strengthBonus) * (0.94 + rng() * 0.14));
+      const raw = Math.round(mv.power * (0.94 + rng() * 0.14));
       const res = dealDamageToFoe(b, raw);
       b.logs.push(`你催动杀招「${mv.name}」，${res.absorbed ? `破盾 ${res.absorbed}，` : ''}重创 ${foe.name} ${res.dmg} 点！`);
       if (mv.bonusShield) { b.meShield += mv.bonusShield; b.logs.push(`辅蛊护体，附加护盾 +${mv.bonusShield}。`); }
-      if (mv.bonusHeal) { p.hp = Math.min(p.hpMax, p.hp + mv.bonusHeal); b.logs.push(`辅蛊回春，气血 +${mv.bonusHeal}。`); }
-      if (mv.stunChance > 0 && rng() < mv.stunChance) { foe.stunned = true; b.logs.push(`${foe.name}被杀招震慑，下轮无法行动！`); }
     }
   }
 

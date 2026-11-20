@@ -1,8 +1,8 @@
 import { GU_DEFS, ITEMS, REFINE_RECIPES, recipeOutputText } from '../data/gu.js';
 import { hasPlaceActions, PLACES } from '../data/places.js';
-import { formatDateTime, MIN_PER_DAY, MIN_PER_MONTH, MIN_PER_SHICHEN } from '../core/calendar.js';
-import { addGu, addItem, addLog, claimBenming, createAptitude, createNewGame, esc, feedGu, handleQuest, loadGame, purchaseShopEntry, RANK_NAMES, realmText, recalcStats, recordQuestProgress, refineBenming, saveGame, useHealItem, useWhiteBoarGu, XIAO_NAMES } from '../core/state.js';
-import { createKillerMove } from '../core/killer.js';
+import { formatDateTime, isNight, MIN_PER_DAY, MIN_PER_MONTH, MIN_PER_SHICHEN } from '../core/calendar.js';
+import { addGu, addItem, addLog, claimBenming, createAptitude, createNewGame, esc, feedGu, handleQuest, loadGame, minorXpNeed, purchaseShopEntry, RANK_NAMES, realmText, recalcStats, recordQuestProgress, refineBenming, saveGame, useHealItem, useWhiteBoarGu, XIAO_NAMES } from '../core/state.js';
+import { createKillerMove, forgetKillerMove } from '../core/killer.js';
 import { battleAct, startBattle } from '../core/combat.js';
 import { applyEventChoice, checkStoryTriggers } from '../core/story-engine.js';
 import { advanceMinutes, moveToPlace, rewindSpringCicada, saveSpringSnapshot } from '../core/clock.js';
@@ -20,7 +20,6 @@ let G = null;
 let TAB = 'place';
 let MODAL = null; // { kind: 'place'|'break'|'refine'|'killer'|'developer'|'dead'|'win', data: ... }
 let START = { phase: 'intro', name: '方源', apt: null, step: 0, target: 25, done: false, hasSave: false };
-let KM_DRAFT = { coreId: '', auxIds: [], name: '' };
 
 function showToast(msg) {
   const el = document.getElementById('toast');
@@ -37,8 +36,19 @@ function openModal(kind, data) {
 }
 
 function closeModal() {
+  if (MODAL?.kind === 'refine') {
+    if (G.refining?.state === 'ongoing') return;
+    delete G.refining;
+    saveGame(G);
+  }
   MODAL = null;
   render();
+}
+
+function restoreRefining() {
+  if (!G?.refining) return;
+  TAB = 'refine';
+  MODAL = { kind: 'refine', data: G.refining };
 }
 
 function renderTopBar() {
@@ -54,15 +64,15 @@ function renderTopBar() {
         <span class="badge">${esc(placeName)}</span>
       </div>
       <div class="clock-box">
-        <span>${esc(formatDateTime(G.minutes))}</span>
+        <span data-live="clock">${esc(formatDateTime(G.minutes))}</span>
         ${G.developerMode ? '<button class="sm gold" data-action="openDeveloper">开发者</button>' : ''}
         <button class="sm ghost" data-action="togglePause">${G.paused ? '▶ 继续流逝' : '⏸ 暂停'}</button>
       </div>
     </div>
     <div class="goal-bar"><b>当下目标：</b>${esc(G.goal)}</div>
     <div class="res-row">
-      <div class="res-item"><div class="res-head"><span>气血</span><span>${Math.round(p.hp)}/${p.hpMax}</span></div><div class="bar hp"><i style="width:${hpPct}%"></i></div></div>
-      <div class="res-item"><div class="res-head"><span>真元</span><span>${Math.round(p.zy)}/${p.zyMax}</span></div><div class="bar zy"><i style="width:${zyPct}%"></i></div></div>
+      <div class="res-item"><div class="res-head"><span>气血</span><span data-live="hp">${Math.round(p.hp)}/${p.hpMax}</span></div><div class="bar hp"><i data-live="hp-bar" style="width:${hpPct}%"></i></div></div>
+      <div class="res-item"><div class="res-head"><span>真元</span><span data-live="zy">${Math.round(p.zy)}/${p.zyMax}</span></div><div class="bar zy"><i data-live="zy-bar" style="width:${zyPct}%"></i></div></div>
       <div class="res-item"><div class="res-head"><span>元石</span><span>${p.yuanshi}</span></div><div class="muted" style="font-size:.75rem">${p.mo >= 30 ? `恶名 ${p.mo}` : `${p.grade}等资质`}</div></div>
     </div>
   </header>`;
@@ -96,7 +106,7 @@ function renderModal() {
     html = `<div class="place-sheet-controls"><button class="sm" data-action="closeModal">返回地图</button></div>${renderPlaceView(G)}`;
   } else if (MODAL.kind === 'break') html = renderBreakModal(MODAL.data);
   else if (MODAL.kind === 'refine') html = renderRefineModal(MODAL.data);
-  else if (MODAL.kind === 'killer') html = renderCustomKillerModal(G, KM_DRAFT);
+  else if (MODAL.kind === 'killer') html = renderCustomKillerModal(G);
   else if (MODAL.kind === 'developer') html = renderDeveloperView(G);
   else if (MODAL.kind === 'dead') {
     html = `<h2>身殒青茅山</h2>
@@ -322,6 +332,7 @@ function handleAction(el) {
     G = loadGame();
     if (!G) { showToast('未找到可用存档'); return; }
     TAB = 'place';
+    restoreRefining();
     render();
   } else if (act === 'navTab') {
     if (MODAL?.kind === 'place') MODAL = null;
@@ -402,32 +413,30 @@ function handleAction(el) {
     saveGame(G);
     render();
   } else if (act === 'startRefine') {
+    if (G.refining || G.battle || G.player.dead) return;
     const sess = createRefineSession(G, id);
     if (sess.error) { showToast(sess.error); return; }
+    G.refining = sess;
     openModal('refine', sess);
   } else if (act === 'refineAct' && MODAL?.kind === 'refine') {
     stepRefineSession(G, MODAL.data, id);
     saveGame(G);
     render();
   } else if (act === 'openCustomKiller') {
-    KM_DRAFT = { coreId: '', auxIds: [], name: '' };
-    openModal('killer', {});
-  } else if (act === 'kmPickCore') {
-    KM_DRAFT.coreId = id;
-    KM_DRAFT.auxIds = KM_DRAFT.auxIds.filter((x) => x !== id);
-    render();
-  } else if (act === 'kmToggleAux') {
-    const i = KM_DRAFT.auxIds.indexOf(id);
-    if (i >= 0) KM_DRAFT.auxIds.splice(i, 1);
-    else if (KM_DRAFT.auxIds.length < 2) KM_DRAFT.auxIds.push(id);
-    render();
-  } else if (act === 'kmCreate') {
+    if (!G.battle && G.player.rank >= 2) openModal('killer');
+  } else if (act === 'kmCreate' && MODAL?.kind === 'killer') {
     const nm = document.getElementById('kmName')?.value || '';
-    const res = createKillerMove(G, KM_DRAFT.coreId, KM_DRAFT.auxIds, nm);
+    const res = createKillerMove(G, id, nm);
     if (!res.ok) { showToast(res.reason); return; }
+    saveGame(G);
     closeModal();
+    showToast(`推演成功：「${res.move.name}」`);
+  } else if (act === 'forgetKiller') {
+    const move = forgetKillerMove(G, id);
+    if (!move) return;
     saveGame(G);
     render();
+    showToast(`已删除「${move.name}」`);
   } else if (act === 'toggleAutoFeed') {
     G.player.autoFeed = !G.player.autoFeed;
     if (G.player.autoFeed) {
@@ -531,13 +540,40 @@ document.addEventListener('click', (e) => {
   if (btn) handleAction(btn);
 });
 
+function updateLiveDisplay() {
+  const p = G.player;
+  const need = minorXpNeed(p);
+  const labels = {
+    clock: formatDateTime(G.minutes),
+    hp: `${Math.round(p.hp)}/${p.hpMax}`,
+    zy: `${Math.round(p.zy)}/${p.zyMax}`,
+    xp: `修为 ${Math.floor(p.xp)} / ${need}`
+  };
+  const bars = {
+    'hp-bar': p.hp / Math.max(1, p.hpMax),
+    'zy-bar': p.zy / Math.max(1, p.zyMax),
+    'xp-bar': need ? p.xp / need : 1
+  };
+  for (const node of document.querySelectorAll('[data-live]')) {
+    const key = node.dataset.live;
+    if (Object.hasOwn(labels, key) && node.textContent !== labels[key]) node.textContent = labels[key];
+    if (Object.hasOwn(bars, key)) node.style.width = `${Math.min(100, Math.round(bars[key] * 100))}%`;
+  }
+  document.querySelector('.map-canvas')?.classList.toggle('is-night', isNight(G.minutes));
+}
+
 // 轻实时时间流：现实 1 秒 = 游戏 1 刻 (15 分钟)
 setInterval(() => {
   if (!G || G.paused || G.player.dead || G.battle || G.pendingEventId || MODAL) return;
+  const day = Math.floor(G.minutes / MIN_PER_DAY);
+  const hallOpen = G.flags['open:jiazhuge'];
   advanceMinutes(G, 15);
   if (G.player.dead) openModal('dead', {});
-  render();
+  else if (G.battle || G.pendingEventId || day !== Math.floor(G.minutes / MIN_PER_DAY)
+    || hallOpen !== G.flags['open:jiazhuge']) render();
+  else updateLiveDisplay();
 }, 1000);
 
 G = loadGame();
+restoreRefining();
 render();

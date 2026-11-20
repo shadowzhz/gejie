@@ -1,60 +1,94 @@
 import { GU_DEFS } from '../data/gu.js';
 import { addLog, hasGu } from './state.js';
 
-export function canCraftKillerMove(gs) {
-  return !!gs && gs.player.rank >= 2;
+// 青茅山篇的推演路线，依据蛊虫已有的用途设计。
+export const KILLER_PATTERNS = [
+  {
+    id: 'light_moon', name: '凝光月刃', sequence: ['xiaoguang', 'yueguang'],
+    desc: '小光先聚光，再以月光蛊斩出月刃。',
+    fee: 24, kind: '攻击', power: 31, cost: 9, cd: 2
+  },
+  {
+    id: 'guarded_moon', name: '披月斩', sequence: ['yueni', 'yuemang'],
+    desc: '月霓裳先护身，再用月芒蛊反击。',
+    fee: 36, kind: '攻击', power: 39, bonusShield: 30, cost: 15, cd: 3
+  },
+  {
+    id: 'bristle_armor', name: '青丝黑鬃甲', sequence: ['qingsi', 'heizong'],
+    desc: '先以青丝护身，再催黑鬃覆住薄弱处，结成双层护甲。',
+    fee: 36, kind: '防御', power: 76, cost: 20, cd: 3
+  }
+];
+
+export function killerPatternSequence(pattern) {
+  return pattern.sequence.map((id) => GU_DEFS[id].name).join(' → ');
 }
 
-export function buildKillerMove(coreId, auxIds = [], customName = '') {
-  const core = GU_DEFS[coreId];
-  if (!core) return null;
-  const cleanAux = [...new Set(auxIds)].filter((id) => id && id !== coreId && GU_DEFS[id]).slice(0, 2);
-  const all = [coreId, ...cleanAux];
-  let power = core.power * 1.45;
-  let cost = core.cost + 3;
-  let cd = Math.max(2, core.cd + 1);
-  let bonusShield = 0;
-  let bonusHeal = 0;
-  let stunChance = 0;
-  let boostMul = 1;
-
-  for (const aid of cleanAux) {
-    const ag = GU_DEFS[aid];
-    cost += Math.max(2, Math.round(ag.cost * 0.6));
-    if (ag.kind === '攻击') power += ag.power * 0.65;
-    else if (ag.kind === '防御') bonusShield += Math.round(ag.power * 0.75);
-    else if (ag.kind === '治疗') bonusHeal += Math.round(ag.power * 0.75);
-    else if (aid === 'xiaoguang' && coreId === 'yueguang') boostMul += 0.22;
-    else if (ag.kind === '控制') stunChance += 0.28;
+export function recordKillerSequence(gs, guIds) {
+  if (gs.player.rank < 2 || guIds.length < 2) return;
+  for (const pattern of KILLER_PATTERNS) {
+    const { sequence, id } = pattern;
+    if (guIds.length !== sequence.length || !sequence.every((gu, index) => gu === guIds[index])) continue;
+    const practiced = (gs.player.killerPractice ??= []);
+    if (practiced.includes(id)) return;
+    practiced.push(id);
+    gs.battle.logs.push(`搭配试阵通过：「${pattern.name}」可回空窍推演。`);
+    addLog(gs, `【试阵】「${pattern.name}」搭配已验证。`, 'log-good');
+    return;
   }
+  gs.battle.logs.push('这组蛊虫已逐只催动，当前搭配或顺序未形成可推演的杀招。');
+}
 
-  power = Math.round(power * boostMul);
-  const name = String(customName || '').trim().slice(0, 10) || `自创·${core.name.replace(/蛊$/, '')}杀招`;
-  return {
-    id: `km_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
-    name,
-    coreId,
-    auxIds: cleanAux,
-    guIds: all,
-    kind: core.kind === '防御' ? '防御' : (core.kind === '治疗' ? '治疗' : '攻击'),
-    power,
-    bonusShield,
-    bonusHeal,
-    stunChance,
-    cost,
-    cd
+function killerPatternBlock(gs, pattern) {
+  if (gs.player.rank < 2) return '须晋入二转';
+  const missing = pattern.sequence.find((id) => !hasGu(gs, id));
+  return missing ? `缺少「${GU_DEFS[missing].name}」` : '';
+}
+
+export function killerMoveBlock(gs, move) {
+  const pattern = KILLER_PATTERNS.find((entry) => entry.id === move?.patternId);
+  if (!pattern) return '旧杀招需要重新推演';
+  const blocked = killerPatternBlock(gs, pattern);
+  if (blocked) return blocked;
+  const { gu, equipped } = gs.player;
+  const resting = pattern.sequence.find((id) => !gu.some((entry) => entry.id === id && equipped.includes(entry.uid)));
+  return resting ? `「${GU_DEFS[resting].name}」未出战` : '';
+}
+
+export function killerCraftBlock(gs, pattern) {
+  if (gs.player.moves.some((move) => move.patternId === pattern.id)) return '已推演';
+  const blocked = killerPatternBlock(gs, pattern);
+  if (blocked) return blocked;
+  if (!gs.player.killerPractice?.includes(pattern.id)) return '须按所示顺序完成试阵';
+  if (gs.player.yuanshi < pattern.fee) return `元石不足（需 ${pattern.fee}）`;
+  return '';
+}
+
+export function forgetKillerMove(gs, id) {
+  if (gs.battle) return null;
+  const index = gs.player.moves.findIndex((move) => move.id === id);
+  if (index === -1) return null;
+  const [move] = gs.player.moves.splice(index, 1);
+  addLog(gs, `【杀招】已删除「${move.name}」。`);
+  return move;
+}
+
+export function createKillerMove(gs, patternId, customName = '') {
+  const pattern = KILLER_PATTERNS.find((entry) => entry.id === patternId);
+  if (!pattern) return { ok: false, reason: '这组蛊虫没有可推演的搭配' };
+  if (gs.battle) return { ok: false, reason: '请在战斗结束后推演' };
+  const reason = killerCraftBlock(gs, pattern);
+  if (reason) return { ok: false, reason };
+
+  const { kind, power, bonusShield, cost, cd } = pattern;
+  const move = {
+    id: `km_${pattern.id}`,
+    patternId: pattern.id,
+    name: String(customName).trim().slice(0, 10) || pattern.name,
+    kind, power, bonusShield, cost, cd
   };
-}
-
-export function createKillerMove(gs, coreId, auxIds, customName) {
-  if (!canCraftKillerMove(gs)) return { ok: false, reason: '须晋入二转，方可自创杀招' };
-  if (!hasGu(gs, coreId)) return { ok: false, reason: '未持有核心蛊' };
-  for (const aid of auxIds || []) {
-    if (!hasGu(gs, aid)) return { ok: false, reason: '未持有指定辅蛊' };
-  }
-  const move = buildKillerMove(coreId, auxIds, customName);
-  if (!move) return { ok: false, reason: '核心蛊无效' };
+  gs.player.yuanshi -= pattern.fee;
   gs.player.moves.push(move);
-  addLog(gs, `【自创杀招】你以「${GU_DEFS[coreId].name}」为核心，推演成「${move.name}」。`, 'log-gold');
+  addLog(gs, `【自创杀招】花费 ${pattern.fee} 元石，推演成「${move.name}」。`, 'log-gold');
   return { ok: true, move };
 }

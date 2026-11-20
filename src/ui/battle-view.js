@@ -1,5 +1,6 @@
 import { guEffectText } from '../data/gu.js';
 import { battleGuPlan } from '../core/combat.js';
+import { killerMoveBlock } from '../core/killer.js';
 import { esc } from '../core/state.js';
 
 export function renderBattleView(gs) {
@@ -26,9 +27,10 @@ export function renderBattleView(gs) {
 
   const moveButtons = p.moves.map((m) => {
     const cd = Math.max(0, (b.cds[m.id] || 0) - 1);
-    const disabled = hasQueue || cd > 0 || p.zy < m.cost;
+    const blocked = killerMoveBlock(gs, m);
+    const disabled = hasQueue || blocked || cd > 0 || p.zy < m.cost;
     return `<button class="sm gold" ${disabled ? 'disabled' : ''} data-action="battleAct" data-kind="move" data-id="${esc(m.id)}">
-      ${esc(m.name)} <span class="muted">${cd > 0 ? `冷却${cd}` : `耗${m.cost}`}</span>
+      ${esc(m.name)} <span class="muted">${esc(blocked || (cd > 0 ? `冷却${cd}` : `耗${m.cost}`))}</span>
     </button>`;
   }).join('');
 
@@ -45,8 +47,8 @@ export function renderBattleView(gs) {
           <div class="muted" style="margin-bottom:4px">按顺序选择蛊虫，再点一次可取消</div>
           <div class="row" style="margin-bottom:8px">${guButtons}</div>
           <div class="row" style="margin-bottom:8px">
-            <button class="primary" ${hasQueue ? '' : 'disabled'} data-action="battleAct" data-kind="resolveGu">按顺序催动${hasQueue ? ` · 耗 ${cost} 真元` : ''}</button>
-            ${hasQueue ? `<span class="muted">${queued.map(({ def }) => esc(def.name)).join(' → ')}</span>` : ''}
+            <button class="primary" ${hasQueue ? '' : 'disabled'} data-action="battleAct" data-kind="resolveGu">催动</button>
+            ${hasQueue ? `<span class="muted">${queued.map(({ def }) => esc(def.name)).join(' → ')} · 耗 ${cost} 真元</span>` : ''}
           </div>` : ''}
         ${moveButtons ? `<div class="muted" style="margin-bottom:4px">催动杀招</div><div class="row">${moveButtons}</div>` : ''}
       </div>`

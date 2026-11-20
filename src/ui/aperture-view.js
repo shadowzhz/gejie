@@ -2,6 +2,7 @@ import { GU_DEFS, ITEMS, guEffectText } from '../data/gu.js';
 import { BENMING_ZY_COST, esc, minorXpNeed, realmText } from '../core/state.js';
 
 import { realmGuRequirement } from '../core/breakthrough.js';
+import { killerMoveBlock } from '../core/killer.js';
 
 export function renderApertureView(gs) {
   const p = gs.player;
@@ -26,12 +27,13 @@ export function renderApertureView(gs) {
     const effect = guEffectText(def);
     return `<div class="card">
       <div class="kv">
-        <b>${isBm ? '★ ' : ''}${esc(def.name)} <span class="badge">${def.rank}转 · ${esc(def.kind)}</span></b>
+        <b>${isBm ? '★ ' : ''}${esc(def.name)} <span class="badge">${def.rank}转 · ${esc(def.kind)}${isBm ? ' · 本命蛊' : ''}</span></b>
         <span class="muted">饱食 ${g.satiety}%</span>
       </div>
       <div class="muted" style="margin-bottom:8px">
         ${esc(def.desc)}${effect ? `<br>${esc(effect)}` : ''}
         <br>${food ? `食物 <b>${esc(food.name)}</b> · 行囊 ${foodCount} 份` : def.foodUnknown ? '食物未核实 · 暂不消耗口粮' : '无需喂食'}
+        ${isBm ? '<br>合炼失败时保留，炼成后由成蛊继承本命绑定。' : ''}
       </div>
       <div class="row">
         ${food ? `<button class="sm" ${foodCount <= 0 || g.satiety >= 100 ? 'disabled' : ''} data-action="feedGu" data-id="${g.uid}">喂食</button>` : ''}
@@ -44,18 +46,19 @@ export function renderApertureView(gs) {
 
   const movesHtml = p.moves.length
     ? p.moves.map((m) => `<div class="card">
-        <div class="kv"><b>${esc(m.name)}</b><span class="badge gold">${esc(m.kind)} · 耗${m.cost}</span></div>
-        <div class="muted">威能 ${m.power}${m.bonusShield ? ` · 盾+${m.bonusShield}` : ''}${m.bonusHeal ? ` · 疗+${m.bonusHeal}` : ''} · 冷却 ${m.cd}</div>
+        <div class="kv"><b>${esc(m.name)}</b><button class="sm ghost" data-action="forgetKiller" data-id="${esc(m.id)}">删除</button></div>
+        <span class="badge gold">${esc(m.kind)} · 耗${m.cost} 真元</span>
+        <div class="muted">${esc(killerMoveBlock(gs, m) || `威能 ${m.power}${m.bonusShield ? ` · 盾+${m.bonusShield}` : ''} · 间隔 ${m.cd - 1} 回合`)}</div>
       </div>`).join('')
     : '<div class="muted">尚未创出杀招。</div>';
 
   return `<div class="aperture-canvas">
       <div class="kv">
         <b>${esc(realmText(p))} · ${esc(p.grade)}等资质（元海 ${p.hai} 成）</b>
-        <span>${p.xiao < 3 ? `修为 ${Math.floor(p.xp)} / ${needXp}` : '本转巅峰 · 可破壁'}</span>
+        <span ${p.xiao < 3 ? 'data-live="xp"' : ''}>${p.xiao < 3 ? `修为 ${Math.floor(p.xp)} / ${needXp}` : '本转巅峰 · 可破壁'}</span>
       </div>
       <div class="aperture-gu-list">${chips || '<span class="muted">空窍尚空</span>'}</div>
-      <div class="bar"><i style="width:${xpPct}%"></i></div>
+      <div class="bar"><i data-live="xp-bar" style="width:${xpPct}%"></i></div>
     </div>
     <div class="card">
       <div class="muted">${p.rank >= 4 && p.xiao >= 3 ? '已达本卷境界上限' : esc(realmGuRequirement(p).text)}</div>

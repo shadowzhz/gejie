@@ -537,15 +537,15 @@ const GU_DEFS = {
   chunqiuchan: { id: 'chunqiuchan', name: '春秋蝉（残）', rank: 3, school: '宙道', kind: '奇蛊', cost: 0, cd: 0, power: 0, food: '', price: 0, desc: '奇蛊榜第七，可于行纪中留下一道旧影；身殒时消耗它回到那一刻。' }
 };
 const REFINE_RECIPES = [
-  { id: 'r_jiuchong_fanran', price: 8, out: 'jiuchong', method: '逆炼', gu: { siwei_jiu: 1 }, materials: { fanran: 1 }, rate: 0.70, cost: 12 },
-  { id: 'r_jiuchong_langzi', price: 12, out: 'jiuchong', outCount: 2, method: '逆炼', gu: { siwei_jiu: 1 }, materials: { langzi: 1 }, rate: 0.70, cost: 12 },
-  { id: 'r_yuemang', price: 12, out: 'yuemang', gu: { yueguang: 1, xiaoguang: 2 }, materials: {}, rate: 0.68, cost: 25 },
-  { id: 'r_yuexuan', price: 12, out: 'yuexuan', gu: { yueguang: 1, xuanfeng: 1 }, materials: {}, rate: 0.65, cost: 25 },
-  { id: 'r_yuehen', price: 12, out: 'yuehen', gu: { yueguang: 1, henshi: 1 }, materials: {}, rate: 0.65, cost: 25 },
-  { id: 'r_yueni', price: 12, out: 'yueni', gu: { yueguang: 1, yupi: 1 }, materials: {}, rate: 0.65, cost: 25 },
-  { id: 'r_baiyu', price: 12, out: 'baiyu', gu: { yupi: 1, baishi: 1 }, materials: { yezhuya: 1 }, rate: 0.65, cost: 25 },
-  { id: 'r_heizong', price: 12, out: 'heizong', gu: { heishi: 1, qingsi: 1 }, materials: {}, rate: 0.65, cost: 25 },
-  { id: 'r_siwei', price: 20, out: 'siwei_jiu', gu: { jiuchong: 2 }, materials: { suanjiu: 1, tianjiu: 1, kujiu: 1, lajiu: 1 }, rate: 0.58, cost: 45 }
+  { id: 'r_jiuchong_fanran', flow: 'reverse', price: 8, out: 'jiuchong', method: '逆炼', gu: { siwei_jiu: 1 }, materials: { fanran: 1 }, rate: 0.70, cost: 12 },
+  { id: 'r_jiuchong_langzi', flow: 'reverse', price: 12, out: 'jiuchong', outCount: 2, method: '逆炼', gu: { siwei_jiu: 1 }, materials: { langzi: 1 }, rate: 0.70, cost: 12 },
+  { id: 'r_yuemang', flow: 'moon', price: 12, out: 'yuemang', gu: { yueguang: 1, xiaoguang: 2 }, materials: {}, rate: 0.68, cost: 25 },
+  { id: 'r_yuexuan', flow: 'moon', price: 12, out: 'yuexuan', gu: { yueguang: 1, xuanfeng: 1 }, materials: {}, rate: 0.65, cost: 25 },
+  { id: 'r_yuehen', flow: 'moon', price: 12, out: 'yuehen', gu: { yueguang: 1, henshi: 1 }, materials: {}, rate: 0.65, cost: 25 },
+  { id: 'r_yueni', flow: 'moon', price: 12, out: 'yueni', gu: { yueguang: 1, yupi: 1 }, materials: {}, rate: 0.65, cost: 25 },
+  { id: 'r_baiyu', flow: 'armor', price: 12, out: 'baiyu', gu: { yupi: 1, baishi: 1 }, materials: { yezhuya: 1 }, rate: 0.65, cost: 25 },
+  { id: 'r_heizong', flow: 'armor', price: 12, out: 'heizong', gu: { heishi: 1, qingsi: 1 }, materials: {}, rate: 0.65, cost: 25 },
+  { id: 'r_siwei', flow: 'wine', price: 20, out: 'siwei_jiu', gu: { jiuchong: 2 }, materials: { suanjiu: 1, tianjiu: 1, kujiu: 1, lajiu: 1 }, rate: 0.58, cost: 45 }
 ];
 function recipeOutputText(recipe) {
   const name = GU_DEFS[recipe.out].name;
@@ -1082,64 +1082,97 @@ function loadGame(storage = typeof localStorage !== 'undefined' ? localStorage :
 
 
 /* === src/core/killer.js === */
-function canCraftKillerMove(gs) {
-  return !!gs && gs.player.rank >= 2;
-}
-function buildKillerMove(coreId, auxIds = [], customName = '') {
-  const core = GU_DEFS[coreId];
-  if (!core) return null;
-  const cleanAux = [...new Set(auxIds)].filter((id) => id && id !== coreId && GU_DEFS[id]).slice(0, 2);
-  const all = [coreId, ...cleanAux];
-  let power = core.power * 1.45;
-  let cost = core.cost + 3;
-  let cd = Math.max(2, core.cd + 1);
-  let bonusShield = 0;
-  let bonusHeal = 0;
-  let stunChance = 0;
-  let boostMul = 1;
 
-  for (const aid of cleanAux) {
-    const ag = GU_DEFS[aid];
-    cost += Math.max(2, Math.round(ag.cost * 0.6));
-    if (ag.kind === '攻击') power += ag.power * 0.65;
-    else if (ag.kind === '防御') bonusShield += Math.round(ag.power * 0.75);
-    else if (ag.kind === '治疗') bonusHeal += Math.round(ag.power * 0.75);
-    else if (aid === 'xiaoguang' && coreId === 'yueguang') boostMul += 0.22;
-    else if (ag.kind === '控制') stunChance += 0.28;
+
+// 青茅山篇的推演路线，依据蛊虫已有的用途设计。
+const KILLER_PATTERNS = [
+  {
+    id: 'light_moon', name: '凝光月刃', sequence: ['xiaoguang', 'yueguang'],
+    desc: '小光先聚光，再以月光蛊斩出月刃。',
+    fee: 24, kind: '攻击', power: 31, cost: 9, cd: 2
+  },
+  {
+    id: 'guarded_moon', name: '披月斩', sequence: ['yueni', 'yuemang'],
+    desc: '月霓裳先护身，再用月芒蛊反击。',
+    fee: 36, kind: '攻击', power: 39, bonusShield: 30, cost: 15, cd: 3
+  },
+  {
+    id: 'bristle_armor', name: '青丝黑鬃甲', sequence: ['qingsi', 'heizong'],
+    desc: '先以青丝护身，再催黑鬃覆住薄弱处，结成双层护甲。',
+    fee: 36, kind: '防御', power: 76, cost: 20, cd: 3
   }
+];
+function killerPatternSequence(pattern) {
+  return pattern.sequence.map((id) => GU_DEFS[id].name).join(' → ');
+}
+function recordKillerSequence(gs, guIds) {
+  if (gs.player.rank < 2 || guIds.length < 2) return;
+  for (const pattern of KILLER_PATTERNS) {
+    const { sequence, id } = pattern;
+    if (guIds.length !== sequence.length || !sequence.every((gu, index) => gu === guIds[index])) continue;
+    const practiced = (gs.player.killerPractice ??= []);
+    if (practiced.includes(id)) return;
+    practiced.push(id);
+    gs.battle.logs.push(`搭配试阵通过：「${pattern.name}」可回空窍推演。`);
+    addLog(gs, `【试阵】「${pattern.name}」搭配已验证。`, 'log-good');
+    return;
+  }
+  gs.battle.logs.push('这组蛊虫已逐只催动，当前搭配或顺序未形成可推演的杀招。');
+}
 
-  power = Math.round(power * boostMul);
-  const name = String(customName || '').trim().slice(0, 10) || `自创·${core.name.replace(/蛊$/, '')}杀招`;
-  return {
-    id: `km_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
-    name,
-    coreId,
-    auxIds: cleanAux,
-    guIds: all,
-    kind: core.kind === '防御' ? '防御' : (core.kind === '治疗' ? '治疗' : '攻击'),
-    power,
-    bonusShield,
-    bonusHeal,
-    stunChance,
-    cost,
-    cd
+function killerPatternBlock(gs, pattern) {
+  if (gs.player.rank < 2) return '须晋入二转';
+  const missing = pattern.sequence.find((id) => !hasGu(gs, id));
+  return missing ? `缺少「${GU_DEFS[missing].name}」` : '';
+}
+function killerMoveBlock(gs, move) {
+  const pattern = KILLER_PATTERNS.find((entry) => entry.id === move?.patternId);
+  if (!pattern) return '旧杀招需要重新推演';
+  const blocked = killerPatternBlock(gs, pattern);
+  if (blocked) return blocked;
+  const { gu, equipped } = gs.player;
+  const resting = pattern.sequence.find((id) => !gu.some((entry) => entry.id === id && equipped.includes(entry.uid)));
+  return resting ? `「${GU_DEFS[resting].name}」未出战` : '';
+}
+function killerCraftBlock(gs, pattern) {
+  if (gs.player.moves.some((move) => move.patternId === pattern.id)) return '已推演';
+  const blocked = killerPatternBlock(gs, pattern);
+  if (blocked) return blocked;
+  if (!gs.player.killerPractice?.includes(pattern.id)) return '须按所示顺序完成试阵';
+  if (gs.player.yuanshi < pattern.fee) return `元石不足（需 ${pattern.fee}）`;
+  return '';
+}
+function forgetKillerMove(gs, id) {
+  if (gs.battle) return null;
+  const index = gs.player.moves.findIndex((move) => move.id === id);
+  if (index === -1) return null;
+  const [move] = gs.player.moves.splice(index, 1);
+  addLog(gs, `【杀招】已删除「${move.name}」。`);
+  return move;
+}
+function createKillerMove(gs, patternId, customName = '') {
+  const pattern = KILLER_PATTERNS.find((entry) => entry.id === patternId);
+  if (!pattern) return { ok: false, reason: '这组蛊虫没有可推演的搭配' };
+  if (gs.battle) return { ok: false, reason: '请在战斗结束后推演' };
+  const reason = killerCraftBlock(gs, pattern);
+  if (reason) return { ok: false, reason };
+
+  const { kind, power, bonusShield, cost, cd } = pattern;
+  const move = {
+    id: `km_${pattern.id}`,
+    patternId: pattern.id,
+    name: String(customName).trim().slice(0, 10) || pattern.name,
+    kind, power, bonusShield, cost, cd
   };
-}
-function createKillerMove(gs, coreId, auxIds, customName) {
-  if (!canCraftKillerMove(gs)) return { ok: false, reason: '须晋入二转，方可自创杀招' };
-  if (!hasGu(gs, coreId)) return { ok: false, reason: '未持有核心蛊' };
-  for (const aid of auxIds || []) {
-    if (!hasGu(gs, aid)) return { ok: false, reason: '未持有指定辅蛊' };
-  }
-  const move = buildKillerMove(coreId, auxIds, customName);
-  if (!move) return { ok: false, reason: '核心蛊无效' };
+  gs.player.yuanshi -= pattern.fee;
   gs.player.moves.push(move);
-  addLog(gs, `【自创杀招】你以「${GU_DEFS[coreId].name}」为核心，推演成「${move.name}」。`, 'log-gold');
+  addLog(gs, `【自创杀招】花费 ${pattern.fee} 元石，推演成「${move.name}」。`, 'log-gold');
   return { ok: true, move };
 }
 
 
 /* === src/core/combat.js === */
+
 
 
 
@@ -1349,7 +1382,7 @@ function battleAct(gs, action, arg = '', rng = Math.random) {
     if (queue.length || !['attack', 'stone', 'flee', 'move'].includes(action)) return b;
     if (action === 'stone' && p.yuanshi < 2) return b;
     if (action === 'flee' && b.lethal) return b;
-    if (action === 'move' && (!mv || (b.cds[mv.id] ?? 0) > 1 || p.zy < mv.cost)) return b;
+    if (action === 'move' && (!mv || killerMoveBlock(gs, mv) || (b.cds[mv.id] ?? 0) > 1 || p.zy < mv.cost)) return b;
   }
 
   for (const k of Object.keys(b.cds)) {
@@ -1374,27 +1407,24 @@ function battleAct(gs, action, arg = '', rng = Math.random) {
     }
     b.logs.push('你想脱身退走，却被对方死死缠住！');
   } else if (action === 'resolveGu') {
+    const fired = [];
     for (const gu of plan.queued) {
       applyBattleGu(gs, b, gu, rng);
+      fired.push(gu.def.id);
       if (foe.hp <= 0) break;
     }
+    recordKillerSequence(gs, fired);
   } else if (action === 'move') {
     p.zy -= mv.cost;
     b.cds[mv.id] = mv.cd;
     if (mv.kind === '防御') {
       b.meShield += mv.power;
       b.logs.push(`你催动杀招「${mv.name}」，凝出 ${mv.power} 点厚盾！`);
-    } else if (mv.kind === '治疗') {
-      p.hp = Math.min(p.hpMax, p.hp + mv.power);
-      b.logs.push(`你催动杀招「${mv.name}」，生机涌动，气血 +${mv.power}！`);
     } else {
-      const strengthBonus = GU_DEFS[mv.coreId]?.school === '力道' ? p.powerBonus * 0.5 : 0;
-      const raw = Math.round((mv.power + strengthBonus) * (0.94 + rng() * 0.14));
+      const raw = Math.round(mv.power * (0.94 + rng() * 0.14));
       const res = dealDamageToFoe(b, raw);
       b.logs.push(`你催动杀招「${mv.name}」，${res.absorbed ? `破盾 ${res.absorbed}，` : ''}重创 ${foe.name} ${res.dmg} 点！`);
       if (mv.bonusShield) { b.meShield += mv.bonusShield; b.logs.push(`辅蛊护体，附加护盾 +${mv.bonusShield}。`); }
-      if (mv.bonusHeal) { p.hp = Math.min(p.hpMax, p.hp + mv.bonusHeal); b.logs.push(`辅蛊回春，气血 +${mv.bonusHeal}。`); }
-      if (mv.stunChance > 0 && rng() < mv.stunChance) { foe.stunned = true; b.logs.push(`${foe.name}被杀招震慑，下轮无法行动！`); }
     }
   }
 
@@ -1654,90 +1684,164 @@ function canStartRefine(gs, recipeId) {
   }
   return { ok: true, rc, guUids };
 }
+
+const REFINE_FLOWS = {
+  moon: {
+    name: '聚月凝光', target: 8, safePressure: 2, turns: 5, gentle: 1, force: 3, surge: 2,
+    note: '月光聚得快，收炉前要把炉压压下来。',
+    signature: { name: '引月', gain: 2, release: 1, night: true, hint: '入夜开炉可引月一次。' }
+  },
+  armor: {
+    name: '淬炼成甲', target: 9, safePressure: 2, turns: 5, gentle: 1, force: 4, surge: 3,
+    note: '强火能更快炼开甲材，也更容易冲炉。',
+    signature: { name: '淬甲', gain: 2, release: 2, minPressure: 3, hint: '炉压达 3 后可淬甲一次。' }
+  },
+  wine: {
+    name: '四味相调', target: 11, safePressure: 1, turns: 5, gentle: 2, force: 3, surge: 3,
+    note: '温养能让四味交融，须在低压下收炉。',
+    signature: { name: '调和四味', gain: 3, release: 1, minProgress: 3, maxPressure: 2, hint: '炼成度达 3 且炉压至多 2 时可调和一次。' }
+  },
+  reverse: {
+    name: '拆解蛊性', target: 6, safePressure: 1, turns: 4, gentle: 1, force: 3, surge: 2,
+    note: '逆炼能用的火候较少，必须在低压下把蛊性拆开。',
+    signature: { name: '回引酒性', gain: 2, release: 1, minProgress: 2, maxPressure: 2, hint: '炼成度达 2 且炉压至多 2 时可回引一次。' }
+  }
+};
+const OVERLOAD_PRESSURE = 7;
 function createRefineSession(gs, recipeId) {
-  const chk = canStartRefine(gs, recipeId);
-  if (!chk.ok) return { error: chk.reason };
-  const rc = chk.rc;
-  gs.player.yuanshi -= rc.cost;
-  for (const [id, count] of Object.entries(rc.materials)) useItem(gs, id, count);
+  const check = canStartRefine(gs, recipeId);
+  if (!check.ok) return { error: check.reason };
+  const { rc, guUids } = check;
+  const flow = REFINE_FLOWS[rc.flow];
+  const ingredients = guUids.map((uid) => {
+    const gu = gs.player.gu.find((entry) => entry.uid === uid);
+    return { uid, name: GU_DEFS[gu.id].name, benming: uid === gs.player.benming };
+  });
   return {
-    outId: rc.out,
-    outCount: rc.outCount ?? 1,
-    guUids: chk.guUids,
+    recipeId,
+    flow,
     outName: recipeOutputText(rc),
     method: rc.method ?? '合炼',
-    round: 1,
-    maxRounds: 3,
-    heat: 50,      // 最佳温区 45~75
-    rateBonus: 0,
+    ingredients,
+    materials: recipeIngredientsText(rc),
+    cost: rc.cost,
     baseRate: rc.rate,
-    state: 'ongoing', // ongoing | done | aborted
+    progress: 0,
+    pressure: 0,
+    turns: flow.turns,
+    protectedUid: null,
+    night: isNight(gs.minutes),
+    usedSignature: false,
+    state: 'ready',
     success: false,
-    lines: [`地火燃起，投入${rc.method ?? '合炼'}所需蛊虫，共守三轮火候。`]
+    lines: []
   };
 }
-function stepRefineSession(gs, sess, mode, rng = Math.random) {
-  if (!sess || sess.state !== 'ongoing') return sess;
-  if (mode === 'abort') {
-    sess.state = 'aborted';
-    sess.lines.push('你果断撤去地火开炉，主蛊虽未升炼，却安然保住。');
-    addLog(gs, `【停炉】炼制「${sess.outName}」中途撤火，保住了主蛊。`, 'log-warn');
-    return sess;
-  }
-  if (!sess.guUids.every((uid) => gs.player.gu.some((g) => g.uid === uid))) {
-    sess.state = 'aborted';
-    sess.lines.push('入炉的蛊虫已不齐，炼蛊中止。');
-    return sess;
-  }
+function refineChance(sess) {
+  const { flow, progress, pressure } = sess;
+  if (progress >= flow.target && pressure <= flow.safePressure) return 1;
+  const excess = Math.max(0, pressure - flow.safePressure);
+  return Math.max(0, Math.min(0.85, sess.baseRate * Math.min(1, progress / flow.target) - excess * 0.12));
+}
+function refineTechniques(sess) {
+  const { flow, pressure, progress, turns } = sess;
+  const { signature } = flow;
+  const signatureReady = turns > 0 && !sess.usedSignature && (!signature.night || sess.night)
+    && pressure >= (signature.minPressure ?? 0) && pressure <= (signature.maxPressure ?? Infinity)
+    && progress >= (signature.minProgress ?? 0);
+  return [
+    { id: 'force', name: '催炼', progress: progress + flow.force, pressure: pressure + flow.surge, enabled: turns > 0 },
+    { id: 'gentle', name: '温养', progress: progress + flow.gentle, pressure: Math.max(0, pressure - 1), enabled: turns > 0 },
+    { id: 'vent', name: '泄压', progress: Math.max(0, progress - 1), pressure: Math.max(0, pressure - 3), enabled: turns > 0 && pressure > 0 },
+    { id: 'signature', name: signature.name, progress: progress + signature.gain, pressure: Math.max(0, pressure - signature.release), enabled: signatureReady }
+  ];
+}
 
-  if (mode === 'steady') {
-    sess.heat = Math.max(20, Math.min(90, sess.heat + (rng() * 14 - 5)));
-    sess.rateBonus += 0.05;
-    sess.lines.push(`第 ${sess.round} 轮稳火温养，炉温 ${Math.round(sess.heat)}°（成算 +5%）。`);
-  } else if (mode === 'fierce') {
-    sess.heat += 14 + Math.round(rng() * 14);
-    sess.rateBonus += 0.12;
-    sess.lines.push(`第 ${sess.round} 轮猛火催炼，炉温飙至 ${Math.round(sess.heat)}°（成算 +12%）。`);
-  } else if (mode === 'cool') {
-    sess.heat = Math.max(15, sess.heat - (14 + Math.round(rng() * 10)));
-    sess.rateBonus += 0.04;
-    sess.lines.push(`第 ${sess.round} 轮收火降温，炉温回落至 ${Math.round(sess.heat)}°（成算 +4%）。`);
-  }
-
-  if (sess.heat > 96 || sess.heat < 15) {
-    sess.state = 'done';
-    sess.success = false;
-    const auxUid = sess.guUids[1];
-    const damage = auxUid === undefined ? '保住了主蛊。' : '损毁了一只辅蛊，保住了主蛊。';
-    if (auxUid !== undefined) removeGuByUid(gs, auxUid);
-    sess.lines.push(`炉温失控炸炉！${damage}`);
-    addLog(gs, `【炼蛊炸炉】「${sess.outName}」${sess.method}失控。${damage}`, 'log-bad');
-    return sess;
+function finishRefining(gs, sess, rc, success, message) {
+  const benming = gs.player.benming;
+  const usesBenming = sess.ingredients.some(({ uid }) => uid === benming);
+  sess.state = 'done';
+  sess.success = success;
+  sess.lines.push(message);
+  if (success) {
+    for (const gu of sess.ingredients) removeGuByUid(gs, gu.uid);
+    const first = addGu(gs, rc.out);
+    if (usesBenming) gs.player.benming = first.uid;
+    for (let count = 1; count < (rc.outCount ?? 1); count++) addGu(gs, rc.out);
+    sess.lines.push(`得「${sess.outName}」。`);
+    if (usesBenming) sess.lines.push('成蛊已继承本命绑定。');
+    addLog(gs, `【炼蛊大成】成功${sess.method}出「${sess.outName}」。`, 'log-gold');
+    return;
   }
 
-  if (sess.round >= sess.maxRounds) {
-    sess.state = 'done';
-    const sweetBonus = (sess.heat >= 45 && sess.heat <= 75) ? 0.10 : 0;
-    const finalRate = Math.min(0.95, sess.baseRate + sess.rateBonus + sweetBonus);
-    const usesBenming = sess.guUids.includes(gs.player.benming);
-    for (const uid of sess.guUids) removeGuByUid(gs, uid);
-
-    if (rng() < finalRate) {
-      sess.success = true;
-      const result = addGu(gs, sess.outId, 100);
-      if (usesBenming) gs.player.benming = result.uid;
-      for (let count = 1; count < sess.outCount; count++) addGu(gs, sess.outId, 100);
-      sess.lines.push(`成算 ${Math.round(finalRate * 100)}% —— 炉盖掀开，得「${sess.outName}」！`);
-      addLog(gs, `【炼蛊大成】成功${sess.method}出「${sess.outName}」！`, 'log-gold');
+  const spared = [];
+  const lost = [];
+  for (const gu of sess.ingredients) {
+    if (gu.uid === benming || gu.uid === sess.protectedUid) {
+      spared.push(gu.benming ? `${gu.name}（本命蛊）` : gu.name);
     } else {
-      sess.success = false;
-      sess.lines.push(`成算 ${Math.round(finalRate * 100)}% —— 炉中青烟散尽，${sess.method}功亏一篑。`);
-      addLog(gs, `【炼蛊失败】「${sess.outName}」${sess.method}未成。`, 'log-bad');
+      removeGuByUid(gs, gu.uid);
+      lost.push(gu.name);
     }
+  }
+  if (spared.length) sess.lines.push(`保住：${spared.join('、')}。`);
+  if (lost.length) sess.lines.push(`损毁：${lost.join('、')}。`);
+  addLog(gs, `【炼蛊失败】「${sess.outName}」${sess.method}未成。`, 'log-bad');
+}
+function stepRefineSession(gs, sess, action, rng = Math.random) {
+  if (!sess) return sess;
+  if (sess.state === 'ready' && action === 'ignite') {
+    const check = canStartRefine(gs, sess.recipeId);
+    if (!check.ok || !check.guUids.every((uid, index) => uid === sess.ingredients[index]?.uid)) {
+      sess.state = 'aborted';
+      sess.lines.push(check.reason ?? '入炉蛊虫已变化，请重新选择蛊方。');
+      return sess;
+    }
+    gs.player.yuanshi -= sess.cost;
+    for (const [id, count] of Object.entries(check.rc.materials)) useItem(gs, id, count);
+    sess.state = 'ongoing';
     return sess;
   }
 
-  sess.round++;
+  if (sess.state !== 'ongoing') return sess;
+  if (action === 'abort') {
+    sess.state = 'aborted';
+    sess.lines.push('撤火保住了所有入炉蛊虫。已投入的元石和物品辅材无法取回。');
+    addLog(gs, `【停炉】你撤下「${sess.outName}」的炼炉，保住了入炉蛊虫。`);
+    return sess;
+  }
+
+  const rc = REFINE_RECIPES.find((recipe) => recipe.id === sess.recipeId);
+  if (!rc || !sess.ingredients.every(({ uid }) => gs.player.gu.some((gu) => gu.uid === uid))) {
+    sess.state = 'aborted';
+    sess.lines.push('入炉蛊虫已不齐，炼蛊中止。');
+    return sess;
+  }
+  if (action === 'seal' && refineChance(sess) > 0) {
+    const chance = refineChance(sess);
+    const success = chance === 1 || rng() < chance;
+    finishRefining(gs, sess, rc, success, chance === 1 ? '蛊性成形，稳稳收炉。' : `强行收炉，成算 ${Math.round(chance * 100)}%，${success ? '成了！' : '炉中蛊性散去。'}`);
+    return sess;
+  }
+
+  if (action.startsWith('protect:') && sess.turns > 0 && sess.protectedUid === null) {
+    const uid = Number(action.slice('protect:'.length));
+    const gu = sess.ingredients.find((entry) => entry.uid === uid && !entry.benming);
+    if (!gu) return sess;
+    sess.protectedUid = uid;
+    sess.turns--;
+    sess.lines.push(`用一道护蛊印保住「${gu.name}」。`);
+    return sess;
+  }
+
+  const technique = refineTechniques(sess).find(({ id, enabled }) => id === action && enabled);
+  if (!technique) return sess;
+  sess.progress = technique.progress;
+  sess.pressure = technique.pressure;
+  sess.turns--;
+  if (action === 'signature') sess.usedSignature = true;
+  sess.lines.push(`${technique.name}：炼成度 ${sess.progress}，炉压 ${sess.pressure}。`);
+  if (sess.pressure >= OVERLOAD_PRESSURE) finishRefining(gs, sess, rc, false, '炉压失控，炸炉了。');
   return sess;
 }
 
@@ -1966,22 +2070,41 @@ function renderBreakModal(sess) {
     ${actions}`;
 }
 function renderRefineModal(sess) {
-  const actions = sess.state === 'ongoing'
-    ? `<div class="row">
-        <button class="primary" data-action="refineAct" data-id="steady">稳火温养</button>
-        <button class="blood" data-action="refineAct" data-id="fierce">猛火催炼</button>
-        <button data-action="refineAct" data-id="cool">收火降温</button>
-        <button class="ghost" data-action="refineAct" data-id="abort">停炉保蛊</button>
-      </div>`
-    : `<button class="primary" data-action="closeModal">收炉</button>`;
+  const title = `<h2>${esc(sess.method)} · ${esc(sess.outName)}</h2>`;
+  const { flow } = sess;
+  const notes = `<div class="muted">${esc(flow.note)}${esc(flow.signature.hint)}炉压达 ${OVERLOAD_PRESSURE} 会炸炉。</div>`;
+  const names = sess.ingredients.map((gu) => esc(gu.name) + (gu.benming ? '（本命蛊）' : '')).join('、');
+  const lines = sess.lines.length ? `<div class="card loglist">${sess.lines.map((line) => `<div>${esc(line)}</div>`).join('')}</div>` : '';
+  if (sess.state === 'ready') return `${title}
+    <div class="card"><b>${esc(flow.name)}</b>${notes}
+      <div>安全收炉：炼成度至少 ${flow.target}，炉压至多 ${flow.safePressure}。可运炉 ${flow.turns} 次。</div>
+      <div class="muted">材料 · ${esc(sess.materials)}</div>
+      <div class="muted">入炉 · ${names}</div>
+    </div>
+    <div class="row">
+      <button class="primary" data-action="refineAct" data-id="ignite">开炉 · ${sess.cost} 元石</button>
+      <button class="ghost" data-action="closeModal">取消</button>
+    </div>`;
+  if (sess.state !== 'ongoing') return `${title}${lines}<button class="primary" data-action="closeModal">返回炼蛊</button>`;
 
-  return `<h2>开炉炼蛊 · ${esc(sess.outName)}</h2>
-    <div class="muted">第 ${sess.round} / ${sess.maxRounds} 轮 · 最佳火候 45°～75°（过热炸炉）</div>
-    <div class="kv"><span>当前炉温</span><b>${Math.round(sess.heat)}°</b></div>
-    <div class="bar"><i style="width:${Math.min(100, Math.round(sess.heat))}%"></i></div>
-    <div class="kv"><span>额外成算</span><b>+${Math.round(sess.rateBonus * 100)}%</b></div>
-    <div class="card loglist">${sess.lines.map((l) => `<div>${esc(l)}</div>`).join('')}</div>
-    ${actions}`;
+  const chance = refineChance(sess);
+  const techniques = refineTechniques(sess).map((technique) => `<button class="${technique.pressure >= OVERLOAD_PRESSURE ? 'blood' : ''}" ${technique.enabled ? '' : 'disabled'} data-action="refineAct" data-id="${technique.id}">${technique.name} · 炼成度 ${technique.progress} / 炉压 ${technique.pressure}${technique.pressure >= OVERLOAD_PRESSURE ? '（炸炉）' : ''}</button>`).join('');
+  const protectedGu = sess.ingredients.find((gu) => gu.uid === sess.protectedUid);
+  const protectOptions = sess.ingredients.filter((gu) => !gu.benming)
+    .map((gu) => `<button class="sm" ${sess.turns ? '' : 'disabled'} data-action="refineAct" data-id="protect:${gu.uid}">护住 ${esc(gu.name)}</button>`).join('');
+  return `${title}
+    <div class="card">
+      <div class="kv"><b>${esc(flow.name)}</b><span>还可运炉 ${sess.turns} 次</span></div>
+      ${notes}
+      <div class="kv"><span>炼成度 ${sess.progress} / ${flow.target}</span><span>炉压 ${sess.pressure} · 安全上限 ${flow.safePressure}</span></div>
+      <div class="row">${techniques}</div>
+    </div>
+    ${protectedGu ? `<div class="muted">受护 · ${esc(protectedGu.name)}</div>` : protectOptions ? `<div class="muted">护蛊耗一次运炉，保住一只普通蛊。</div><div class="row">${protectOptions}</div>` : ''}
+    <div class="row">
+      <button class="primary" ${chance ? '' : 'disabled'} data-action="refineAct" data-id="seal">${chance === 1 ? '安全收炉' : `强行收炉 · 成算 ${Math.round(chance * 100)}%`}</button>
+      <button class="ghost" data-action="refineAct" data-id="abort">撤火 · 保住蛊虫</button>
+    </div>
+    ${lines}`;
 }
 function renderEventModal(eventId) {
   const ev = STORY_EVENTS.find((e) => e.id === eventId);
@@ -1990,20 +2113,21 @@ function renderEventModal(eventId) {
     <div class="card" style="white-space:pre-line">${esc(ev.text)}</div>
     <div class="row">${ev.choices.map((c, idx) => `<button class="primary" data-action="chooseEvent" data-id="${esc(ev.id)}" data-idx="${idx}">${esc(c.text)}</button>`).join('')}</div>`;
 }
-function renderCustomKillerModal(gs, draft) {
-  const guList = gs.player.gu.filter((g) => ['攻击', '防御', '治疗', '增益', '控制'].includes(GU_DEFS[g.id]?.kind));
-  const uniqueIds = [...new Set(guList.map((g) => g.id))];
-  const coreButtons = uniqueIds.map((id) => `<button class="sm ${draft.coreId === id ? 'primary' : ''}" data-action="kmPickCore" data-id="${id}">${esc(GU_DEFS[id].name)}</button>`).join('');
-  const auxButtons = uniqueIds.filter((id) => id !== draft.coreId).map((id) => `<button class="sm ${draft.auxIds.includes(id) ? 'gold' : ''}" data-action="kmToggleAux" data-id="${id}">${esc(GU_DEFS[id].name)}</button>`).join('');
-  return `<h2>自创杀招（二转解锁）</h2>
-    <div class="muted">选定 1 只核心蛊与至多 2 只辅蛊，辅蛊的攻/盾/疗/控效果会融入杀招。当前境界：${esc(realmText(gs.player))}</div>
-    <div><b>核心蛊</b><div class="row" style="margin-top:6px">${coreButtons || '<span class="muted">暂无可用蛊虫</span>'}</div></div>
-    <div><b>辅蛊（已选 ${draft.auxIds.length}/2）</b><div class="row" style="margin-top:6px">${auxButtons || '<span class="muted">暂无其他辅蛊</span>'}</div></div>
-    <div><input id="kmName" type="text" maxlength="10" placeholder="杀招名称（留空自动命名）" value="${esc(draft.name || '')}"></div>
-    <div class="row">
-      <button class="primary" ${draft.coreId ? '' : 'disabled'} data-action="kmCreate">推演成招</button>
-      <button class="ghost" data-action="closeModal">取消</button>
+function renderCustomKillerModal(gs) {
+  const rows = KILLER_PATTERNS.map((pattern) => {
+    const blocked = killerCraftBlock(gs, pattern);
+    return `<div class="card">
+      <div class="kv"><b>${esc(pattern.name)}</b><span class="badge">${pattern.kind} · 耗 ${pattern.cost} 真元</span></div>
+      <div>${esc(killerPatternSequence(pattern))}</div>
+      <div class="muted">${esc(pattern.desc)}</div>
+      <button class="sm primary" ${blocked ? 'disabled' : ''} data-action="kmCreate" data-id="${pattern.id}">${esc(blocked || `推演 · ${pattern.fee} 元石`)}</button>
     </div>`;
+  }).join('');
+  return `<h2>自创杀招</h2>
+    <div class="muted">二转后，在同一回合按所示顺序完整催动这组蛊虫，即可通过试阵。对练也算，胜负都记进度。未形成搭配的蛊虫仍可逐只催动。</div>
+    <input id="kmName" type="text" maxlength="10" aria-label="自定杀招名称" placeholder="自定杀招名称（可留空）">
+    ${rows}
+    <div class="row"><button class="ghost" data-action="closeModal">返回空窍</button></div>`;
 }
 
 
@@ -2032,9 +2156,10 @@ function renderBattleView(gs) {
 
   const moveButtons = p.moves.map((m) => {
     const cd = Math.max(0, (b.cds[m.id] || 0) - 1);
-    const disabled = hasQueue || cd > 0 || p.zy < m.cost;
+    const blocked = killerMoveBlock(gs, m);
+    const disabled = hasQueue || blocked || cd > 0 || p.zy < m.cost;
     return `<button class="sm gold" ${disabled ? 'disabled' : ''} data-action="battleAct" data-kind="move" data-id="${esc(m.id)}">
-      ${esc(m.name)} <span class="muted">${cd > 0 ? `冷却${cd}` : `耗${m.cost}`}</span>
+      ${esc(m.name)} <span class="muted">${esc(blocked || (cd > 0 ? `冷却${cd}` : `耗${m.cost}`))}</span>
     </button>`;
   }).join('');
 
@@ -2051,8 +2176,8 @@ function renderBattleView(gs) {
           <div class="muted" style="margin-bottom:4px">按顺序选择蛊虫，再点一次可取消</div>
           <div class="row" style="margin-bottom:8px">${guButtons}</div>
           <div class="row" style="margin-bottom:8px">
-            <button class="primary" ${hasQueue ? '' : 'disabled'} data-action="battleAct" data-kind="resolveGu">按顺序催动${hasQueue ? ` · 耗 ${cost} 真元` : ''}</button>
-            ${hasQueue ? `<span class="muted">${queued.map(({ def }) => esc(def.name)).join(' → ')}</span>` : ''}
+            <button class="primary" ${hasQueue ? '' : 'disabled'} data-action="battleAct" data-kind="resolveGu">催动</button>
+            ${hasQueue ? `<span class="muted">${queued.map(({ def }) => esc(def.name)).join(' → ')} · 耗 ${cost} 真元</span>` : ''}
           </div>` : ''}
         ${moveButtons ? `<div class="muted" style="margin-bottom:4px">催动杀招</div><div class="row">${moveButtons}</div>` : ''}
       </div>`
@@ -2251,12 +2376,13 @@ function renderApertureView(gs) {
     const effect = guEffectText(def);
     return `<div class="card">
       <div class="kv">
-        <b>${isBm ? '★ ' : ''}${esc(def.name)} <span class="badge">${def.rank}转 · ${esc(def.kind)}</span></b>
+        <b>${isBm ? '★ ' : ''}${esc(def.name)} <span class="badge">${def.rank}转 · ${esc(def.kind)}${isBm ? ' · 本命蛊' : ''}</span></b>
         <span class="muted">饱食 ${g.satiety}%</span>
       </div>
       <div class="muted" style="margin-bottom:8px">
         ${esc(def.desc)}${effect ? `<br>${esc(effect)}` : ''}
         <br>${food ? `食物 <b>${esc(food.name)}</b> · 行囊 ${foodCount} 份` : def.foodUnknown ? '食物未核实 · 暂不消耗口粮' : '无需喂食'}
+        ${isBm ? '<br>合炼失败时保留，炼成后由成蛊继承本命绑定。' : ''}
       </div>
       <div class="row">
         ${food ? `<button class="sm" ${foodCount <= 0 || g.satiety >= 100 ? 'disabled' : ''} data-action="feedGu" data-id="${g.uid}">喂食</button>` : ''}
@@ -2269,18 +2395,19 @@ function renderApertureView(gs) {
 
   const movesHtml = p.moves.length
     ? p.moves.map((m) => `<div class="card">
-        <div class="kv"><b>${esc(m.name)}</b><span class="badge gold">${esc(m.kind)} · 耗${m.cost}</span></div>
-        <div class="muted">威能 ${m.power}${m.bonusShield ? ` · 盾+${m.bonusShield}` : ''}${m.bonusHeal ? ` · 疗+${m.bonusHeal}` : ''} · 冷却 ${m.cd}</div>
+        <div class="kv"><b>${esc(m.name)}</b><button class="sm ghost" data-action="forgetKiller" data-id="${esc(m.id)}">删除</button></div>
+        <span class="badge gold">${esc(m.kind)} · 耗${m.cost} 真元</span>
+        <div class="muted">${esc(killerMoveBlock(gs, m) || `威能 ${m.power}${m.bonusShield ? ` · 盾+${m.bonusShield}` : ''} · 间隔 ${m.cd - 1} 回合`)}</div>
       </div>`).join('')
     : '<div class="muted">尚未创出杀招。</div>';
 
   return `<div class="aperture-canvas">
       <div class="kv">
         <b>${esc(realmText(p))} · ${esc(p.grade)}等资质（元海 ${p.hai} 成）</b>
-        <span>${p.xiao < 3 ? `修为 ${Math.floor(p.xp)} / ${needXp}` : '本转巅峰 · 可破壁'}</span>
+        <span ${p.xiao < 3 ? 'data-live="xp"' : ''}>${p.xiao < 3 ? `修为 ${Math.floor(p.xp)} / ${needXp}` : '本转巅峰 · 可破壁'}</span>
       </div>
       <div class="aperture-gu-list">${chips || '<span class="muted">空窍尚空</span>'}</div>
-      <div class="bar"><i style="width:${xpPct}%"></i></div>
+      <div class="bar"><i data-live="xp-bar" style="width:${xpPct}%"></i></div>
     </div>
     <div class="card">
       <div class="muted">${p.rank >= 4 && p.xiao >= 3 ? '已达本卷境界上限' : esc(realmGuRequirement(p).text)}</div>
@@ -2308,18 +2435,18 @@ function renderRefineView(gs) {
     const chk = canStartRefine(gs, r.id);
     const out = GU_DEFS[r.out];
     return `<div class="card">
-      <div class="kv"><b>${esc(recipeOutputText(r))}</b><span class="badge">${out.rank}转 · ${r.method ?? '合炼'} · 基础 ${Math.round(r.rate * 100)}%</span></div>
+      <div class="kv"><b>${esc(recipeOutputText(r))}</b><span class="badge">${out.rank}转 · ${r.method ?? '合炼'}</span></div>
       <div class="muted">${esc(recipeIngredientsText(r))} · 费用 ${r.cost} 元石</div>
       <div class="muted" style="margin-bottom:8px">${esc(out.desc)}${guEffectText(out) ? `<br>${esc(guEffectText(out))}` : ''}</div>
       <button class="primary" ${!chk.ok ? 'disabled' : ''} data-action="startRefine" data-id="${r.id}">
-        ${chk.ok ? '开炉控火' : esc(chk.reason)}
+        ${chk.ok ? '查看炉方' : esc(chk.reason)}
       </button>
     </div>`;
   }).join('');
 
   return `<div class="card">
-      <h3>炼蛊 · 三轮控火</h3>
-      <div class="muted">${cards ? "开炉需守三轮火候（45°～75°最佳）。" : "尚未习得蛊方，可前往蛊铺购买。"}</div>
+      <h3>炼蛊</h3>
+      <div class="muted">${cards ? "用有限火候达到蛊方的炼成度和安全炉压，再收炉成蛊。" : "尚未习得蛊方，可前往蛊铺购买。"}</div>
     </div>
     <div class="grid2">${cards}</div>`;
 }
@@ -2426,7 +2553,6 @@ let G = null;
 let TAB = 'place';
 let MODAL = null; // { kind: 'place'|'break'|'refine'|'killer'|'developer'|'dead'|'win', data: ... }
 let START = { phase: 'intro', name: '方源', apt: null, step: 0, target: 25, done: false, hasSave: false };
-let KM_DRAFT = { coreId: '', auxIds: [], name: '' };
 
 function showToast(msg) {
   const el = document.getElementById('toast');
@@ -2443,8 +2569,19 @@ function openModal(kind, data) {
 }
 
 function closeModal() {
+  if (MODAL?.kind === 'refine') {
+    if (G.refining?.state === 'ongoing') return;
+    delete G.refining;
+    saveGame(G);
+  }
   MODAL = null;
   render();
+}
+
+function restoreRefining() {
+  if (!G?.refining) return;
+  TAB = 'refine';
+  MODAL = { kind: 'refine', data: G.refining };
 }
 
 function renderTopBar() {
@@ -2460,15 +2597,15 @@ function renderTopBar() {
         <span class="badge">${esc(placeName)}</span>
       </div>
       <div class="clock-box">
-        <span>${esc(formatDateTime(G.minutes))}</span>
+        <span data-live="clock">${esc(formatDateTime(G.minutes))}</span>
         ${G.developerMode ? '<button class="sm gold" data-action="openDeveloper">开发者</button>' : ''}
         <button class="sm ghost" data-action="togglePause">${G.paused ? '▶ 继续流逝' : '⏸ 暂停'}</button>
       </div>
     </div>
     <div class="goal-bar"><b>当下目标：</b>${esc(G.goal)}</div>
     <div class="res-row">
-      <div class="res-item"><div class="res-head"><span>气血</span><span>${Math.round(p.hp)}/${p.hpMax}</span></div><div class="bar hp"><i style="width:${hpPct}%"></i></div></div>
-      <div class="res-item"><div class="res-head"><span>真元</span><span>${Math.round(p.zy)}/${p.zyMax}</span></div><div class="bar zy"><i style="width:${zyPct}%"></i></div></div>
+      <div class="res-item"><div class="res-head"><span>气血</span><span data-live="hp">${Math.round(p.hp)}/${p.hpMax}</span></div><div class="bar hp"><i data-live="hp-bar" style="width:${hpPct}%"></i></div></div>
+      <div class="res-item"><div class="res-head"><span>真元</span><span data-live="zy">${Math.round(p.zy)}/${p.zyMax}</span></div><div class="bar zy"><i data-live="zy-bar" style="width:${zyPct}%"></i></div></div>
       <div class="res-item"><div class="res-head"><span>元石</span><span>${p.yuanshi}</span></div><div class="muted" style="font-size:.75rem">${p.mo >= 30 ? `恶名 ${p.mo}` : `${p.grade}等资质`}</div></div>
     </div>
   </header>`;
@@ -2502,7 +2639,7 @@ function renderModal() {
     html = `<div class="place-sheet-controls"><button class="sm" data-action="closeModal">返回地图</button></div>${renderPlaceView(G)}`;
   } else if (MODAL.kind === 'break') html = renderBreakModal(MODAL.data);
   else if (MODAL.kind === 'refine') html = renderRefineModal(MODAL.data);
-  else if (MODAL.kind === 'killer') html = renderCustomKillerModal(G, KM_DRAFT);
+  else if (MODAL.kind === 'killer') html = renderCustomKillerModal(G);
   else if (MODAL.kind === 'developer') html = renderDeveloperView(G);
   else if (MODAL.kind === 'dead') {
     html = `<h2>身殒青茅山</h2>
@@ -2727,6 +2864,7 @@ function handleAction(el) {
     G = loadGame();
     if (!G) { showToast('未找到可用存档'); return; }
     TAB = 'place';
+    restoreRefining();
     render();
   } else if (act === 'navTab') {
     if (MODAL?.kind === 'place') MODAL = null;
@@ -2807,32 +2945,30 @@ function handleAction(el) {
     saveGame(G);
     render();
   } else if (act === 'startRefine') {
+    if (G.refining || G.battle || G.player.dead) return;
     const sess = createRefineSession(G, id);
     if (sess.error) { showToast(sess.error); return; }
+    G.refining = sess;
     openModal('refine', sess);
   } else if (act === 'refineAct' && MODAL?.kind === 'refine') {
     stepRefineSession(G, MODAL.data, id);
     saveGame(G);
     render();
   } else if (act === 'openCustomKiller') {
-    KM_DRAFT = { coreId: '', auxIds: [], name: '' };
-    openModal('killer', {});
-  } else if (act === 'kmPickCore') {
-    KM_DRAFT.coreId = id;
-    KM_DRAFT.auxIds = KM_DRAFT.auxIds.filter((x) => x !== id);
-    render();
-  } else if (act === 'kmToggleAux') {
-    const i = KM_DRAFT.auxIds.indexOf(id);
-    if (i >= 0) KM_DRAFT.auxIds.splice(i, 1);
-    else if (KM_DRAFT.auxIds.length < 2) KM_DRAFT.auxIds.push(id);
-    render();
-  } else if (act === 'kmCreate') {
+    if (!G.battle && G.player.rank >= 2) openModal('killer');
+  } else if (act === 'kmCreate' && MODAL?.kind === 'killer') {
     const nm = document.getElementById('kmName')?.value || '';
-    const res = createKillerMove(G, KM_DRAFT.coreId, KM_DRAFT.auxIds, nm);
+    const res = createKillerMove(G, id, nm);
     if (!res.ok) { showToast(res.reason); return; }
+    saveGame(G);
     closeModal();
+    showToast(`推演成功：「${res.move.name}」`);
+  } else if (act === 'forgetKiller') {
+    const move = forgetKillerMove(G, id);
+    if (!move) return;
     saveGame(G);
     render();
+    showToast(`已删除「${move.name}」`);
   } else if (act === 'toggleAutoFeed') {
     G.player.autoFeed = !G.player.autoFeed;
     if (G.player.autoFeed) {
@@ -2936,15 +3072,42 @@ document.addEventListener('click', (e) => {
   if (btn) handleAction(btn);
 });
 
+function updateLiveDisplay() {
+  const p = G.player;
+  const need = minorXpNeed(p);
+  const labels = {
+    clock: formatDateTime(G.minutes),
+    hp: `${Math.round(p.hp)}/${p.hpMax}`,
+    zy: `${Math.round(p.zy)}/${p.zyMax}`,
+    xp: `修为 ${Math.floor(p.xp)} / ${need}`
+  };
+  const bars = {
+    'hp-bar': p.hp / Math.max(1, p.hpMax),
+    'zy-bar': p.zy / Math.max(1, p.zyMax),
+    'xp-bar': need ? p.xp / need : 1
+  };
+  for (const node of document.querySelectorAll('[data-live]')) {
+    const key = node.dataset.live;
+    if (Object.hasOwn(labels, key) && node.textContent !== labels[key]) node.textContent = labels[key];
+    if (Object.hasOwn(bars, key)) node.style.width = `${Math.min(100, Math.round(bars[key] * 100))}%`;
+  }
+  document.querySelector('.map-canvas')?.classList.toggle('is-night', isNight(G.minutes));
+}
+
 // 轻实时时间流：现实 1 秒 = 游戏 1 刻 (15 分钟)
 setInterval(() => {
   if (!G || G.paused || G.player.dead || G.battle || G.pendingEventId || MODAL) return;
+  const day = Math.floor(G.minutes / MIN_PER_DAY);
+  const hallOpen = G.flags['open:jiazhuge'];
   advanceMinutes(G, 15);
   if (G.player.dead) openModal('dead', {});
-  render();
+  else if (G.battle || G.pendingEventId || day !== Math.floor(G.minutes / MIN_PER_DAY)
+    || hallOpen !== G.flags['open:jiazhuge']) render();
+  else updateLiveDisplay();
 }, 1000);
 
 G = loadGame();
+restoreRefining();
 render();
 
 </script>

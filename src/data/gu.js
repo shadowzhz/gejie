@@ -68,15 +68,15 @@ export const GU_DEFS = {
 };
 
 export const REFINE_RECIPES = [
-  { id: 'r_jiuchong_fanran', price: 8, out: 'jiuchong', method: '逆炼', gu: { siwei_jiu: 1 }, materials: { fanran: 1 }, rate: 0.70, cost: 12 },
-  { id: 'r_jiuchong_langzi', price: 12, out: 'jiuchong', outCount: 2, method: '逆炼', gu: { siwei_jiu: 1 }, materials: { langzi: 1 }, rate: 0.70, cost: 12 },
-  { id: 'r_yuemang', price: 12, out: 'yuemang', gu: { yueguang: 1, xiaoguang: 2 }, materials: {}, rate: 0.68, cost: 25 },
-  { id: 'r_yuexuan', price: 12, out: 'yuexuan', gu: { yueguang: 1, xuanfeng: 1 }, materials: {}, rate: 0.65, cost: 25 },
-  { id: 'r_yuehen', price: 12, out: 'yuehen', gu: { yueguang: 1, henshi: 1 }, materials: {}, rate: 0.65, cost: 25 },
-  { id: 'r_yueni', price: 12, out: 'yueni', gu: { yueguang: 1, yupi: 1 }, materials: {}, rate: 0.65, cost: 25 },
-  { id: 'r_baiyu', price: 12, out: 'baiyu', gu: { yupi: 1, baishi: 1 }, materials: { yezhuya: 1 }, rate: 0.65, cost: 25 },
-  { id: 'r_heizong', price: 12, out: 'heizong', gu: { heishi: 1, qingsi: 1 }, materials: {}, rate: 0.65, cost: 25 },
-  { id: 'r_siwei', price: 20, out: 'siwei_jiu', gu: { jiuchong: 2 }, materials: { suanjiu: 1, tianjiu: 1, kujiu: 1, lajiu: 1 }, rate: 0.58, cost: 45 }
+  { id: 'r_jiuchong_fanran', flow: 'reverse', price: 8, out: 'jiuchong', method: '逆炼', gu: { siwei_jiu: 1 }, materials: { fanran: 1 }, rate: 0.70, cost: 12 },
+  { id: 'r_jiuchong_langzi', flow: 'reverse', price: 12, out: 'jiuchong', outCount: 2, method: '逆炼', gu: { siwei_jiu: 1 }, materials: { langzi: 1 }, rate: 0.70, cost: 12 },
+  { id: 'r_yuemang', flow: 'moon', price: 12, out: 'yuemang', gu: { yueguang: 1, xiaoguang: 2 }, materials: {}, rate: 0.68, cost: 25 },
+  { id: 'r_yuexuan', flow: 'moon', price: 12, out: 'yuexuan', gu: { yueguang: 1, xuanfeng: 1 }, materials: {}, rate: 0.65, cost: 25 },
+  { id: 'r_yuehen', flow: 'moon', price: 12, out: 'yuehen', gu: { yueguang: 1, henshi: 1 }, materials: {}, rate: 0.65, cost: 25 },
+  { id: 'r_yueni', flow: 'moon', price: 12, out: 'yueni', gu: { yueguang: 1, yupi: 1 }, materials: {}, rate: 0.65, cost: 25 },
+  { id: 'r_baiyu', flow: 'armor', price: 12, out: 'baiyu', gu: { yupi: 1, baishi: 1 }, materials: { yezhuya: 1 }, rate: 0.65, cost: 25 },
+  { id: 'r_heizong', flow: 'armor', price: 12, out: 'heizong', gu: { heishi: 1, qingsi: 1 }, materials: {}, rate: 0.65, cost: 25 },
+  { id: 'r_siwei', flow: 'wine', price: 20, out: 'siwei_jiu', gu: { jiuchong: 2 }, materials: { suanjiu: 1, tianjiu: 1, kujiu: 1, lajiu: 1 }, rate: 0.58, cost: 45 }
 ];
 
 export function recipeOutputText(recipe) {
