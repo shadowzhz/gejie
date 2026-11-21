@@ -74,11 +74,12 @@ export function renderBagView(gs, tab) {
 
   const hasCicada = hasGu(gs, 'chunqiuchan');
   return `${renderStoryJournal(gs)}<div class="card">
-      <h3>春秋蝉与存档</h3>
-      <div class="row" style="margin-bottom:8px">
-        ${hasCicada ? '<button class="gold" data-action="saveCicada">留下春秋蝉旧影</button>' : '<span class="muted">未持有春秋蝉</span>'}
+      <h3>${hasCicada || gs.snapshot ? '春秋蝉与存档' : '存档'}</h3>
+      ${hasCicada ? '<p class="muted">春秋蝉可留下旧影，供你日后回到保存旧影的时刻。催动后会消耗春秋蝉。</p>' : ''}
+      ${hasCicada || gs.snapshot ? `<div class="row" style="margin-bottom:8px">
+        ${hasCicada ? '<button class="gold" data-action="saveCicada">留下春秋蝉旧影</button>' : ''}
         ${gs.snapshot ? '<button class="blood" data-action="rewindCicada">催动春秋蝉逆流重来</button>' : ''}
-      </div>
+      </div>` : ''}
       <div class="row">
         <button class="primary" data-action="manualSave">保存进度</button>
         <button data-action="exportSave">导出存档</button>

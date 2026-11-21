@@ -59,7 +59,10 @@ export function settleFieldTrial(gs, id) {
   if (reward.item) addItem(gs, reward.item, reward.quantity);
   const message = `${trial.title}已交付，获得 ${reward.text}`;
   addLog(gs, `【历练】${message}。`, 'log-gold');
-  return { ok: true, message };
+  return { ok: true, message, receipt: {
+    title: `任务堂 · ${trial.title}已交付`,
+    lines: [reward.text]
+  } };
 }
 
 export function fieldRecommendation(gs) {

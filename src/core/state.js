@@ -58,6 +58,7 @@ export function handleQuest(gs, id) {
     quests[id].claimedCycle = cycle;
     gs.player.yuanshi += quest.reward;
     addLog(gs, `【委托】交付「${quest.name}」，获得 ${quest.reward} 块元石。`, 'log-gold');
+    return { title: `任务堂 · ${quest.name}`, lines: [`元石 ×${quest.reward}`] };
   }
 }
 

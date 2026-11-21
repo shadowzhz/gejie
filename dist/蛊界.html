@@ -1981,6 +1981,7 @@ function handleQuest(gs, id) {
     quests[id].claimedCycle = cycle;
     gs.player.yuanshi += quest.reward;
     addLog(gs, `【委托】交付「${quest.name}」，获得 ${quest.reward} 块元石。`, 'log-gold');
+    return { title: `任务堂 · ${quest.name}`, lines: [`元石 ×${quest.reward}`] };
   }
 }
 function recordQuestProgress(gs, action, subject) {
@@ -2436,7 +2437,10 @@ function settleFieldTrial(gs, id) {
   if (reward.item) addItem(gs, reward.item, reward.quantity);
   const message = `${trial.title}已交付，获得 ${reward.text}`;
   addLog(gs, `【历练】${message}。`, 'log-gold');
-  return { ok: true, message };
+  return { ok: true, message, receipt: {
+    title: `任务堂 · ${trial.title}已交付`,
+    lines: [reward.text]
+  } };
 }
 function fieldRecommendation(gs) {
   const { player: p, flags } = gs;
@@ -2780,14 +2784,23 @@ function battleAct(gs, action, arg = '', rng = Math.random) {
     if (foe.id === 'yezhu' || foe.id === 'zhuwang') recordFieldTrial(gs, 'won');
     const rw = foe.reward || {};
     const ys = (rw.yuanshi || 0) + (b.lethal ? 15 : 0);
-    if (ys > 0) p.yuanshi += ys;
-    if (rw.item) addItem(gs, rw.item, 1);
+    const rewards = [];
+    if (ys > 0) {
+      p.yuanshi += ys;
+      rewards.push(`元石 ×${ys}`);
+    }
+    if (rw.item) {
+      addItem(gs, rw.item, 1);
+      rewards.push(`${ITEMS[rw.item].name} ×1`);
+    }
     if (b.winFlag) gs.flags[b.winFlag] = true;
-    if (b.winGu && addGu(gs, b.winGu)) b.logs.push(`战后获赏：「${GU_DEFS[b.winGu].name}」。`);
+    if (b.winGu && addGu(gs, b.winGu)) rewards.push(`${GU_DEFS[b.winGu].name} ×1`);
     if (rw.gu && !hasGu(gs, rw.gu)) {
       addGu(gs, rw.gu);
-      b.logs.push(`战后缴获：「${GU_DEFS[rw.gu].name}」！`);
+      rewards.push(`${GU_DEFS[rw.gu].name} ×1`);
     }
+    b.rewards = rewards;
+    if (rewards.length) b.logs.push(`战利品：${rewards.join('、')}。`);
     if (b.lethal && !foe.practice) {
       p.mo += 18;
       b.logs.push('你出手狠辣斩草除根，恶名 +18。');
@@ -2796,7 +2809,7 @@ function battleAct(gs, action, arg = '', rng = Math.random) {
     if (foe.id === 'xuefu_king') gs.flags['clear:xuefu'] = true;
     if (foe.id === 'langwang') gs.flags['clear:langchao'] = true;
     b.logs.push(`胜负已分！击败 ${foe.name}${ys ? `，得元石 ${ys}` : ''}。`);
-    addLog(gs, `【胜出】击败 ${foe.name}${ys ? `，元石 +${ys}` : ''}。`, 'log-good');
+    addLog(gs, `【胜出】击败 ${foe.name}${rewards.length ? `，获得${rewards.join('、')}` : ''}。`, 'log-good');
     recalcStats(gs);
     return b;
   }
@@ -3708,7 +3721,13 @@ function performPlaceAction(gs, id) {
     }
     addLog(gs, `【闭关】出关时已是${formatDateTime(gs.minutes)}。`);
   } else if (id === 'pickBenming') {
+    if (gs.location !== 'xuetang' || p.benming || p.unrefinedBenming) return;
     claimBenming(gs);
+    return { ok: true, receipt: {
+      title: '学堂 · 领取本命蛊',
+      lines: ['月光蛊 ×1（待炼化）', '月兰花瓣 ×8'],
+      detail: '前往修行页面，消耗真元炼化月光蛊。'
+    } };
   } else if (id === 'caoren') {
     advanceMinutes(gs, 30);
     gs.flags['practiced'] = true;
@@ -3743,6 +3762,7 @@ function performPlaceAction(gs, id) {
       addGu(gs, 'chitie_sheli');
       addGu(gs, 'yupi');
       addLog(gs, '【家族赏赐】族长嘉许你晋入二转，赏元石 40、赤铁舍利蛊和玉皮蛊各 1 只！', 'log-gold');
+      return { ok: true, receipt: { title: '族长阁 · 二转赏赐', lines: ['元石 ×40', '赤铁舍利蛊 ×1', '玉皮蛊 ×1'] } };
     } else {
       return { reason: '族中近来暂无新赏格' };
     }
@@ -3798,10 +3818,13 @@ function performPlaceAction(gs, id) {
     addGu(gs, 'jiuchong', 100);
     addGu(gs, 'baishi');
     addGu(gs, 'yupi');
-    addGu(gs, 'chunqiuchan', 100);
     addItem(gs, 'qingzhujiu', 5);
-    addLog(gs, '【遗洞奇遇】你从花酒遗藏中取得酒虫、白豕蛊、玉皮蛊与 45 元石。', 'log-gold');
-    addLog(gs, '【遗洞奇遇】你还发现一只气息微弱的「春秋蝉（残）」。', 'log-gold');
+    const lines = ['酒虫 ×1', '白豕蛊 ×1', '玉皮蛊 ×1', '青竹酒 ×5', '元石 ×45'];
+    addLog(gs, `【花酒行者遗藏】获得${lines.join('、')}。`, 'log-gold');
+    return { ok: true, receipt: {
+      title: '暗涧遗洞 · 花酒行者遗藏',
+      lines
+    } };
   } else if (id === 'escapeMountain') {
     p.escapedMountain = true;
     return { ok: true, won: true };
@@ -4673,11 +4696,12 @@ function renderBagView(gs, tab) {
 
   const hasCicada = hasGu(gs, 'chunqiuchan');
   return `${renderStoryJournal(gs)}<div class="card">
-      <h3>春秋蝉与存档</h3>
-      <div class="row" style="margin-bottom:8px">
-        ${hasCicada ? '<button class="gold" data-action="saveCicada">留下春秋蝉旧影</button>' : '<span class="muted">未持有春秋蝉</span>'}
+      <h3>${hasCicada || gs.snapshot ? '春秋蝉与存档' : '存档'}</h3>
+      ${hasCicada ? '<p class="muted">春秋蝉可留下旧影，供你日后回到保存旧影的时刻。催动后会消耗春秋蝉。</p>' : ''}
+      ${hasCicada || gs.snapshot ? `<div class="row" style="margin-bottom:8px">
+        ${hasCicada ? '<button class="gold" data-action="saveCicada">留下春秋蝉旧影</button>' : ''}
         ${gs.snapshot ? '<button class="blood" data-action="rewindCicada">催动春秋蝉逆流重来</button>' : ''}
-      </div>
+      </div>` : ''}
       <div class="row">
         <button class="primary" data-action="manualSave">保存进度</button>
         <button data-action="exportSave">导出存档</button>
@@ -4861,7 +4885,7 @@ function renderModal(ui) {
   sheetEl.classList.toggle('place-sheet', placeShown);
   sheetEl.classList.toggle('refine-sheet', refineShown);
   if (placeShown || refineShown) sheetEl.setAttribute('aria-labelledby', placeShown ? 'place-title' : 'refine-title');
-  else sheetEl.removeAttribute('aria-labelledby');
+  else if (sheetEl.getAttribute('aria-labelledby') !== 'receipt-title') sheetEl.removeAttribute('aria-labelledby');
 
   if (ui.game && ui.game.pendingEventId && !ui.game.battle && (!ui.modal || ui.modal.kind === 'place')) {
     const id = ui.game.pendingEventId;
@@ -4877,6 +4901,24 @@ function renderModal(ui) {
     return;
   }
   delete sheetEl.dataset.storyEvent;
+  const battle = ui.game?.battle;
+  const victory = battle?.state === 'win' && Array.isArray(battle.rewards) && battle.rewards.length;
+  const receipt = victory
+    ? { title: `击败${battle.foe.name} · 战利品`, lines: battle.rewards }
+    : ui.modal?.kind === 'receipt' ? ui.modal.data : null;
+  if (receipt) {
+    const changed = sheetEl.getAttribute('aria-labelledby') !== 'receipt-title' || sheetEl.querySelector('#receipt-title')?.textContent !== receipt.title;
+    sheetEl.setAttribute('aria-labelledby', 'receipt-title');
+    sheetEl.innerHTML = `<h2 id="receipt-title" tabindex="-1">${esc(receipt.title)}</h2>
+      <ul>${receipt.lines.map((line) => `<li>${esc(line)}</li>`).join('')}</ul>
+      ${receipt.detail ? `<p>${esc(receipt.detail)}</p>` : ''}
+      <div class="row"><button class="primary" data-action="${victory ? 'finishBattle' : 'closeModal'}">${victory ? '离开战场' : '继续'}</button></div>`;
+    modalEl.hidden = false;
+    sheetEl.scrollTop = 0;
+    if (changed) sheetEl.querySelector('#receipt-title').focus({ preventScroll: true });
+    return;
+  }
+  if (sheetEl.getAttribute('aria-labelledby') === 'receipt-title') sheetEl.removeAttribute('aria-labelledby');
   if (!ui.modal) {
     modalEl.hidden = true;
     sheetEl.innerHTML = '';
@@ -4936,7 +4978,9 @@ function dismissModal(ui) {
     if (ui.game.refining?.state === 'ongoing') return false;
     clearRefineProgress(ui.game);
   }
-  ui.modal = null;
+  ui.modal = ui.modal?.kind === 'receipt' && ui.modal.data.returnToPlace && !ui.game.battle
+    ? { kind: 'place' }
+    : null;
   return true;
 }
 
@@ -4998,14 +5042,19 @@ function createStartState() {
   return { phase: 'intro', name: '方源', apt: null, step: 0, target: 25, done: false, hasSave: false };
 }
 
-function handlePlaceAction(ui, id, { openModal, render, showToast }) {
+function showReceipt(ui, receipt) {
+  if (receipt) setModal(ui, 'receipt', { ...receipt, returnToPlace: ui.modal?.kind === 'place' });
+}
+
+function handlePlaceAction(ui, id, { render, showToast }) {
   const result = performPlaceAction(ui.game, id);
   if (!result?.ok) {
     if (result?.reason) showToast(result.reason);
     return;
   }
-  if (result.won) openModal('win', {});
-  if (result.message) showToast(result.message);
+  if (result.won) setModal(ui, 'win', {});
+  if (result.receipt) showReceipt(ui, result.receipt);
+  else if (result.message) showToast(result.message);
   saveGame(ui.game);
   render();
 }
@@ -5095,6 +5144,7 @@ function handleAction(ui, el, { render, showToast }) {
     ui.game = createNewGame(ui.start.name, ui.start.apt);
     ui.start.phase = 'intro';
     ui.tab = 'cultivation';
+    showReceipt(ui, { title: '本命蛊炼化成功', lines: ['月光蛊已成为你的本命蛊。'] });
     saveGame(ui.game);
     render();
   } else if (act === 'continueSave') {
@@ -5137,9 +5187,9 @@ function handleAction(ui, el, { render, showToast }) {
       openModal('place');
     }
   } else if (act === 'placeAct') {
-    handlePlaceAction(ui, id, { openModal, render, showToast });
+    handlePlaceAction(ui, id, { render, showToast });
   } else if (act === 'quest') {
-    handleQuest(ui.game, id);
+    showReceipt(ui, handleQuest(ui.game, id));
     saveGame(ui.game);
     render();
   } else if (act === 'buyRecipe') {
@@ -5168,10 +5218,23 @@ function handleAction(ui, el, { render, showToast }) {
     const res = refineBenming(ui.game);
     if (!res.ok) { showToast(res.reason); return; }
     ui.tab = 'cultivation';
+    showReceipt(ui, { title: '本命蛊炼化成功', lines: ['月光蛊已成为你的本命蛊。'] });
     saveGame(ui.game);
     render();
   } else if (act === 'chooseEvent') {
+    const p = ui.game.player;
+    const before = { stones: p.yuanshi, items: { ...p.items }, guCount: p.gu.length };
     applyEventChoice(ui.game, id, Number(el.dataset.idx) || 0);
+    const lines = p.gu.slice(before.guCount).map(({ id }) => `${GU_DEFS[id].name} ×1`);
+    for (const [id, count] of Object.entries(p.items)) {
+      const gained = count - (before.items[id] ?? 0);
+      if (gained > 0) lines.push(`${ITEMS[id].name} ×${gained}`);
+    }
+    if (p.yuanshi > before.stones) lines.push(`元石 ×${p.yuanshi - before.stones}`);
+    if (lines.length) {
+      const event = STORY_EVENTS.find((entry) => entry.id === id);
+      showReceipt(ui, { title: event.title, lines });
+    }
     checkStoryTriggers(ui.game);
     saveGame(ui.game);
     render();

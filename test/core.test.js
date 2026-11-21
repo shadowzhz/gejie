@@ -1,3 +1,4 @@
+import { handleAction } from '../src/ui/actions.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createNewGame, addGu, BENMING_ZY_COST, claimBenming, feedGu, handleQuest, loadGame, purchaseShopEntry, questBoard, refineBenming, realmText, recordQuestProgress, removeGuByUid, saveGame, useHealItem, useHealingGu, useBoarGu } from '../src/core/state.js';
@@ -1653,4 +1654,39 @@ test('修行和行纪按同一优先级引导试炼、交付、突破与探索',
   p.rank = 4;
   p.xiao = 3;
   assertGuide(/血蝠洞/);
+});
+
+test('花酒遗藏只发放现阶段奖励，确认后回到遗洞', () => {
+  const gs = createNewGame();
+  applyEventChoice(gs, 'kaike', 0);
+  gs.location = 'huajiu';
+  const ui = { game: gs, tab: 'place', modal: { kind: 'place' } };
+  const hooks = { render() {}, showToast() {} };
+
+  handleAction(ui, { dataset: { action: 'placeAct', id: 'huajiuLoot' } }, hooks);
+  assert.equal(ui.modal.kind, 'receipt');
+  assert.match(ui.modal.data.title, /花酒行者遗藏/);
+  assert.deepEqual(ui.modal.data.lines, ['酒虫 ×1', '白豕蛊 ×1', '玉皮蛊 ×1', '青竹酒 ×5', '元石 ×45']);
+  assert.ok(!gs.player.gu.some(({ id }) => id === 'chunqiuchan'));
+  assert.match(gs.logs[0].text, /花酒行者遗藏.*青竹酒/);
+  assert.doesNotMatch(renderBagView(gs, 'journal'), /春秋蝉/);
+  const stones = gs.player.yuanshi;
+
+  handleAction(ui, { dataset: { action: 'closeModal' } }, hooks);
+  assert.equal(ui.modal.kind, 'place');
+  handleAction(ui, { dataset: { action: 'placeAct', id: 'huajiuLoot' } }, hooks);
+  assert.equal(gs.player.yuanshi, stones);
+});
+
+test('战利品同时记录元石和掉落物，退出战斗后可在行纪查看', () => {
+  const gs = createNewGame();
+  applyEventChoice(gs, 'kaike', 0);
+  gs.location = 'zhulin';
+  const battle = startBattle(gs, 'yezhu');
+  battle.foe.hp = 1;
+  battleAct(gs, 'attack', '', () => 0.5);
+  const loot = ['元石 ×8', `${ITEMS.shourou.name} ×1`];
+  assert.deepEqual(battle.rewards, loot);
+  finishStoryBattle(gs);
+  assert.ok(renderBagView(gs, 'journal').includes(loot.join('、')));
 });

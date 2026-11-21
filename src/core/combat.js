@@ -1,5 +1,5 @@
 import { recordFieldTrial } from './field-trial.js';
-import { GU_DEFS } from '../data/gu.js';
+import { GU_DEFS, ITEMS } from '../data/gu.js';
 import { ENEMIES } from '../data/enemies.js';
 import { addGu, addItem, addLog, hasGu, isGuWeak, recalcStats, recordQuestProgress } from './state.js';
 import { killerEffects, killerMoveBlock, recordGuUsage } from './killer.js';
@@ -323,14 +323,23 @@ export function battleAct(gs, action, arg = '', rng = Math.random) {
     if (foe.id === 'yezhu' || foe.id === 'zhuwang') recordFieldTrial(gs, 'won');
     const rw = foe.reward || {};
     const ys = (rw.yuanshi || 0) + (b.lethal ? 15 : 0);
-    if (ys > 0) p.yuanshi += ys;
-    if (rw.item) addItem(gs, rw.item, 1);
+    const rewards = [];
+    if (ys > 0) {
+      p.yuanshi += ys;
+      rewards.push(`元石 ×${ys}`);
+    }
+    if (rw.item) {
+      addItem(gs, rw.item, 1);
+      rewards.push(`${ITEMS[rw.item].name} ×1`);
+    }
     if (b.winFlag) gs.flags[b.winFlag] = true;
-    if (b.winGu && addGu(gs, b.winGu)) b.logs.push(`战后获赏：「${GU_DEFS[b.winGu].name}」。`);
+    if (b.winGu && addGu(gs, b.winGu)) rewards.push(`${GU_DEFS[b.winGu].name} ×1`);
     if (rw.gu && !hasGu(gs, rw.gu)) {
       addGu(gs, rw.gu);
-      b.logs.push(`战后缴获：「${GU_DEFS[rw.gu].name}」！`);
+      rewards.push(`${GU_DEFS[rw.gu].name} ×1`);
     }
+    b.rewards = rewards;
+    if (rewards.length) b.logs.push(`战利品：${rewards.join('、')}。`);
     if (b.lethal && !foe.practice) {
       p.mo += 18;
       b.logs.push('你出手狠辣斩草除根，恶名 +18。');
@@ -339,7 +348,7 @@ export function battleAct(gs, action, arg = '', rng = Math.random) {
     if (foe.id === 'xuefu_king') gs.flags['clear:xuefu'] = true;
     if (foe.id === 'langwang') gs.flags['clear:langchao'] = true;
     b.logs.push(`胜负已分！击败 ${foe.name}${ys ? `，得元石 ${ys}` : ''}。`);
-    addLog(gs, `【胜出】击败 ${foe.name}${ys ? `，元石 +${ys}` : ''}。`, 'log-good');
+    addLog(gs, `【胜出】击败 ${foe.name}${rewards.length ? `，获得${rewards.join('、')}` : ''}。`, 'log-good');
     recalcStats(gs);
     return b;
   }

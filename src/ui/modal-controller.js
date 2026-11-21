@@ -21,7 +21,7 @@ export function renderModal(ui) {
   sheetEl.classList.toggle('place-sheet', placeShown);
   sheetEl.classList.toggle('refine-sheet', refineShown);
   if (placeShown || refineShown) sheetEl.setAttribute('aria-labelledby', placeShown ? 'place-title' : 'refine-title');
-  else sheetEl.removeAttribute('aria-labelledby');
+  else if (sheetEl.getAttribute('aria-labelledby') !== 'receipt-title') sheetEl.removeAttribute('aria-labelledby');
 
   if (ui.game && ui.game.pendingEventId && !ui.game.battle && (!ui.modal || ui.modal.kind === 'place')) {
     const id = ui.game.pendingEventId;
@@ -37,6 +37,24 @@ export function renderModal(ui) {
     return;
   }
   delete sheetEl.dataset.storyEvent;
+  const battle = ui.game?.battle;
+  const victory = battle?.state === 'win' && Array.isArray(battle.rewards) && battle.rewards.length;
+  const receipt = victory
+    ? { title: `击败${battle.foe.name} · 战利品`, lines: battle.rewards }
+    : ui.modal?.kind === 'receipt' ? ui.modal.data : null;
+  if (receipt) {
+    const changed = sheetEl.getAttribute('aria-labelledby') !== 'receipt-title' || sheetEl.querySelector('#receipt-title')?.textContent !== receipt.title;
+    sheetEl.setAttribute('aria-labelledby', 'receipt-title');
+    sheetEl.innerHTML = `<h2 id="receipt-title" tabindex="-1">${esc(receipt.title)}</h2>
+      <ul>${receipt.lines.map((line) => `<li>${esc(line)}</li>`).join('')}</ul>
+      ${receipt.detail ? `<p>${esc(receipt.detail)}</p>` : ''}
+      <div class="row"><button class="primary" data-action="${victory ? 'finishBattle' : 'closeModal'}">${victory ? '离开战场' : '继续'}</button></div>`;
+    modalEl.hidden = false;
+    sheetEl.scrollTop = 0;
+    if (changed) sheetEl.querySelector('#receipt-title').focus({ preventScroll: true });
+    return;
+  }
+  if (sheetEl.getAttribute('aria-labelledby') === 'receipt-title') sheetEl.removeAttribute('aria-labelledby');
   if (!ui.modal) {
     modalEl.hidden = true;
     sheetEl.innerHTML = '';
@@ -98,6 +116,8 @@ export function dismissModal(ui) {
     if (ui.game.refining?.state === 'ongoing') return false;
     clearRefineProgress(ui.game);
   }
-  ui.modal = null;
+  ui.modal = ui.modal?.kind === 'receipt' && ui.modal.data.returnToPlace && !ui.game.battle
+    ? { kind: 'place' }
+    : null;
   return true;
 }

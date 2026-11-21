@@ -26,7 +26,13 @@ export function performPlaceAction(gs, id) {
     }
     addLog(gs, `【闭关】出关时已是${formatDateTime(gs.minutes)}。`);
   } else if (id === 'pickBenming') {
+    if (gs.location !== 'xuetang' || p.benming || p.unrefinedBenming) return;
     claimBenming(gs);
+    return { ok: true, receipt: {
+      title: '学堂 · 领取本命蛊',
+      lines: ['月光蛊 ×1（待炼化）', '月兰花瓣 ×8'],
+      detail: '前往修行页面，消耗真元炼化月光蛊。'
+    } };
   } else if (id === 'caoren') {
     advanceMinutes(gs, 30);
     gs.flags['practiced'] = true;
@@ -61,6 +67,7 @@ export function performPlaceAction(gs, id) {
       addGu(gs, 'chitie_sheli');
       addGu(gs, 'yupi');
       addLog(gs, '【家族赏赐】族长嘉许你晋入二转，赏元石 40、赤铁舍利蛊和玉皮蛊各 1 只！', 'log-gold');
+      return { ok: true, receipt: { title: '族长阁 · 二转赏赐', lines: ['元石 ×40', '赤铁舍利蛊 ×1', '玉皮蛊 ×1'] } };
     } else {
       return { reason: '族中近来暂无新赏格' };
     }
@@ -116,10 +123,13 @@ export function performPlaceAction(gs, id) {
     addGu(gs, 'jiuchong', 100);
     addGu(gs, 'baishi');
     addGu(gs, 'yupi');
-    addGu(gs, 'chunqiuchan', 100);
     addItem(gs, 'qingzhujiu', 5);
-    addLog(gs, '【遗洞奇遇】你从花酒遗藏中取得酒虫、白豕蛊、玉皮蛊与 45 元石。', 'log-gold');
-    addLog(gs, '【遗洞奇遇】你还发现一只气息微弱的「春秋蝉（残）」。', 'log-gold');
+    const lines = ['酒虫 ×1', '白豕蛊 ×1', '玉皮蛊 ×1', '青竹酒 ×5', '元石 ×45'];
+    addLog(gs, `【花酒行者遗藏】获得${lines.join('、')}。`, 'log-gold');
+    return { ok: true, receipt: {
+      title: '暗涧遗洞 · 花酒行者遗藏',
+      lines
+    } };
   } else if (id === 'escapeMountain') {
     p.escapedMountain = true;
     return { ok: true, won: true };

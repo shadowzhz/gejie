@@ -1,3 +1,4 @@
+import { STORY_EVENTS } from '../data/story.js';
 import { GU_DEFS, ITEMS, REFINE_RECIPES } from '../data/gu.js';
 import { hasPlaceActions } from '../data/places.js';
 import { formatDateTime, MIN_PER_DAY, MIN_PER_MONTH, MIN_PER_SHICHEN } from '../core/calendar.js';
@@ -16,14 +17,19 @@ export function createStartState() {
   return { phase: 'intro', name: '方源', apt: null, step: 0, target: 25, done: false, hasSave: false };
 }
 
-function handlePlaceAction(ui, id, { openModal, render, showToast }) {
+function showReceipt(ui, receipt) {
+  if (receipt) setModal(ui, 'receipt', { ...receipt, returnToPlace: ui.modal?.kind === 'place' });
+}
+
+function handlePlaceAction(ui, id, { render, showToast }) {
   const result = performPlaceAction(ui.game, id);
   if (!result?.ok) {
     if (result?.reason) showToast(result.reason);
     return;
   }
-  if (result.won) openModal('win', {});
-  if (result.message) showToast(result.message);
+  if (result.won) setModal(ui, 'win', {});
+  if (result.receipt) showReceipt(ui, result.receipt);
+  else if (result.message) showToast(result.message);
   saveGame(ui.game);
   render();
 }
@@ -114,6 +120,7 @@ export function handleAction(ui, el, { render, showToast }) {
     ui.game = createNewGame(ui.start.name, ui.start.apt);
     ui.start.phase = 'intro';
     ui.tab = 'cultivation';
+    showReceipt(ui, { title: '本命蛊炼化成功', lines: ['月光蛊已成为你的本命蛊。'] });
     saveGame(ui.game);
     render();
   } else if (act === 'continueSave') {
@@ -156,9 +163,9 @@ export function handleAction(ui, el, { render, showToast }) {
       openModal('place');
     }
   } else if (act === 'placeAct') {
-    handlePlaceAction(ui, id, { openModal, render, showToast });
+    handlePlaceAction(ui, id, { render, showToast });
   } else if (act === 'quest') {
-    handleQuest(ui.game, id);
+    showReceipt(ui, handleQuest(ui.game, id));
     saveGame(ui.game);
     render();
   } else if (act === 'buyRecipe') {
@@ -187,10 +194,23 @@ export function handleAction(ui, el, { render, showToast }) {
     const res = refineBenming(ui.game);
     if (!res.ok) { showToast(res.reason); return; }
     ui.tab = 'cultivation';
+    showReceipt(ui, { title: '本命蛊炼化成功', lines: ['月光蛊已成为你的本命蛊。'] });
     saveGame(ui.game);
     render();
   } else if (act === 'chooseEvent') {
+    const p = ui.game.player;
+    const before = { stones: p.yuanshi, items: { ...p.items }, guCount: p.gu.length };
     applyEventChoice(ui.game, id, Number(el.dataset.idx) || 0);
+    const lines = p.gu.slice(before.guCount).map(({ id }) => `${GU_DEFS[id].name} ×1`);
+    for (const [id, count] of Object.entries(p.items)) {
+      const gained = count - (before.items[id] ?? 0);
+      if (gained > 0) lines.push(`${ITEMS[id].name} ×${gained}`);
+    }
+    if (p.yuanshi > before.stones) lines.push(`元石 ×${p.yuanshi - before.stones}`);
+    if (lines.length) {
+      const event = STORY_EVENTS.find((entry) => entry.id === id);
+      showReceipt(ui, { title: event.title, lines });
+    }
     checkStoryTriggers(ui.game);
     saveGame(ui.game);
     render();
