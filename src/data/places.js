@@ -154,6 +154,7 @@ export function placeShopEntries(gs) {
   const shop = PLACES[gs.location]?.shop ?? [];
   if (gs.location !== 'gupu') return shop;
   const entries = [...shop];
+  if (gs.player.rank >= 2) entries.push('gu:yuehen', 'gu:yueni');
   if (gs.flags.kaike) entries.push('gu:yueguang', 'gu:xiaoguang', 'gu:henshi');
   if (gs.minutes >= makeTime(2, 3, 1) && gs.minutes < makeTime(2, 3, 9) && !merchantRefuses(gs)) {
     for (const id of MERCHANT_GU) {

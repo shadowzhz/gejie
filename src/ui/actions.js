@@ -1,3 +1,4 @@
+import { visitPerson } from '../core/social.js';
 import { STORY_EVENTS } from '../data/story.js';
 import { GU_DEFS, ITEMS, REFINE_RECIPES } from '../data/gu.js';
 import { hasPlaceActions } from '../data/places.js';
@@ -120,7 +121,6 @@ export function handleAction(ui, el, { render, showToast }) {
     ui.game = createNewGame(ui.start.name, ui.start.apt);
     ui.start.phase = 'intro';
     ui.tab = 'cultivation';
-    showReceipt(ui, { title: '本命蛊炼化成功', lines: ['月光蛊已成为你的本命蛊。'] });
     saveGame(ui.game);
     render();
   } else if (act === 'continueSave') {
@@ -162,6 +162,13 @@ export function handleAction(ui, el, { render, showToast }) {
       ui.tab = 'place';
       openModal('place');
     }
+  } else if ((act === 'visitPerson' && ['place', 'person'].includes(ui.modal?.kind))
+    || (act === 'giftPerson' && ui.modal?.kind === 'person' && ui.modal.data.id === id)) {
+    const person = visitPerson(ui.game, id, act === 'giftPerson');
+    if (!person) return;
+    setModal(ui, 'person', person);
+    saveGame(ui.game);
+    render();
   } else if (act === 'placeAct') {
     handlePlaceAction(ui, id, { render, showToast });
   } else if (act === 'quest') {
@@ -188,6 +195,7 @@ export function handleAction(ui, el, { render, showToast }) {
     render();
   } else if (act === 'checkEvents') {
     if (!checkStoryTriggers(ui.game, id)) return;
+    if (ui.modal?.kind === 'person') setModal(ui, 'place');
     saveGame(ui.game);
     render();
   } else if (act === 'refineBenming') {
@@ -200,13 +208,17 @@ export function handleAction(ui, el, { render, showToast }) {
   } else if (act === 'chooseEvent') {
     const p = ui.game.player;
     const before = { stones: p.yuanshi, items: { ...p.items }, guCount: p.gu.length };
-    applyEventChoice(ui.game, id, Number(el.dataset.idx) || 0);
+    const feedback = applyEventChoice(ui.game, id, Number(el.dataset.idx) || 0);
+    if (!feedback) return;
     const lines = p.gu.slice(before.guCount).map(({ id }) => `${GU_DEFS[id].name} ×1`);
     for (const [id, count] of Object.entries(p.items)) {
       const gained = count - (before.items[id] ?? 0);
-      if (gained > 0) lines.push(`${ITEMS[id].name} ×${gained}`);
+      if (gained > 0 && ITEMS[id]) lines.push(`${ITEMS[id].name} ×${gained}`);
     }
-    if (p.yuanshi > before.stones) lines.push(`元石 ×${p.yuanshi - before.stones}`);
+    if (p.yuanshi > before.stones) lines.push(`获得元石 ×${p.yuanshi - before.stones}`);
+    if (p.yuanshi < before.stones) lines.push(`支出元石 ×${before.stones - p.yuanshi}`);
+    lines.push(...feedback);
+    ui.game.story.history[id].feedback = lines;
     if (lines.length) {
       const event = STORY_EVENTS.find((entry) => entry.id === id);
       showReceipt(ui, { title: event.title, lines });
@@ -304,7 +316,15 @@ export function handleAction(ui, el, { render, showToast }) {
     saveGame(ui.game);
     render();
   } else if (act === 'useBoarGu') {
+    const p = ui.game.player;
+    const gu = p.gu.find(({ uid }) => uid === Number(id));
+    const { hpMax, powerBonus } = p;
     if (!useBoarGu(ui.game, Number(id))) return;
+    showReceipt(ui, {
+      title: `已催动${GU_DEFS[gu.id].name}`,
+      lines: [`气血上限 ${hpMax} → ${p.hpMax}`, `力量 ${powerBonus} → ${p.powerBonus}`],
+      detail: '蛊虫已消耗。提升永久生效，力量会提高普攻和部分力道招式的伤害。'
+    });
     saveGame(ui.game);
     render();
   } else if (act === 'useSheli') {

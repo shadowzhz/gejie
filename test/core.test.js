@@ -1,7 +1,8 @@
+import { visitPerson } from '../src/core/social.js';
 import { handleAction } from '../src/ui/actions.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createNewGame, addGu, BENMING_ZY_COST, claimBenming, feedGu, handleQuest, loadGame, purchaseShopEntry, questBoard, refineBenming, realmText, recordQuestProgress, removeGuByUid, saveGame, useHealItem, useHealingGu, useBoarGu } from '../src/core/state.js';
+import { createNewGame, addGu, addItem, BENMING_ZY_COST, claimBenming, feedGu, handleQuest, loadGame, purchaseShopEntry, questBoard, refineBenming, realmText, recordQuestProgress, removeGuByUid, saveGame, useHealItem, useHealingGu, useBoarGu } from '../src/core/state.js';
 import { PLACES, placeShopEntries, rareGathering } from '../src/data/places.js';
 import { advanceMinutes, moveToPlace, rewindSpringCicada, saveSpringSnapshot } from '../src/core/clock.js';
 import { makeTime, MIN_PER_DAY, MIN_PER_MONTH } from '../src/core/calendar.js';
@@ -1689,4 +1690,62 @@ test('战利品同时记录元石和掉落物，退出战斗后可在行纪查�
   assert.deepEqual(battle.rewards, loot);
   finishStoryBattle(gs);
   assert.ok(renderBagView(gs, 'journal').includes(loot.join('、')));
+});
+
+
+test('二转货架随境界开放，晋升前仍可通过蛊方筹备', () => {
+  const gs = createNewGame();
+  gs.location = 'gupu';
+  assert.ok(!placeShopEntries(gs).includes('gu:yuehen'));
+  assert.match(renderPlaceView(gs), /晋入二转后/);
+  gs.player.rank = 2;
+  assert.ok(placeShopEntries(gs).includes('gu:yuehen'));
+  assert.ok(placeShopEntries(gs).includes('gu:yueni'));
+  gs.player.yuanshi = 45;
+  assert.ok(purchaseShopEntry(gs, 'gu:yuehen', 1).ok);
+});
+
+test('送礼只增加好感且每日一次，刷新后仍记得已经送礼', () => {
+  const gs = createNewGame();
+  applyEventChoice(gs, 'kaike', 0);
+  gs.location = 'yanwu';
+  addItem(gs, 'shourou', 2);
+  const before = storyRelation(gs, 'mobei');
+  assert.match(renderPlaceView(gs), /在场人物.*古月漠北/);
+  assert.equal(visitPerson(gs, 'chicheng'), null);
+  const receipt = visitPerson(gs, 'mobei', true);
+  assert.equal(receipt.favor, before.favor + 5);
+  assert.equal(receipt.trust, before.trust);
+
+  let raw;
+  const storage = { setItem: (_, value) => { raw = value; }, getItem: () => raw };
+  assert.ok(saveGame(gs, storage));
+  const loaded = loadGame(storage);
+  assert.equal(visitPerson(loaded, 'mobei', true).giftReason, '今天已送过礼');
+  assert.equal(loaded.player.items.shourou, 1);
+});
+
+test('剧情选择当场显示新增线索与下一步，并可在行纪回看', () => {
+  const gs = createNewGame();
+  applyEventChoice(gs, 'kaike', 0);
+  gs.location = 'renwutang';
+  gs.story.quests.estate = { stage: 'trace', clues: [] };
+  gs.pendingEventId = 'estate_receipt';
+  const ui = { game: gs, tab: 'place', modal: { kind: 'place' } };
+  handleAction(ui, { dataset: { action: 'chooseEvent', id: 'estate_receipt' } }, { render() {}, showToast() {} });
+  assert.equal(ui.modal.kind, 'receipt');
+  assert.match(ui.modal.data.lines.join(' '), /药圃旧收据.*到山寨客栈见旧管事/);
+  assert.match(renderBagView(gs, 'journal'), /获得线索 · 药圃旧收据/);
+});
+
+
+test('催动白豕蛊后弹窗显示实得气血与力量', () => {
+  const gs = createNewGame();
+  applyEventChoice(gs, 'kaike', 0);
+  const gu = addGu(gs, 'baishi');
+  const hp = gs.player.hpMax;
+  const ui = { game: gs, tab: 'aperture', modal: null };
+  handleAction(ui, { dataset: { action: 'useBoarGu', id: gu.uid } }, { render() {}, showToast() {} });
+  assert.deepEqual(ui.modal.data.lines, [`气血上限 ${hp} → ${hp + 35}`, '力量 0 → 12']);
+  assert.equal(gs.player.gu.some(({ id }) => id === 'baishi'), false);
 });

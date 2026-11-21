@@ -834,6 +834,7 @@ function placeShopEntries(gs) {
   const shop = PLACES[gs.location]?.shop ?? [];
   if (gs.location !== 'gupu') return shop;
   const entries = [...shop];
+  if (gs.player.rank >= 2) entries.push('gu:yuehen', 'gu:yueni');
   if (gs.flags.kaike) entries.push('gu:yueguang', 'gu:xiaoguang', 'gu:henshi');
   if (gs.minutes >= makeTime(2, 3, 1) && gs.minutes < makeTime(2, 3, 9) && !merchantRefuses(gs)) {
     for (const id of MERCHANT_GU) {
@@ -1898,6 +1899,9 @@ function restoreStoryProgress(gs) {
         for (const clue of clues) addStoryClue(gs, id, clue);
       }
     }
+    for (const id of Object.keys(STORY_CHARACTERS)) {
+      if (Number.isInteger(saved.giftDays?.[id])) (gs.story.giftDays ??= {})[id] = saved.giftDays[id];
+    }
     if (Number.isFinite(saved.lifeReadyAt)) gs.story.lifeReadyAt = saved.lifeReadyAt;
     if (saved.history && typeof saved.history === 'object') gs.story.history = saved.history;
   } else {
@@ -2058,14 +2062,15 @@ function createNewGame(name = '无名', apt = null) {
   state.player.zy = state.player.zyMax;
   return state;
 }
+const BOAR_BONUS = { hp: 35, power: 12 };
 function recalcStats(gs) {
   const p = gs.player;
   const r = p.rank;
   const x = p.xiao;
   const haiMul = 0.65 + p.hai * 0.08;
   const boarStrength = (p.whiteBoarStrength ?? 0) + (p.blackBoarStrength ?? 0);
-  const passiveHp = boarStrength * 35 + (hasGu(gs, 'tongpi') ? 25 : 0);
-  const passivePower = boarStrength * 12;
+  const passiveHp = boarStrength * BOAR_BONUS.hp + (hasGu(gs, 'tongpi') ? 25 : 0);
+  const passivePower = boarStrength * BOAR_BONUS.power;
   p.hpMax = Math.round((85 + r * 35 + x * 14) * (1 + (r - 1) * 0.18) + passiveHp);
   p.zyMax = Math.round((28 + r * 18 + x * 6) * haiMul);
   p.speed = 6 + r * 3 + x;
@@ -2188,7 +2193,7 @@ function useBoarGu(gs, uid) {
   removeGuByUid(gs, uid);
   player[strength] = 1;
   recalcStats(gs);
-  addLog(gs, `【${GU_DEFS[gu.id].name}】蛊虫消散，你添了一猪之力。`, 'log-good');
+  addLog(gs, `【${GU_DEFS[gu.id].name}】蛊虫消散，永久获得气血上限 +${BOAR_BONUS.hp}、力量 +${BOAR_BONUS.power}。`, 'log-good');
   return true;
 }
 function feedGu(gs, gu, threshold = 100) {
@@ -2960,6 +2965,10 @@ function applyEventChoice(gs, eventId, choiceIdx) {
   if (!ev || gs.flags[`event_done:${eventId}`]) return;
   const choice = ev.choices[choiceIdx];
   if (gs.pendingEventId !== eventId || gs.player.dead || gs.battle || !choice || !evalCond(gs, choice.cond)) return;
+  const beforeQuests = structuredClone(gs.story.quests);
+  const beforeRelations = { ...gs.story.relations };
+  const previousFlags = { ...gs.flags };
+  const previousGoal = gs.goal;
   gs.flags[`event_done:${ev.id}`] = true;
   gs.pendingEventId = null;
   gs.story.history[eventId] = { minute: gs.minutes, choice: choiceIdx };
@@ -3029,6 +3038,37 @@ function applyEventChoice(gs, eventId, choiceIdx) {
     advanceStoryQuest(gs, 'caravan', 'failed', gs.flags.jia_missing_stones ? 'theft' : 'expired');
   }
   if (gs.player.rank >= 2) gs.flags['open:jiazhuge'] = true;
+
+  const feedback = [];
+  for (const [id, current] of Object.entries(gs.story.relations)) {
+    const before = beforeRelations[id] ?? STORY_CHARACTERS[id].initial;
+    const changes = [['好感', current.favor - before.favor], ['信任', current.trust - before.trust]]
+      .filter(([, value]) => value)
+      .map(([label, value]) => `${label} ${value > 0 ? '+' : ''}${value}`);
+    if (current.progress && current.progress !== before.progress) changes.push(current.progress);
+    if (changes.length) feedback.push(`${STORY_CHARACTERS[id].name} · ${changes.join('、')}`);
+  }
+  for (const [id, current] of Object.entries(gs.story.quests)) {
+    const quest = STORY_QUESTS[id];
+    const before = beforeQuests[id];
+    for (const clue of current.clues) {
+      if (!before?.clues.includes(clue)) feedback.push(`获得线索 · ${quest.clues[clue].name}`);
+    }
+    if (before?.stage === current.stage) continue;
+    const step = quest.steps[current.stage];
+    const stage = step?.name ?? STORY_QUEST_STAGES[current.stage];
+    const detail = step?.hint ?? quest.outcomes[current.outcome];
+    feedback.push(`${quest.name} · ${stage}${detail ? `。 ${detail}` : ''}`);
+  }
+  if (!previousFlags['clue:huajiu'] && gs.flags['clue:huajiu']) {
+    feedback.push('发现暗涧遗洞入口 · 从血蝠洞沿小径前往。');
+  }
+  if (!previousFlags.hunter_rumor && gs.flags.hunter_rumor) {
+    feedback.push('记下狼群的答声方向 · 到月下竹林调查套索时，可以用它核对足迹。');
+  }
+  if (gs.goal !== previousGoal) feedback.push(`下一步 · ${gs.goal}`);
+  gs.story.history[eventId].feedback = feedback;
+  return feedback;
 }
 
 
@@ -4279,6 +4319,8 @@ function renderMapPanel(gs, title = '青茅山舆图 · 可去之处') {
 
 
 
+
+
 function renderFieldTrial(gs, trial) {
   if (!trial) return '';
   const progress = trial.steps.filter(({ done }) => done).length;
@@ -4304,6 +4346,8 @@ function renderPlaceView(gs) {
   const place = PLACES[gs.location] || PLACES.zhulou;
   const night = isNight(gs.minutes);
   const trial = ['zhulin', 'renwutang'].includes(place.id) ? fieldTrialStatus(gs) : null;
+  const people = localPeople(gs).map((id) =>
+    `<button data-action="visitPerson" data-id="${id}">${esc(STORY_CHARACTERS[id].name)}</button>`).join('');
   const scenes = availableLocalScenes(gs).map(({ id, title }) =>
     `<button class="gold" data-action="checkEvents" data-id="${esc(id)}">${esc(title)}</button>`);
   if (hasLocalLifeScene(gs)) scenes.push('<button data-action="lookForLifeScene">留意四周</button>');
@@ -4435,7 +4479,9 @@ function renderPlaceView(gs) {
       ${place.gather ? `<p class="muted">常见山材 · ${esc([...new Set(place.gather)].map((id) => ITEMS[id].name).join('、'))}${rareGathering(gs, place) ? ` · 今日山材丰收，可采${esc(ITEMS[place.rare.item].name)} ×4` : ''}</p>` : ''}
       <div class="row">${actions.join('')}</div>
     </section>
+    ${people ? `<section class="card"><h3>在场人物</h3><div class="row">${people}</div></section>` : ''}
     ${scenes.length ? `<section class="card"><h3>此地剧情</h3><div class="row">${scenes.join('')}</div></section>` : ''}
+    ${place.id === 'gupu' && gs.player.rank < 2 ? '<p class="card muted">晋入二转后，蛊铺会出售月痕蛊与月霓裳。冲击二转前，可先在此买蛊方自行炼制。</p>' : ''}
     ${merchantRefuses(gs) ? '<p class="card muted">贾家封了你的货帖，商队暂不与你做生意。</p>' : ''}
     ${renderFieldTrial(gs, trial)}
     ${questHtml}
@@ -4485,7 +4531,7 @@ function renderApertureView(gs) {
       def.kind === '治疗' ? `<button class="sm gold" data-action="useHealingGu" data-id="${g.uid}">疗伤</button>` : '',
       ['heishi', 'baishi'].includes(g.id) ? (p[boarKey]
         ? '<span class="gu-note">已得一猪之力</span>'
-        : `<button class="sm gold" title="消耗此蛊，增一猪之力" data-action="useBoarGu" data-id="${g.uid}">催动</button>`) : ''
+        : `<button class="sm gold" title="消耗此蛊，永久增加 ${BOAR_BONUS.hp} 气血上限与 ${BOAR_BONUS.power} 力量" data-action="useBoarGu" data-id="${g.uid}">催动 · 气血上限 +${BOAR_BONUS.hp} / 力量 +${BOAR_BONUS.power}</button>`) : ''
     ].join('');
     return `<li class="gu-row${eq ? ' is-equipped' : ''}">
       <div class="gu-main">
@@ -4760,8 +4806,10 @@ function renderStoryJournal(gs) {
     .map((event) => {
       const entry = history[event.id];
       const choice = event.choices[entry?.choice]?.text;
+      const feedback = Array.isArray(entry?.feedback) ? entry.feedback : [];
       return `<li><b>${esc(event.title)}</b>${choice ? ` · ${esc(choice)}` : ''}
-        <span class="muted">${Number.isFinite(entry?.minute) ? esc(formatDateTime(entry.minute)) : ' · 旧档记录'}</span></li>`;
+        <span class="muted">${Number.isFinite(entry?.minute) ? esc(formatDateTime(entry.minute)) : ' · 旧档记录'}</span>
+        ${feedback.length ? `<ul>${feedback.map((line) => `<li>${esc(line)}</li>`).join('')}</ul>` : ''}</li>`;
     }).join('');
   const people = Object.entries(STORY_CHARACTERS).map(([id, person]) => {
     const level = characterProfileLevel(gs, id);
@@ -4927,6 +4975,17 @@ function renderModal(ui) {
   let html = '';
   if (ui.modal.kind === 'place') {
     html = `<div class="place-sheet-controls"><button class="sm" data-action="closeModal">返回地图</button></div>${renderPlaceView(ui.game)}`;
+  } else if (ui.modal.kind === 'person') {
+    const { id, name, response, favor, trust, progress, giftName, giftReason } = ui.modal.data;
+    const scenes = availableLocalScenes(ui.game).filter((event) => event.person === id).map(({ id, title }) =>
+      `<button class="gold" data-action="checkEvents" data-id="${esc(id)}">${esc(title)}</button>`).join('');
+    sheetEl.setAttribute('aria-labelledby', 'person-title');
+    html = `<h2 id="person-title">${esc(name)}</h2><p>${esc(response)}</p>
+      <p class="muted">好感 ${favor} · 信任 ${trust}${progress ? ` · ${esc(progress)}` : ''}</p>
+      <div class="row"><button data-action="visitPerson" data-id="${esc(id)}">聊天</button>
+      <button class="gold" data-action="giftPerson" data-id="${esc(id)}" ${giftReason ? 'disabled' : ''}>送${esc(giftName)} ×1</button>
+      ${scenes}<button data-action="closeModal">返回地点</button></div>
+      ${giftReason ? `<p class="muted">${esc(giftReason)}</p>` : ''}`;
   } else if (ui.modal.kind === 'break') html = renderBreakModal(ui.modal.data);
   else if (refineShown) {
     html = renderRefineModal(ui.modal.data, ui.modal.effect);
@@ -4978,7 +5037,7 @@ function dismissModal(ui) {
     if (ui.game.refining?.state === 'ongoing') return false;
     clearRefineProgress(ui.game);
   }
-  ui.modal = ui.modal?.kind === 'receipt' && ui.modal.data.returnToPlace && !ui.game.battle
+  ui.modal = !ui.game.battle && (ui.modal?.kind === 'person' || (ui.modal?.kind === 'receipt' && ui.modal.data.returnToPlace))
     ? { kind: 'place' }
     : null;
   return true;
@@ -5144,7 +5203,6 @@ function handleAction(ui, el, { render, showToast }) {
     ui.game = createNewGame(ui.start.name, ui.start.apt);
     ui.start.phase = 'intro';
     ui.tab = 'cultivation';
-    showReceipt(ui, { title: '本命蛊炼化成功', lines: ['月光蛊已成为你的本命蛊。'] });
     saveGame(ui.game);
     render();
   } else if (act === 'continueSave') {
@@ -5186,6 +5244,13 @@ function handleAction(ui, el, { render, showToast }) {
       ui.tab = 'place';
       openModal('place');
     }
+  } else if ((act === 'visitPerson' && ['place', 'person'].includes(ui.modal?.kind))
+    || (act === 'giftPerson' && ui.modal?.kind === 'person' && ui.modal.data.id === id)) {
+    const person = visitPerson(ui.game, id, act === 'giftPerson');
+    if (!person) return;
+    setModal(ui, 'person', person);
+    saveGame(ui.game);
+    render();
   } else if (act === 'placeAct') {
     handlePlaceAction(ui, id, { render, showToast });
   } else if (act === 'quest') {
@@ -5212,6 +5277,7 @@ function handleAction(ui, el, { render, showToast }) {
     render();
   } else if (act === 'checkEvents') {
     if (!checkStoryTriggers(ui.game, id)) return;
+    if (ui.modal?.kind === 'person') setModal(ui, 'place');
     saveGame(ui.game);
     render();
   } else if (act === 'refineBenming') {
@@ -5224,13 +5290,17 @@ function handleAction(ui, el, { render, showToast }) {
   } else if (act === 'chooseEvent') {
     const p = ui.game.player;
     const before = { stones: p.yuanshi, items: { ...p.items }, guCount: p.gu.length };
-    applyEventChoice(ui.game, id, Number(el.dataset.idx) || 0);
+    const feedback = applyEventChoice(ui.game, id, Number(el.dataset.idx) || 0);
+    if (!feedback) return;
     const lines = p.gu.slice(before.guCount).map(({ id }) => `${GU_DEFS[id].name} ×1`);
     for (const [id, count] of Object.entries(p.items)) {
       const gained = count - (before.items[id] ?? 0);
-      if (gained > 0) lines.push(`${ITEMS[id].name} ×${gained}`);
+      if (gained > 0 && ITEMS[id]) lines.push(`${ITEMS[id].name} ×${gained}`);
     }
-    if (p.yuanshi > before.stones) lines.push(`元石 ×${p.yuanshi - before.stones}`);
+    if (p.yuanshi > before.stones) lines.push(`获得元石 ×${p.yuanshi - before.stones}`);
+    if (p.yuanshi < before.stones) lines.push(`支出元石 ×${before.stones - p.yuanshi}`);
+    lines.push(...feedback);
+    ui.game.story.history[id].feedback = lines;
     if (lines.length) {
       const event = STORY_EVENTS.find((entry) => entry.id === id);
       showReceipt(ui, { title: event.title, lines });
@@ -5328,7 +5398,15 @@ function handleAction(ui, el, { render, showToast }) {
     saveGame(ui.game);
     render();
   } else if (act === 'useBoarGu') {
+    const p = ui.game.player;
+    const gu = p.gu.find(({ uid }) => uid === Number(id));
+    const { hpMax, powerBonus } = p;
     if (!useBoarGu(ui.game, Number(id))) return;
+    showReceipt(ui, {
+      title: `已催动${GU_DEFS[gu.id].name}`,
+      lines: [`气血上限 ${hpMax} → ${p.hpMax}`, `力量 ${powerBonus} → ${p.powerBonus}`],
+      detail: '蛊虫已消耗。提升永久生效，力量会提高普攻和部分力道招式的伤害。'
+    });
     saveGame(ui.game);
     render();
   } else if (act === 'useSheli') {

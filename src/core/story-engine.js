@@ -1,4 +1,5 @@
-import { STORY_EVENTS, STORY_QUESTS } from '../data/story.js';
+import { STORY_CHARACTERS } from '../data/characters.js';
+import { STORY_EVENTS, STORY_QUESTS, STORY_QUEST_STAGES } from '../data/story.js';
 import { isNight, makeTime, MIN_PER_DAY, MIN_PER_MONTH, MIN_PER_SHICHEN, parseTimeExpr } from './calendar.js';
 import { GU_DEFS, ITEMS } from '../data/gu.js';
 import { addGu, addItem, addLog, hasGu, recalcStats, useItem } from './state.js';
@@ -152,6 +153,10 @@ export function applyEventChoice(gs, eventId, choiceIdx) {
   if (!ev || gs.flags[`event_done:${eventId}`]) return;
   const choice = ev.choices[choiceIdx];
   if (gs.pendingEventId !== eventId || gs.player.dead || gs.battle || !choice || !evalCond(gs, choice.cond)) return;
+  const beforeQuests = structuredClone(gs.story.quests);
+  const beforeRelations = { ...gs.story.relations };
+  const previousFlags = { ...gs.flags };
+  const previousGoal = gs.goal;
   gs.flags[`event_done:${ev.id}`] = true;
   gs.pendingEventId = null;
   gs.story.history[eventId] = { minute: gs.minutes, choice: choiceIdx };
@@ -221,4 +226,35 @@ export function applyEventChoice(gs, eventId, choiceIdx) {
     advanceStoryQuest(gs, 'caravan', 'failed', gs.flags.jia_missing_stones ? 'theft' : 'expired');
   }
   if (gs.player.rank >= 2) gs.flags['open:jiazhuge'] = true;
+
+  const feedback = [];
+  for (const [id, current] of Object.entries(gs.story.relations)) {
+    const before = beforeRelations[id] ?? STORY_CHARACTERS[id].initial;
+    const changes = [['好感', current.favor - before.favor], ['信任', current.trust - before.trust]]
+      .filter(([, value]) => value)
+      .map(([label, value]) => `${label} ${value > 0 ? '+' : ''}${value}`);
+    if (current.progress && current.progress !== before.progress) changes.push(current.progress);
+    if (changes.length) feedback.push(`${STORY_CHARACTERS[id].name} · ${changes.join('、')}`);
+  }
+  for (const [id, current] of Object.entries(gs.story.quests)) {
+    const quest = STORY_QUESTS[id];
+    const before = beforeQuests[id];
+    for (const clue of current.clues) {
+      if (!before?.clues.includes(clue)) feedback.push(`获得线索 · ${quest.clues[clue].name}`);
+    }
+    if (before?.stage === current.stage) continue;
+    const step = quest.steps[current.stage];
+    const stage = step?.name ?? STORY_QUEST_STAGES[current.stage];
+    const detail = step?.hint ?? quest.outcomes[current.outcome];
+    feedback.push(`${quest.name} · ${stage}${detail ? `。 ${detail}` : ''}`);
+  }
+  if (!previousFlags['clue:huajiu'] && gs.flags['clue:huajiu']) {
+    feedback.push('发现暗涧遗洞入口 · 从血蝠洞沿小径前往。');
+  }
+  if (!previousFlags.hunter_rumor && gs.flags.hunter_rumor) {
+    feedback.push('记下狼群的答声方向 · 到月下竹林调查套索时，可以用它核对足迹。');
+  }
+  if (gs.goal !== previousGoal) feedback.push(`下一步 · ${gs.goal}`);
+  gs.story.history[eventId].feedback = feedback;
+  return feedback;
 }

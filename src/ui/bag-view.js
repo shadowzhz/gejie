@@ -138,8 +138,10 @@ function renderStoryJournal(gs) {
     .map((event) => {
       const entry = history[event.id];
       const choice = event.choices[entry?.choice]?.text;
+      const feedback = Array.isArray(entry?.feedback) ? entry.feedback : [];
       return `<li><b>${esc(event.title)}</b>${choice ? ` · ${esc(choice)}` : ''}
-        <span class="muted">${Number.isFinite(entry?.minute) ? esc(formatDateTime(entry.minute)) : ' · 旧档记录'}</span></li>`;
+        <span class="muted">${Number.isFinite(entry?.minute) ? esc(formatDateTime(entry.minute)) : ' · 旧档记录'}</span>
+        ${feedback.length ? `<ul>${feedback.map((line) => `<li>${esc(line)}</li>`).join('')}</ul>` : ''}</li>`;
     }).join('');
   const people = Object.entries(STORY_CHARACTERS).map(([id, person]) => {
     const level = characterProfileLevel(gs, id);

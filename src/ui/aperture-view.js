@@ -1,5 +1,5 @@
 import { GU_DEFS, ITEMS, guEffectText } from '../data/gu.js';
-import { BENMING_ZY_COST, esc, isGuWeak, minorXpNeed, realmText } from '../core/state.js';
+import { BENMING_ZY_COST, BOAR_BONUS, esc, isGuWeak, minorXpNeed, realmText } from '../core/state.js';
 
 import { realmGuRequirement } from '../core/breakthrough.js';
 import { discoveredKillerPatterns, killerEffectText, killerMoveBlock } from '../core/killer.js';
@@ -44,7 +44,7 @@ export function renderApertureView(gs) {
       def.kind === '治疗' ? `<button class="sm gold" data-action="useHealingGu" data-id="${g.uid}">疗伤</button>` : '',
       ['heishi', 'baishi'].includes(g.id) ? (p[boarKey]
         ? '<span class="gu-note">已得一猪之力</span>'
-        : `<button class="sm gold" title="消耗此蛊，增一猪之力" data-action="useBoarGu" data-id="${g.uid}">催动</button>`) : ''
+        : `<button class="sm gold" title="消耗此蛊，永久增加 ${BOAR_BONUS.hp} 气血上限与 ${BOAR_BONUS.power} 力量" data-action="useBoarGu" data-id="${g.uid}">催动 · 气血上限 +${BOAR_BONUS.hp} / 力量 +${BOAR_BONUS.power}</button>`) : ''
     ].join('');
     return `<li class="gu-row${eq ? ' is-equipped' : ''}">
       <div class="gu-main">

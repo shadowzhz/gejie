@@ -1,3 +1,5 @@
+import { localPeople } from '../core/social.js';
+import { STORY_CHARACTERS } from '../data/characters.js';
 import { fieldTrialStatus } from '../core/field-trial.js';
 import { renderGoalShortcut } from './cultivation-view.js';
 import { GU_DEFS, ITEMS, REFINE_RECIPES, guEffectText, recipeIngredientsText, recipeOutputText } from '../data/gu.js';
@@ -34,6 +36,8 @@ export function renderPlaceView(gs) {
   const place = PLACES[gs.location] || PLACES.zhulou;
   const night = isNight(gs.minutes);
   const trial = ['zhulin', 'renwutang'].includes(place.id) ? fieldTrialStatus(gs) : null;
+  const people = localPeople(gs).map((id) =>
+    `<button data-action="visitPerson" data-id="${id}">${esc(STORY_CHARACTERS[id].name)}</button>`).join('');
   const scenes = availableLocalScenes(gs).map(({ id, title }) =>
     `<button class="gold" data-action="checkEvents" data-id="${esc(id)}">${esc(title)}</button>`);
   if (hasLocalLifeScene(gs)) scenes.push('<button data-action="lookForLifeScene">留意四周</button>');
@@ -165,7 +169,9 @@ export function renderPlaceView(gs) {
       ${place.gather ? `<p class="muted">常见山材 · ${esc([...new Set(place.gather)].map((id) => ITEMS[id].name).join('、'))}${rareGathering(gs, place) ? ` · 今日山材丰收，可采${esc(ITEMS[place.rare.item].name)} ×4` : ''}</p>` : ''}
       <div class="row">${actions.join('')}</div>
     </section>
+    ${people ? `<section class="card"><h3>在场人物</h3><div class="row">${people}</div></section>` : ''}
     ${scenes.length ? `<section class="card"><h3>此地剧情</h3><div class="row">${scenes.join('')}</div></section>` : ''}
+    ${place.id === 'gupu' && gs.player.rank < 2 ? '<p class="card muted">晋入二转后，蛊铺会出售月痕蛊与月霓裳。冲击二转前，可先在此买蛊方自行炼制。</p>' : ''}
     ${merchantRefuses(gs) ? '<p class="card muted">贾家封了你的货帖，商队暂不与你做生意。</p>' : ''}
     ${renderFieldTrial(gs, trial)}
     ${questHtml}

@@ -1,3 +1,4 @@
+import { availableLocalScenes } from '../core/story-engine.js';
 import { esc, realmText } from '../core/state.js';
 import { clearRefineProgress } from './persistence.js';
 import { renderBreakModal, renderCustomKillerModal, renderEventModal, renderRefineModal } from './rituals.js';
@@ -63,6 +64,17 @@ export function renderModal(ui) {
   let html = '';
   if (ui.modal.kind === 'place') {
     html = `<div class="place-sheet-controls"><button class="sm" data-action="closeModal">返回地图</button></div>${renderPlaceView(ui.game)}`;
+  } else if (ui.modal.kind === 'person') {
+    const { id, name, response, favor, trust, progress, giftName, giftReason } = ui.modal.data;
+    const scenes = availableLocalScenes(ui.game).filter((event) => event.person === id).map(({ id, title }) =>
+      `<button class="gold" data-action="checkEvents" data-id="${esc(id)}">${esc(title)}</button>`).join('');
+    sheetEl.setAttribute('aria-labelledby', 'person-title');
+    html = `<h2 id="person-title">${esc(name)}</h2><p>${esc(response)}</p>
+      <p class="muted">好感 ${favor} · 信任 ${trust}${progress ? ` · ${esc(progress)}` : ''}</p>
+      <div class="row"><button data-action="visitPerson" data-id="${esc(id)}">聊天</button>
+      <button class="gold" data-action="giftPerson" data-id="${esc(id)}" ${giftReason ? 'disabled' : ''}>送${esc(giftName)} ×1</button>
+      ${scenes}<button data-action="closeModal">返回地点</button></div>
+      ${giftReason ? `<p class="muted">${esc(giftReason)}</p>` : ''}`;
   } else if (ui.modal.kind === 'break') html = renderBreakModal(ui.modal.data);
   else if (refineShown) {
     html = renderRefineModal(ui.modal.data, ui.modal.effect);
@@ -116,7 +128,7 @@ export function dismissModal(ui) {
     if (ui.game.refining?.state === 'ongoing') return false;
     clearRefineProgress(ui.game);
   }
-  ui.modal = ui.modal?.kind === 'receipt' && ui.modal.data.returnToPlace && !ui.game.battle
+  ui.modal = !ui.game.battle && (ui.modal?.kind === 'person' || (ui.modal?.kind === 'receipt' && ui.modal.data.returnToPlace))
     ? { kind: 'place' }
     : null;
   return true;

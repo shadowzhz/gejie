@@ -140,14 +140,16 @@ export function createNewGame(name = '无名', apt = null) {
   return state;
 }
 
+export const BOAR_BONUS = { hp: 35, power: 12 };
+
 export function recalcStats(gs) {
   const p = gs.player;
   const r = p.rank;
   const x = p.xiao;
   const haiMul = 0.65 + p.hai * 0.08;
   const boarStrength = (p.whiteBoarStrength ?? 0) + (p.blackBoarStrength ?? 0);
-  const passiveHp = boarStrength * 35 + (hasGu(gs, 'tongpi') ? 25 : 0);
-  const passivePower = boarStrength * 12;
+  const passiveHp = boarStrength * BOAR_BONUS.hp + (hasGu(gs, 'tongpi') ? 25 : 0);
+  const passivePower = boarStrength * BOAR_BONUS.power;
   p.hpMax = Math.round((85 + r * 35 + x * 14) * (1 + (r - 1) * 0.18) + passiveHp);
   p.zyMax = Math.round((28 + r * 18 + x * 6) * haiMul);
   p.speed = 6 + r * 3 + x;
@@ -286,7 +288,7 @@ export function useBoarGu(gs, uid) {
   removeGuByUid(gs, uid);
   player[strength] = 1;
   recalcStats(gs);
-  addLog(gs, `【${GU_DEFS[gu.id].name}】蛊虫消散，你添了一猪之力。`, 'log-good');
+  addLog(gs, `【${GU_DEFS[gu.id].name}】蛊虫消散，永久获得气血上限 +${BOAR_BONUS.hp}、力量 +${BOAR_BONUS.power}。`, 'log-good');
   return true;
 }
 

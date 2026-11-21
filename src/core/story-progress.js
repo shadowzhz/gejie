@@ -63,6 +63,9 @@ export function restoreStoryProgress(gs) {
         for (const clue of clues) addStoryClue(gs, id, clue);
       }
     }
+    for (const id of Object.keys(STORY_CHARACTERS)) {
+      if (Number.isInteger(saved.giftDays?.[id])) (gs.story.giftDays ??= {})[id] = saved.giftDays[id];
+    }
     if (Number.isFinite(saved.lifeReadyAt)) gs.story.lifeReadyAt = saved.lifeReadyAt;
     if (saved.history && typeof saved.history === 'object') gs.story.history = saved.history;
   } else {
