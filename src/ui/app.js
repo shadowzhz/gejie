@@ -1,6 +1,6 @@
 import { PLACES } from '../data/places.js';
 import { formatDateTime } from '../core/calendar.js';
-import { esc, loadGame, realmText } from '../core/state.js';
+import { esc, loadGame, realmText, saveGame } from '../core/state.js';
 import { renderStartScreen } from './rituals.js';
 import { renderBattleView } from './battle-view.js';
 import { renderPlaceView } from './place-view.js';
@@ -100,6 +100,10 @@ export function render() {
 document.addEventListener('click', (event) => {
   const button = event.target.closest('[data-action]');
   if (button) handleAction(ui, button, { render, showToast });
+});
+
+window.addEventListener('pagehide', () => {
+  if (ui.game) saveGame(ui.game);
 });
 
 restoreSessions(ui, showToast);

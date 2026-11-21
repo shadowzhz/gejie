@@ -8,7 +8,7 @@ const REFINE_REALMS = [
   [25, '大宗师', .33], [50, '无上大宗师', .50]
 ];
 
-const RECIPE_SOURCES = {
+export const RECIPE_SOURCES = {
   r_yuemang: 'nianmo_done',
   r_yuexuan: 'nianmo_done',
   r_yuehen: 'nianmo_done',
@@ -20,7 +20,7 @@ const RECIPE_SOURCES = {
   r_jiuyecao: 'event_done:jiuyecao_inheritance',
 };
 
-const RECIPE_DISCOVERIES = [
+export const RECIPE_DISCOVERIES = [
   { id: 'r_xuefu_gu', place: 'xuefu', flag: 'clear:xuefu', action: '查探洞壁上的血道残卷' },
   { id: 'r_dianlang_gu', place: 'jiazhuge', flag: 'clear:langchao', action: '查阅族中驭雷手卷' }
 ];
@@ -44,6 +44,19 @@ export function purchaseRecipe(gs, id) {
 export function availableRecipeDiscovery(gs) {
   return RECIPE_DISCOVERIES.find(({ id, place, flag }) =>
     gs.location === place && gs.flags[flag] && !gs.player.recipes?.includes(id));
+}
+
+export function recipeOrigin(recipe) {
+  const discovery = RECIPE_DISCOVERIES.find(({ id }) => id === recipe.id);
+  if (discovery) {
+    const field = PLACES[discovery.flag.slice('clear:'.length)];
+    return `击败${field.name}首领后，到${PLACES[discovery.place].name}${discovery.action}`;
+  }
+  const source = RECIPE_SOURCES[recipe.id];
+  if (source === 'nianmo_done') return '完成年末大考';
+  if (source === 'looted:huajiu') return '取得暗涧遗洞的花酒遗藏';
+  if (source === 'event_done:jiuyecao_inheritance') return '完成九叶生机草继承剧情';
+  return '在蛊铺购买蛊方';
 }
 
 export function knowsRefineRecipe(gs, recipe) {

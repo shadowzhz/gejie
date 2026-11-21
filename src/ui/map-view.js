@@ -1,3 +1,4 @@
+import { renderExpeditionDetails } from './expedition-view.js';
 import { hasPlaceActions, PLACES } from '../data/places.js';
 import { formatDuration, isNight } from '../core/calendar.js';
 import { placeMoveList } from '../core/clock.js';
@@ -29,7 +30,7 @@ export function renderMapPanel(gs, title = '青茅山舆图') {
     if (pid === gs.location) {
       const label = `<b>${esc(place.name)}</b><small>身处此地</small>`;
       nodes += hasPlaceActions(gs)
-        ? `<button type="button" class="map-node is-here" style="${style}" data-action="closeModal">${label}</button>`
+        ? `<button type="button" class="map-node is-here" style="${style}" data-action="openPlace">${label}</button>`
         : `<div class="map-node is-here" style="${style}">${label}</div>`;
     } else if (mv) {
       nodes += `<button type="button" class="map-node is-move" style="${style}" data-action="walkTo" data-id="${pid}" ${mv.blocked ? 'disabled title="' + esc(mv.blocked) + '"' : ''}>
@@ -39,6 +40,16 @@ export function renderMapPanel(gs, title = '青茅山舆图') {
       nodes += `<div class="map-node is-far" style="${style}"><b>${esc(place.name)}</b></div>`;
     }
   }
+
+  const directory = visibleIds.map((id) => {
+    const place = PLACES[id];
+    const blocked = id === gs.location ? '' : moveMap[id]?.blocked || (!moveMap[id] ? place.lock?.msg || '当前没有通路' : '');
+    return `<details><summary>${esc(place.name)} · ${blocked ? '受阻' : '开放'}</summary>
+      <p>${esc(isNight(gs.minutes) ? place.night : place.day)}</p>
+      ${renderExpeditionDetails(gs, place, blocked)}
+      ${!blocked && id !== gs.location ? `<button class="sm gold" data-action="walkTo" data-id="${id}">前往 · ${formatDuration(moveMap[id].minutes)}</button>` : ''}
+    </details>`;
+  }).join('');
 
   const blockedHints = moves.filter((m) => m.blocked).map((m) => `<div>· ${esc(m.name)}：${esc(m.blocked)}</div>`).join('');
 
@@ -69,5 +80,6 @@ export function renderMapPanel(gs, title = '青茅山舆图') {
       <span><i class="dot-lock"></i>前路受阻</span>
     </div>
     ${blockedHints ? `<div class="map-blocked">${blockedHints}</div>` : ''}
+    <section class="card"><h3>地点志</h3>${directory}</section>
   </div>`;
 }

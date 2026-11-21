@@ -112,6 +112,7 @@ export function createNewGame(name = '无名', apt = null) {
       recipes: [],
       autoFeed: false,
       quests: {},
+      fieldTrial: {},
       equipped: [],
       moves: [],
       items: { yuelanhua: 6 },
@@ -332,6 +333,16 @@ export function saveGame(gs, storage) {
   }
 }
 
+export function restoreFieldProgress(gs) {
+  if (!gs?.player) return;
+  const p = gs.player;
+  if (!p.fieldTrial) {
+    const alreadyExplored = ['clear:zhulin', 'clear:xuefu', 'clear:langchao', 'looted:huajiu']
+      .some((flag) => gs.flags[flag]);
+    p.fieldTrial = alreadyExplored ? { firstClaimed: true } : {};
+  }
+}
+
 export function loadGame(storage) {
   try {
     if (storage === undefined) storage = globalThis.localStorage;
@@ -343,6 +354,8 @@ export function loadGame(storage) {
     if (!PLACES[parsed.location]) parsed.location = 'shijie';
     restoreStoryProgress(parsed);
     restoreStoryProgress(parsed.snapshot);
+    restoreFieldProgress(parsed);
+    restoreFieldProgress(parsed.snapshot);
     recalcStats(parsed);
     return parsed;
   } catch {

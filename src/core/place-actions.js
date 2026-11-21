@@ -1,16 +1,74 @@
+import { canExpedition, EXPEDITION_MINUTES, expeditionProgress } from './expedition.js';
 import { fieldTrialStatus, recordFieldTrial, settleFieldTrial } from './field-trial.js';
-import { ITEMS, REFINE_RECIPES, recipeOutputText } from '../data/gu.js';
-import { PLACES, rareGathering } from '../data/places.js';
-import { formatDateTime, MIN_PER_DAY } from './calendar.js';
+import { ENEMIES } from '../data/enemies.js';
+import { GU_DEFS, ITEMS, REFINE_RECIPES, recipeOutputText } from '../data/gu.js';
+import { CLAN_GIFT_GU, GROTTO_GU, PLACES, rareGathering } from '../data/places.js';
+import { formatDateTime, MIN_PER_DAY, MIN_PER_SHICHEN } from './calendar.js';
 import { addGu, addItem, addLog, claimBenming, recordQuestProgress } from './state.js';
 import { startBattle } from './combat.js';
-import { innRumors, nextRetreatTime } from './story-engine.js';
+import { availableLocalScenes, hasLocalLifeScene, innRumors, lookForLifeScene, nextRetreatTime } from './story-engine.js';
 import { advanceMinutes } from './clock.js';
 import { availableRecipeDiscovery } from './refine.js';
 
-export function performPlaceAction(gs, id) {
+function collectFieldMaterial(gs, id, count) {
+  addItem(gs, id, count);
+  recordQuestProgress(gs, 'gather', gs.location);
+  recordFieldTrial(gs, 'gathered');
+  const message = `采集完成，获得「${ITEMS[id].name}」×${count}`;
+  addLog(gs, `${message}。`, 'log-good');
+  return { ok: true, message, item: id, count };
+}
+
+function startFieldBattle(gs, place, boss, rng) {
+  const battle = startBattle(gs, boss ? place.bossEnemy : place.exploreEnemy,
+    boss ? `讨伐${place.name}` : `${place.name}遭遇`, rng);
+  if (battle && place.id === 'zhulin' && fieldTrialStatus(gs)?.steps[0].done) battle.scouted = true;
+}
+
+function exploreField(gs, rng) {
+  const place = PLACES[gs.location];
+  if (!canExpedition(gs, place)) return { reason: '炼化本命蛊并完成演武训练后，可在开放的野外地点探路。' };
+  advanceMinutes(gs, EXPEDITION_MINUTES);
+  if (gs.pendingEventId || gs.player.dead) return { ok: true };
+  const count = expeditionProgress(gs, place.id) + 1;
+  (gs.player.expeditions ??= {})[place.id] = count;
+  recordFieldTrial(gs, 'scouted');
+
+  if (place.id === 'xuefu' && gs.flags['clear:xuefu'] && !gs.flags['clue:huajiu']) {
+    gs.flags['clue:huajiu'] = true;
+    const message = '循水声发现水帘后的暗涧遗洞，入口已标在地图上。';
+    addLog(gs, `【探路】${message}`, 'log-gold');
+    return { ok: true, receipt: { title: '发现暗涧遗洞', lines: [message] } };
+  }
+  if (availableRecipeDiscovery(gs)) return performPlaceAction(gs, 'discoverRecipe');
+  if (count % 3 === 2) {
+    startFieldBattle(gs, place, false, rng);
+    return { ok: true };
+  }
+  if (count % 3 === 0) {
+    if (hasLocalLifeScene(gs) && lookForLifeScene(gs, rng).event) return { ok: true };
+    const scene = availableLocalScenes(gs)[0];
+    if (scene) {
+      const message = `沿路发现「${scene.title}」的线索，可在此地剧情查看。`;
+      addLog(gs, `【探路】${message}`);
+      return { ok: true, message };
+    }
+    const boss = ENEMIES[place.bossEnemy];
+    const wildGu = GU_DEFS[boss?.reward?.gu];
+    if (wildGu && !gs.flags[`clear:${place.id}`] && !gs.flags[`trail:${place.id}`]) {
+      gs.flags[`trail:${place.id}`] = true;
+      const message = `发现${wildGu.name}寄居在${boss.name}身上。准备好后，可在此地选择讨伐。`;
+      addLog(gs, `【探路】${message}`, 'log-gold');
+      return { ok: true, receipt: { title: '发现野生蛊虫的踪迹', lines: [message] } };
+    }
+  }
+  return collectFieldMaterial(gs, place.gather[Math.floor(rng() * place.gather.length)], 1);
+}
+
+export function performPlaceAction(gs, id, rng = Math.random) {
   const p = gs.player;
   if (p.dead || gs.battle || gs.pendingEventId || gs.refining || gs.breakthrough) return;
+  if (id === 'fieldExplore') return exploreField(gs, rng);
   if (id === 'meditate') {
     advanceMinutes(gs, 120);
     addLog(gs, '你盘膝打坐一个时辰，吐纳天地灵气。');
@@ -34,9 +92,9 @@ export function performPlaceAction(gs, id) {
       detail: '前往修行页面，消耗真元炼化月光蛊。'
     } };
   } else if (id === 'caoren') {
+    if (gs.location !== 'yanwu') return;
     advanceMinutes(gs, 30);
-    gs.flags['practiced'] = true;
-    if (!gs.pendingEventId) startBattle(gs, 'caoren', '演武场练手');
+    if (!gs.pendingEventId && !p.dead && startBattle(gs, 'caoren', '演武场练手')) gs.flags.practiced = true;
   } else if (id === 'sparring') {
     advanceMinutes(gs, 60);
     if (!gs.pendingEventId) startBattle(gs, 'fangzheng', '同窗切磋');
@@ -61,11 +119,11 @@ export function performPlaceAction(gs, id) {
     addLog(gs, `【密闻】${line}`, 'log-gold');
     return { ok: true, message: line };
   } else if (id === 'clanGift') {
+    if (gs.location !== 'jiazhuge' || p.rank < 2) return;
     if (!gs.flags['clan_gift_r2']) {
       gs.flags['clan_gift_r2'] = true;
       p.yuanshi += 40;
-      addGu(gs, 'chitie_sheli');
-      addGu(gs, 'yupi');
+      for (const gu of CLAN_GIFT_GU) addGu(gs, gu);
       addLog(gs, '【家族赏赐】族长嘉许你晋入二转，赏元石 40、赤铁舍利蛊和玉皮蛊各 1 只！', 'log-gold');
       return { ok: true, receipt: { title: '族长阁 · 二转赏赐', lines: ['元石 ×40', '赤铁舍利蛊 ×1', '玉皮蛊 ×1'] } };
     } else {
@@ -85,28 +143,20 @@ export function performPlaceAction(gs, id) {
   } else if (id === 'exploreFight' || id === 'exploreBoss') {
     const place = PLACES[gs.location];
     const boss = id === 'exploreBoss';
-    const enemy = boss ? place.bossEnemy : place.exploreEnemy;
+    if (!(boss ? place.bossEnemy : place.exploreEnemy) || (boss && gs.flags[`clear:${place.id}`])) return;
     advanceMinutes(gs, 60);
-    if (!gs.pendingEventId && enemy) {
-      const battle = startBattle(gs, enemy, boss ? `讨伐${place.name}` : `${place.name}遭遇`);
-      if (battle && place.id === 'zhulin' && fieldTrialStatus(gs)?.steps[0].done) battle.scouted = true;
-    }
+    if (!gs.pendingEventId && !p.dead) startFieldBattle(gs, place, boss, rng);
   } else if (id === 'gather' || id === 'gatherPetals') {
     const place = PLACES[gs.location];
     const petals = id === 'gatherPetals';
     if (!place.gather || (petals && (place.id !== 'zhulin' || !fieldTrialStatus(gs)?.steps[0].done))) return;
-    advanceMinutes(gs, 120);
-    if (place.id === 'zhulin' && (gs.pendingEventId || p.dead)) return { ok: true };
+    advanceMinutes(gs, MIN_PER_SHICHEN);
+    if (gs.pendingEventId || p.dead) return { ok: true };
     const rare = petals ? null : rareGathering(gs, place);
     if (rare) gs.flags[`gathered:${place.id}`] = Math.floor(gs.minutes / MIN_PER_DAY);
-    const got = petals ? 'yuelanhua' : rare || place.gather[Math.floor(Math.random() * place.gather.length)];
+    const got = petals ? 'yuelanhua' : rare || place.gather[Math.floor(rng() * place.gather.length)];
     const count = rare ? 4 : 2;
-    addItem(gs, got, count);
-    recordQuestProgress(gs, 'gather', gs.location);
-    recordFieldTrial(gs, 'gathered');
-    const message = `采集完成，获得「${ITEMS[got].name}」×${count}`;
-    addLog(gs, `${message}。`, 'log-good');
-    return { ok: true, message };
+    return collectFieldMaterial(gs, got, count);
   } else if (id === 'discoverRecipe') {
     const discovery = availableRecipeDiscovery(gs);
     if (!discovery) return;
@@ -114,17 +164,16 @@ export function performPlaceAction(gs, id) {
     const recipe = REFINE_RECIPES.find(({ id }) => id === discovery.id);
     const message = `习得「${recipeOutputText(recipe)}」蛊方`;
     addLog(gs, `【蛊方】${message}。`, 'log-gold');
-    return { ok: true, message };
+    return { ok: true, message, receipt: { title: '发现蛊方', lines: [message, '可在炼蛊页查看材料与开炉条件。'] } };
   } else if (id === 'huajiuLoot') {
+    if (gs.location !== 'huajiu' || !gs.flags['clue:huajiu']) return { reason: '请先找到并前往暗涧遗洞。' };
     if (gs.flags['looted:huajiu']) return { reason: '遗洞宝藏已被你取空' };
     gs.flags['looted:huajiu'] = true;
     advanceMinutes(gs, 60);
     p.yuanshi += 45;
-    addGu(gs, 'jiuchong', 100);
-    addGu(gs, 'baishi');
-    addGu(gs, 'yupi');
+    for (const gu of GROTTO_GU) addGu(gs, gu);
     addItem(gs, 'qingzhujiu', 5);
-    const lines = ['酒虫 ×1', '白豕蛊 ×1', '玉皮蛊 ×1', '青竹酒 ×5', '元石 ×45'];
+    const lines = [...GROTTO_GU.map((id) => `${GU_DEFS[id].name} ×1`), '青竹酒 ×5', '元石 ×45'];
     addLog(gs, `【花酒行者遗藏】获得${lines.join('、')}。`, 'log-gold');
     return { ok: true, receipt: {
       title: '暗涧遗洞 · 花酒行者遗藏',

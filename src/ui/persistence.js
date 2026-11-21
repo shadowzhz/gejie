@@ -1,6 +1,6 @@
 import { restoreStoryProgress } from '../core/story-progress.js';
 import { PLACES } from '../data/places.js';
-import { addLog, recalcStats, saveGame, SAVE_KEY } from '../core/state.js';
+import { addLog, recalcStats, restoreFieldProgress, saveGame, SAVE_KEY } from '../core/state.js';
 import { restoreRefineSession } from '../core/refine.js';
 import { validBreakSession } from '../core/breakthrough.js';
 
@@ -48,6 +48,8 @@ export function importProgress(raw) {
   if (!PLACES[parsed.location]) parsed.location = 'shijie';
   restoreStoryProgress(parsed);
   restoreStoryProgress(parsed.snapshot);
+  restoreFieldProgress(parsed);
+  restoreFieldProgress(parsed.snapshot);
   recalcStats(parsed);
   return parsed;
 }

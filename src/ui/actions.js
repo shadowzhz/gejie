@@ -1,3 +1,6 @@
+import { PLACES } from '../data/places.js';
+import { FIELD_GATHER_TICKS } from './game-loop.js';
+import { sellMaterial } from '../core/expedition.js';
 import { visitPerson } from '../core/social.js';
 import { STORY_EVENTS } from '../data/story.js';
 import { GU_DEFS, ITEMS, REFINE_RECIPES } from '../data/gu.js';
@@ -203,7 +206,18 @@ export function handleAction(ui, el, { render, showToast }) {
     setModal(ui, 'person', { ...person, returnToPlace });
     saveGame(ui.game);
     render();
+  } else if (act === 'openExpedition') {
+    if (!ui.game.battle && !ui.game.pendingEventId && !ui.game.player.dead && PLACES[ui.game.location]?.services.includes('explore')) {
+      openModal('expedition', { location: ui.game.location, gathering: false, ticks: FIELD_GATHER_TICKS, items: {} });
+    }
+  } else if (act === 'toggleFieldGather' && ui.modal?.kind === 'expedition') {
+    const session = ui.modal.data;
+    session.gathering = !session.gathering;
+    session.action = id === 'gatherPetals' ? id : 'gather';
+    session.ticks = FIELD_GATHER_TICKS;
+    render();
   } else if (act === 'placeAct') {
+    if (ui.modal?.kind === 'expedition' && ui.modal.data.gathering) return;
     handlePlaceAction(ui, id, { render, showToast });
   } else if (act === 'quest') {
     playSfx('tap');
@@ -224,6 +238,14 @@ export function handleAction(ui, el, { render, showToast }) {
     const cur = Number.isFinite(input.valueAsNumber) ? input.valueAsNumber : 1;
     input.value = String(Math.max(1, Math.min(SHOP_BATCH_LIMIT, cur + delta)));
     playSfx('tap');
+  } else if (act === 'sellMaterial') {
+    const input = el.closest('.shop-purchase')?.querySelector('input[type="number"]');
+    const result = sellMaterial(ui.game, id, input?.valueAsNumber ?? 1);
+    showToast(result.message || result.reason);
+    if (result.ok) {
+      saveGame(ui.game);
+      render();
+    }
   } else if (act === 'buyItem') {
     const input = el.closest('.shop-purchase')?.querySelector('input[type="number"]');
     const result = purchaseShopEntry(ui.game, id, input?.valueAsNumber ?? 1);
@@ -251,7 +273,11 @@ export function handleAction(ui, el, { render, showToast }) {
     if (!res.ok) { playSfx('alert'); showToast(res.reason); return; }
     ui.tab = 'cultivation';
     playSfx('win');
-    showReceipt(ui, { title: '本命蛊炼化成功', lines: ['月光蛊已成为你的本命蛊。'] });
+    showReceipt(ui, { title: '本命蛊炼化成功', lines: [
+      '修行页可查看主线与破境条件。',
+      '头名仍可交卷时，可先回学堂。到演武场与草人对练，就能出寨探路、狩猎和采集。',
+      '在空窍查看蛊虫与口粮，在炼蛊页查蛊方。野外带回的多余山材可卖给聚财坊。'
+    ] });
     saveGame(ui.game);
     render();
   } else if (act === 'chooseEvent') {

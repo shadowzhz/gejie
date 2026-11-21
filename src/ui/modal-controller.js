@@ -2,7 +2,7 @@ import { availableLocalScenes } from '../core/story-engine.js';
 import { esc, realmText } from '../core/state.js';
 import { clearRefineProgress } from './persistence.js';
 import { renderBreakModal, renderCustomKillerModal, renderEventModal, renderRefineModal } from './rituals.js';
-import { renderPlaceView } from './place-view.js';
+import { renderExpeditionModal, renderPlaceView } from './place-view.js';
 import { renderMapPanel } from './map-view.js';
 import { renderRefineDetails } from './refine-view.js';
 import { renderDeveloperView } from './bag-view.js';
@@ -12,6 +12,7 @@ export function renderModal(ui) {
   const sheetEl = document.getElementById('sheet');
   if (!modalEl || !sheetEl) return;
 
+  if (ui.modal?.kind === 'expedition' && (ui.game.pendingEventId || ui.game.battle || ui.game.player.dead)) ui.modal = null;
   if ((ui.modal?.kind === 'place' || ui.modal?.kind === 'map') && (ui.game.battle || ui.game.player.dead)) ui.modal = null;
   const placeShown = ui.modal?.kind === 'place' && !ui.game.pendingEventId;
   const mapShown = ui.modal?.kind === 'map' && !ui.game.pendingEventId;
@@ -68,6 +69,9 @@ export function renderModal(ui) {
     html = `<div class="place-sheet-controls"><button class="sm ghost" data-action="closeModal">收起舆图</button></div>${renderMapPanel(ui.game)}`;
   } else if (ui.modal.kind === 'place') {
     html = `<div class="place-sheet-controls"><button class="sm" data-action="closeModal">返回</button></div>${renderPlaceView(ui.game)}`;
+  } else if (ui.modal.kind === 'expedition') {
+    sheetEl.setAttribute('aria-labelledby', 'expedition-title');
+    html = renderExpeditionModal(ui.game, ui.modal.data);
   } else if (ui.modal.kind === 'person') {
     const { id, name, response, favor, trust, progress, giftName, giftReason, returnToPlace } = ui.modal.data;
     const scenes = availableLocalScenes(ui.game).filter((event) => event.person === id).map(({ id, title }) =>

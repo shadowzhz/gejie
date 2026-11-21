@@ -74,12 +74,12 @@ export function fieldRecommendation(gs) {
       && ['攻击', '控制'].includes(def?.kind) && p.zy >= def.cost * 2;
   });
   if (p.hp < p.hpMax / 2) return { place: 'zhulou', text: '气血不足一半，先回竹楼歇息。' };
-  if (!attack) return { place: 'zhulin', text: '先在月下竹林勘察、采集。备好出战的攻击蛊和真元后再搜山。' };
+  if (!attack) return { place: 'zhulin', cautious: true, text: '先在月下竹林勘察、采集。备好出战的攻击蛊和真元后再搜山。' };
   if (flags['clear:xuefu'] && (p.rank >= 3 || (p.rank === 2 && p.xiao >= 2))) {
     return { place: 'langchao', text: '可去电狼坡迎战电狼，采集矿石等山材。' };
   }
   if (p.rank >= 2 || (p.xiao >= 2 && flags['clear:zhulin'])) {
-    return { place: 'xuefu', text: '可去血蝠洞搜山，收集玉石与元石渣。' };
+    return { place: 'xuefu', text: '可去血蝠洞搜山，收集玉石与灵晶。' };
   }
   return { place: 'zhulin', text: '月下竹林适合练手。先采口粮、打铁鬃野猪攒元石，再考虑挑战野猪王。' };
 }

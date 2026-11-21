@@ -134,6 +134,18 @@ export const PLACES = {
     services: ['huajiu_explore']
   }
 };
+export const FIELD_RECOMMENDED = {
+  zhulin: { realm: '一转初阶', risk: '较低' },
+  xuefu: { realm: '一转高阶至二转', risk: '较高' },
+  langchao: { realm: '二转高阶以上', risk: '高' },
+  huajiu: { realm: '一转', risk: '无常规遭遇' }
+};
+
+export const ACADEMY_SHOP_GU = ['yueguang', 'xiaoguang', 'henshi'];
+export const SECOND_RANK_SHOP_GU = ['yuehen', 'yueni'];
+export const GROTTO_GU = ['jiuchong', 'baishi', 'yupi'];
+export const CLAN_GIFT_GU = ['chitie_sheli', 'yupi'];
+
 export const MERCHANT_GU = ['jiuchong', 'heishi', 'chitie_sheli'];
 
 export function rareGathering(gs, place, minute = gs.minutes) {
@@ -154,8 +166,8 @@ export function placeShopEntries(gs) {
   const shop = PLACES[gs.location]?.shop ?? [];
   if (gs.location !== 'gupu') return shop;
   const entries = [...shop];
-  if (gs.player.rank >= 2) entries.push('gu:yuehen', 'gu:yueni');
-  if (gs.flags.kaike) entries.push('gu:yueguang', 'gu:xiaoguang', 'gu:henshi');
+  if (gs.player.rank >= 2) entries.push(...SECOND_RANK_SHOP_GU.map((id) => `gu:${id}`));
+  if (gs.flags.kaike) entries.push(...ACADEMY_SHOP_GU.map((id) => `gu:${id}`));
   if (gs.minutes >= makeTime(2, 3, 1) && gs.minutes < makeTime(2, 3, 9) && !merchantRefuses(gs)) {
     for (const id of MERCHANT_GU) {
       if (id === 'chitie_sheli' && gs.minutes < makeTime(2, 3, 7)) continue;

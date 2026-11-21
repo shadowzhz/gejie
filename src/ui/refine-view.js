@@ -1,5 +1,5 @@
 import { GU_DEFS, ITEMS, REFINE_RECIPES, recipeIngredientsText, recipeOutputText } from '../data/gu.js';
-import { canStartRefine, knowsRefineRecipe, refineRealm, refineSuccessRate } from '../core/refine.js';
+import { canStartRefine, knowsRefineRecipe, recipeOrigin, refineRealm, refineSuccessRate } from '../core/refine.js';
 import { esc } from '../core/state.js';
 
 export function renderRefineView(gs) {
@@ -41,13 +41,16 @@ export function renderRefineView(gs) {
     </li>`;
   }).join('');
 
+  const unknown = REFINE_RECIPES.filter((recipe) => !knowsRefineRecipe(gs, recipe))
+    .map((recipe) => `<li>${esc(recipeOutputText(recipe))} · ${esc(recipeOrigin(recipe))}</li>`).join('');
+
   return `<div class="card">
       <div class="list-head">
         <h3>炼蛊</h3>
         <span class="muted">炼道 · ${realm.name}（心得 ${realm.insight}${realm.next ? ` / ${realm.next}` : ''}）</span>
       </div>
       ${rows ? `<ul class="list-rows">${rows}</ul>` : '<div class="muted">尚未习得蛊方。</div>'}
-    </div>`;
+    </div>${unknown ? `<section class="card"><details><summary>未习得蛊方的来源</summary><ul>${unknown}</ul></details></section>` : ''}`;
 }
 
 export function renderRefineRequirements(materials, cost, rate, bonus) {

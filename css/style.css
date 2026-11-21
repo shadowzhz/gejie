@@ -309,31 +309,6 @@ button.sm { min-height: 30px; padding: 4px 10px; font-size: .84rem; }
 .hope-svg { display: block; width: 100%; max-height: 155px; margin: 10px 0 4px; border: 1px solid rgba(84, 146, 168, 0.3); border-radius: var(--radius); }
 .ritual-result { border-color: var(--line-gold); }
 
-/* 修行命盘 */
-.realm-ladder {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
-  margin-top: 6px;
-}
-.realm-step {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  padding: 8px 4px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: rgba(10, 15, 14, 0.55);
-  color: var(--dim);
-  font-size: .78rem;
-}
-.realm-step b { font-family: var(--serif); font-size: .92rem; color: var(--ink); }
-.realm-step small { font-size: .72rem; margin-top: 2px; }
-.realm-step.is-now { border-color: var(--gold); background: rgba(207, 169, 104, 0.1); color: var(--gold); }
-.realm-step.is-now b { color: var(--gold); }
-.realm-step.is-done { border-color: rgba(94, 166, 139, 0.55); color: var(--jade); }
-
 /* 山野舆图 */
 .map-sheet-wrap { display: flex; flex-direction: column; gap: 10px; }
 .map-scroll {
@@ -1005,7 +980,6 @@ input[type="text"], input[type="number"], select, textarea {
 @media (max-width: 520px) {
   .list-row { grid-template-columns: 1fr; gap: 6px; }
   .list-side, .shop-purchase { justify-content: flex-end; }
-  .realm-ladder { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (prefers-reduced-motion: reduce) {
   .ap-wave, .ap-wave2, .furnace-flame-group, .battle-foe.is-struck { animation: none !important; }

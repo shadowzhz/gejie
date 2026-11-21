@@ -1,3 +1,5 @@
+import { canExpedition, EXPEDITION_MINUTES } from '../core/expedition.js';
+import { renderFieldTrade } from './expedition-view.js';
 import { localPeople } from '../core/social.js';
 import { STORY_CHARACTERS } from '../data/characters.js';
 import { fieldTrialStatus } from '../core/field-trial.js';
@@ -72,24 +74,14 @@ export function renderPlaceView(gs) {
     actions.push('<button class="gold" data-action="placeAct" data-id="rumor">打听近况 · 2 刻</button>');
     if (!gs.flags['clue:huajiu']) actions.push('<button data-action="placeAct" data-id="secretRumor">打探暗涧遗洞 · 12 元石</button>');
   }
-  if (place.services.includes('clan_hall')) {
+  if (place.services.includes('clan_hall') && gs.player.rank >= 2 && !gs.flags.clan_gift_r2) {
     actions.push('<button class="gold" data-action="placeAct" data-id="clanGift">领取二转赏赐</button>');
   }
   if (place.services.includes('explore')) {
-    if (trial?.active && !trial.steps[0].done) {
-      actions.push('<button class="primary" data-action="placeAct" data-id="fieldScout">勘察兽径 · 2 刻</button>');
-    }
-    if (trial?.steps[0].done) {
-      actions.push('<button data-action="placeAct" data-id="gatherPetals">采月兰花瓣 ×2 · 1 时辰</button>');
-    }
-    actions.push('<button class="blood" data-action="placeAct" data-id="exploreFight">深入搜山（遭遇战）</button>');
-    if (place.bossEnemy && !gs.flags[`clear:${place.id}`]) {
-      actions.push('<button class="gold" data-action="placeAct" data-id="exploreBoss">直捣兽王巢穴</button>');
-    }
-    actions.push('<button data-action="placeAct" data-id="gather">采集山材 · 1 时辰</button>');
+    actions.push('<button class="primary" data-action="openExpedition">历练</button>');
   }
   if (place.services.includes('huajiu_explore')) {
-    actions.push('<button class="gold" data-action="placeAct" data-id="huajiuLoot">搜寻花酒行者遗藏</button>');
+    if (!gs.flags['looted:huajiu']) actions.push('<button class="gold" data-action="placeAct" data-id="huajiuLoot">搜寻花酒行者遗藏</button>');
   }
   if (place.id === 'zhaimen' && gs.flags['qingmao_finished']) {
     actions.push('<button class="gold" data-action="placeAct" data-id="escapeMountain">告别青茅山（卷一通关）</button>');
@@ -193,7 +185,6 @@ export function renderPlaceView(gs) {
           <button type="button" class="sm gold" data-action="openMap">展开舆图</button>
         </div>
         <p class="stage-desc">${esc(night ? place.night : place.day)}</p>
-        ${place.gather ? `<p class="stage-gather">山间风物 · ${esc([...new Set(place.gather)].map((id) => ITEMS[id].name).join('、'))}${rareGathering(gs, place) ? ` · 今日丰饶，可采${esc(ITEMS[place.rare.item].name)} ×4` : ''}</p>` : ''}
         ${actions.length ? `<div class="row stage-actions">${actions.join('')}</div>` : ''}
         ${pathChips ? `<div class="stage-paths"><span class="stage-paths-label">去处</span>${pathChips}</div>` : ''}
       </div>
@@ -205,5 +196,37 @@ export function renderPlaceView(gs) {
     ${renderFieldTrial(gs, trial)}
     ${questHtml}
     ${shopHtml}
+    ${place.id === 'jucaifang' ? renderFieldTrade(gs) : ''}
     ${recipeHtml}`;
+}
+
+
+export function renderExpeditionModal(gs, session) {
+  const place = PLACES[gs.location];
+  const trial = place.id === 'zhulin' ? fieldTrialStatus(gs) : null;
+  const actions = [];
+  if (!session.gathering) {
+    if (canExpedition(gs, place)) actions.push(`<button class="primary" data-action="placeAct" data-id="fieldExplore">探路 · ${formatDuration(EXPEDITION_MINUTES)}</button>`);
+    if (trial?.active && !trial.steps[0].done) {
+      actions.push('<button class="primary" data-action="placeAct" data-id="fieldScout">勘察兽径 · 2 刻</button>');
+    }
+    if (trial?.steps[0].done) {
+      actions.push('<button data-action="toggleFieldGather" data-id="gatherPetals">自动采月兰花瓣</button>');
+    }
+    actions.push('<button class="blood" data-action="placeAct" data-id="exploreFight">主动狩猎 · 4 刻</button>');
+    if (place.bossEnemy && !gs.flags[`clear:${place.id}`]) {
+      actions.push('<button class="gold" data-action="placeAct" data-id="exploreBoss">直捣兽王巢穴</button>');
+    }
+  }
+  const yields = Object.entries(session.items).map(([id, count]) => `${ITEMS[id].name} ×${count}`);
+  return `<h2 id="expedition-title">${esc(place.name)} · 历练</h2>
+    ${place.gather ? `<p class="stage-gather">山间风物 · ${esc([...new Set(place.gather)].map((id) => ITEMS[id].name).join('、'))}${rareGathering(gs, place) ? ` · 今日丰饶，可采${esc(ITEMS[place.rare.item].name)} ×4` : ''}</p>` : ''}
+    <p class="muted">每轮采集耗时 1 个游戏时辰，材料直接放入行囊。离开窗口时停止。</p>
+    <div class="row">
+      <button class="primary" data-action="toggleFieldGather">${session.gathering ? '停止采集' : '开始自动采集'}</button>
+      <button data-action="closeModal">返回地点</button>
+    </div>
+    ${session.gathering ? `<p role="status">采集中 · 本轮剩余 <span data-gather-ticks>${session.ticks}</span> 秒</p>` : ''}
+    ${yields.length ? `<p>本次采集 · ${esc(yields.join('、'))}</p>` : ''}
+    ${actions.length ? `<div class="row">${actions.join('')}</div>` : ''}`;
 }

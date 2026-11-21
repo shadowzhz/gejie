@@ -1,3 +1,8 @@
+import { FIELD_GATHER_TICKS, tickFieldGather } from '../src/ui/game-loop.js';
+import { expeditionProgress, materialSalePrice, sellMaterial } from '../src/core/expedition.js';
+import { renderMapPanel } from '../src/ui/map-view.js';
+import { renderRefineDetails, renderRefineView } from '../src/ui/refine-view.js';
+import { ENEMIES } from '../src/data/enemies.js';
 import { visitPerson } from '../src/core/social.js';
 import { handleAction } from '../src/ui/actions.js';
 import test from 'node:test';
@@ -15,7 +20,7 @@ import { renderCustomKillerModal, renderEventModal } from '../src/ui/rituals.js'
 import { mainGrowthGoal } from '../src/core/growth-guide.js';
 import { fieldRecommendation } from '../src/core/field-trial.js';
 import { renderCultivationView, renderGoalShortcut } from '../src/ui/cultivation-view.js';
-import { renderPlaceView } from '../src/ui/place-view.js';
+import { renderExpeditionModal, renderPlaceView } from '../src/ui/place-view.js';
 import { changeStoryRelation, storyRelation } from '../src/core/story-progress.js';
 import { performPlaceAction } from '../src/core/place-actions.js';
 import { renderBagView } from '../src/ui/bag-view.js';
@@ -1547,7 +1552,7 @@ test('首次出寨试炼和重复巡守串起竹林行动、跨存档交付与�
   finishStoryBattle(gs);
   assert.equal(mainGrowthGoal(gs).place, 'zhulin');
   assert.ok(moveToPlace(gs, 'zhulin').ok);
-  assert.match(renderPlaceView(gs), /勘察兽径/);
+  assert.match(renderExpeditionModal(gs, { items: {} }), /勘察兽径/);
   const unscoutedBoss = structuredClone(gs);
   assert.ok(performPlaceAction(unscoutedBoss, 'exploreBoss').ok);
   assert.equal(unscoutedBoss.battle.scouted, false);
@@ -1630,17 +1635,18 @@ test('历练推荐照顾受伤玩家，并随境界和区域解锁切换', () =>
   assert.equal(fieldRecommendation(gs).place, 'zhulou');
 });
 
-test('修行和行纪按同一优先级引导试炼、交付、突破与探索', () => {
+test('行纪显示行动建议，修行页显示主线和突破需求', () => {
   const gs = createNewGame();
   applyEventChoice(gs, 'kaike', 0);
   const p = gs.player;
   p.benming = addGu(gs, 'yueguang').uid;
   gs.flags.practiced = true;
+  assert.equal(mainGrowthGoal(gs).place, 'xuetang');
+  gs.flags.toumin_race = false;
 
   function assertGuide(expected) {
     const goal = mainGrowthGoal(gs);
     assert.match(goal.text, expected);
-    assert.match(renderCultivationView(gs, goal), new RegExp(`<h3>成长引导</h3>\\s*<p>${goal.text}</p>`));
     assert.match(renderBagView(gs, 'journal'), new RegExp(`<h3>成长引导</h3>\\s*<p>${goal.text}</p>`));
   }
 
@@ -1648,7 +1654,8 @@ test('修行和行纪按同一优先级引导试炼、交付、突破与探索',
   p.fieldTrial = { scouted: true, gathered: true, won: true };
   assertGuide(/首次出寨试炼已完成，回任务堂/);
   p.fieldTrial = { firstClaimed: true, active: true };
-  assertGuide(/突破至一转中阶/);
+  assertGuide(/月下竹林/);
+  assert.match(renderCultivationView(gs, mainGrowthGoal(gs)), /下一境界 · 一转中阶/);
   Object.assign(p.fieldTrial, { scouted: true, gathered: true, won: true });
   assertGuide(/竹林巡守已完成，回任务堂/);
   p.fieldTrial = { firstClaimed: true };
@@ -1661,6 +1668,7 @@ test('花酒遗藏只发放现阶段奖励，确认后回到遗洞', () => {
   const gs = createNewGame();
   applyEventChoice(gs, 'kaike', 0);
   gs.location = 'huajiu';
+  gs.flags['clue:huajiu'] = true;
   const ui = { game: gs, tab: 'place', modal: { kind: 'place' } };
   const hooks = { render() {}, showToast() {} };
 
@@ -1775,4 +1783,169 @@ test('主舞台直呈当前场景，舆图收为弹窗且主舞台访客关闭�
   assert.ok(performPlaceAction(gs, 'caoren').ok);
   handleAction(ui, { dataset: { action: 'battleAct', kind: 'attack' } }, hooks);
   assert.ok(ui.battleFx.foeDmg > 0);
+});
+
+
+function trainedExpeditionGame() {
+  const gs = localStoryGame();
+  gs.flags.practiced = true;
+  gs.player.benming = addGu(gs, 'yueguang').uid;
+  return gs;
+}
+
+test('本命蛊炼化后修行页保留主线入口和突破要求', () => {
+  const gs = localStoryGame();
+  assert.ok(moveToPlace(gs, 'xuetang').ok);
+  claimBenming(gs);
+  const ui = { game: gs, tab: 'place', modal: null };
+  handleAction(ui, { dataset: { action: 'refineBenming' } }, { render() {}, showToast() {} });
+  assert.equal(ui.tab, 'cultivation');
+  assert.match(ui.modal.data.lines.join(' '), /探路、狩猎和采集/);
+  const html = renderCultivationView(gs, mainGrowthGoal(gs));
+  for (const text of ['主线', '下一境界']) {
+    assert.ok(html.includes(text));
+  }
+  assert.match(html, /data-id="yanwu"/);
+  assert.doesNotMatch(html, /修行命盘|自由历练与收集/);
+});
+
+test('竹林可独立探路、采集和狩猎，所得能喂蛊、出售和开炉', () => {
+  const gs = trainedExpeditionGame();
+  assert.ok(moveToPlace(gs, 'zhulin').ok);
+  const click = (action, id) => handleAction({ game: gs, tab: 'place', modal: null },
+    { dataset: { action, id }, closest: () => null }, { render() {}, showToast() {} });
+  const start = gs.minutes;
+  const petals = gs.player.items.yuelanhua;
+  assert.match(renderPlaceView(gs), /data-action="openExpedition"/);
+  assert.doesNotMatch(renderPlaceView(gs), /data-id="fieldExplore"/);
+  assert.match(renderExpeditionModal(gs, { items: {} }), /data-id="fieldExplore"/);
+  assert.doesNotMatch(renderPlaceView(gs), /地点详情/);
+  click('placeAct', 'fieldExplore');
+  assert.equal(gs.minutes, start + 60);
+  assert.equal(expeditionProgress(gs, 'zhulin'), 1);
+  assert.equal(gs.player.fieldTrial.scouted, true);
+  assert.equal(gs.player.fieldTrial.gathered, true);
+  // Direct gathering and feeding remain available regardless of exploration rolls.
+  performPlaceAction(gs, 'gatherPetals', () => 0);
+  assert.ok(gs.player.items.yuelanhua >= petals + 2);
+  const moon = gs.player.gu.find(({ uid }) => uid === gs.player.benming);
+  moon.satiety = 30;
+  assert.ok(feedGu(gs, moon));
+  assert.equal(moon.satiety, 80);
+
+  const stones = gs.player.yuanshi;
+  for (let i = 0; i < 3; i++) {
+    assert.ok(performPlaceAction(gs, i === 0 ? 'fieldExplore' : 'exploreFight', () => 0.5).ok);
+    assert.equal(gs.battle.foe.id, 'yezhu');
+    gs.battle.foe.hp = 1;
+    battleAct(gs, 'attack', '', () => 0.5);
+    assert.ok(finishStoryBattle(gs));
+  }
+  assert.equal(gs.player.yuanshi, stones + 24);
+  assert.equal(gs.player.items.shourou >= 3, true);
+
+  assert.ok(moveToPlace(gs, 'jucaifang').ok);
+  assert.match(renderPlaceView(gs), /data-action="sellMaterial"/);
+  assert.ok(materialSalePrice('yuelanhua') < ITEMS.yuelanhua.price);
+  const balance = gs.player.yuanshi;
+  click('sellMaterial', 'yuelanhua');
+  assert.equal(gs.player.yuanshi, balance + materialSalePrice('yuelanhua'));
+  assert.equal(sellMaterial(gs, 'yuelanhua', 1000).ok, false);
+  assert.ok(purchaseShopEntry(gs, 'item:yuelanhua', 1).ok);
+  assert.ok(moveToPlace(gs, 'gupu').ok);
+  assert.ok(purchaseRecipe(gs, 'r_shoupi'));
+  const furnace = createRefineSession(gs, 'r_shoupi');
+  assert.equal(furnace.state, 'ready');
+  const meat = gs.player.items.shourou;
+  runRefining(gs, furnace, ['force', 'signature', 'force', 'vent']);
+  assert.equal(gs.player.items.shourou ?? 0, meat - 3);
+  assert.ok(gs.player.gu.some(({ id }) => id === 'shoupi'));
+});
+
+test('血蝠洞可发现蛊虫踪迹、遗洞和蛊方，地图与掉落使用相同配置', () => {
+  const gs = trainedExpeditionGame();
+  assert.doesNotMatch(renderMapPanel(gs), /暗涧遗洞/);
+  assert.equal(moveToPlace(gs, 'langchao').ok, false);
+  assert.ok(moveToPlace(gs, 'xuefu').ok);
+  const enemy = ENEMIES[PLACES.xuefu.bossEnemy];
+  assert.ok(renderMapPanel(gs).includes(GU_DEFS[enemy.reward.gu].name));
+  gs.player.expeditions = { xuefu: 2 };
+  assert.match(performPlaceAction(gs, 'fieldExplore', () => 0).receipt.title, /野生蛊虫/);
+  assert.ok(performPlaceAction(gs, 'exploreBoss').ok);
+  gs.battle.foe.hp = 1;
+  battleAct(gs, 'attack', '', () => 0.5);
+  finishStoryBattle(gs);
+  assert.ok(gs.player.gu.some(({ id }) => id === enemy.reward.gu));
+  assert.ok(!performPlaceAction(gs, 'exploreBoss'));
+  assert.match(performPlaceAction(gs, 'fieldExplore', () => 0).receipt.title, /暗涧遗洞/);
+  assert.match(renderMapPanel(gs), /暗涧遗洞 · 开放/);
+  assert.match(performPlaceAction(gs, 'fieldExplore', () => 0).message, /血蝠蛊/);
+  assert.equal(gs.player.recipes.filter((id) => id === 'r_xuefu_gu').length, 1);
+  assert.match(renderRefineView(gs), /未习得蛊方的来源/);
+  assert.match(renderRefineDetails(gs, REFINE_RECIPES.find(({ id }) => id === 'r_xuefu_gu'), '缺少材料'), /返回炼蛊/);
+  assert.ok(moveToPlace(gs, 'langchao').ok);
+});
+
+test('探路及其战斗可跨存档恢复，已有历练的旧档不会重新发首次奖', () => {
+  const gs = trainedExpeditionGame();
+  assert.ok(moveToPlace(gs, 'zhulin').ok);
+  performPlaceAction(gs, 'fieldExplore', () => 0);
+  performPlaceAction(gs, 'fieldExplore', () => 0);
+  let raw;
+  const storage = { setItem: (_, json) => { raw = json; }, getItem: () => raw };
+  assert.ok(saveGame(gs, storage));
+  const loaded = loadGame(storage);
+  assert.equal(loaded.battle.foe.id, 'yezhu');
+  assert.equal(expeditionProgress(loaded, 'zhulin'), 2);
+  assert.equal(loaded.player.fieldTrial.gathered, true);
+
+  const legacy = structuredClone(gs);
+  delete legacy.player.fieldTrial;
+  delete legacy.player.expeditions;
+  legacy.battle = null;
+  legacy.flags['clear:zhulin'] = true;
+  assert.ok(saveGame(legacy, storage));
+  assert.equal(loadGame(storage).player.fieldTrial.firstClaimed, true);
+  assert.equal(importProgress(raw).player.fieldTrial.firstClaimed, true);
+  assert.equal(expeditionProgress(loadGame(storage), 'zhulin'), 0);
+});
+
+
+test('探路能触发当地见闻，临时主线打断时不发放探路收益', () => {
+  const gs = trainedExpeditionGame();
+  gs.location = 'zhulin';
+  gs.minutes = makeTime(1, 3, 1, 8);
+  gs.player.expeditions = { zhulin: 2 };
+  assert.ok(performPlaceAction(gs, 'fieldExplore', () => 0).ok);
+  assert.equal(gs.pendingEventId, 'life_bamboo');
+  assert.equal(expeditionProgress(gs, 'zhulin'), 3);
+  applyEventChoice(gs, 'life_bamboo', 0);
+
+  gs.flags.toumin_race = true;
+  gs.minutes = makeTime(1, 3, 3) - 1;
+  const items = { ...gs.player.items };
+  assert.ok(performPlaceAction(gs, 'fieldExplore', () => 0).ok);
+  assert.equal(gs.pendingEventId, 'toumin_lost');
+  assert.equal(expeditionProgress(gs, 'zhulin'), 3);
+  assert.deepEqual(gs.player.items, items);
+});
+
+
+test('历练窗口自动采集按轮结算，关闭窗口即停止', () => {
+  const gs = trainedExpeditionGame();
+  assert.ok(moveToPlace(gs, 'zhulin').ok);
+  const ui = { game: gs, tab: 'place', modal: null };
+  const click = (action) => handleAction(ui, { dataset: { action } }, { render() {}, showToast() {} });
+  click('openExpedition');
+  click('toggleFieldGather');
+  const start = gs.minutes;
+  for (let i = 1; i < FIELD_GATHER_TICKS; i++) assert.equal(tickFieldGather(ui), false);
+  assert.equal(gs.minutes, start);
+  assert.equal(tickFieldGather(ui), true);
+  assert.equal(gs.minutes, start + 120);
+  assert.ok(Object.keys(ui.modal.data.items).length);
+  assert.equal(gs.player.fieldTrial.gathered, true);
+  click('closeModal');
+  assert.equal(tickFieldGather(ui), false);
+  assert.equal(gs.minutes, start + 120);
 });
