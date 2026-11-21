@@ -306,8 +306,13 @@ export function handleAction(ui, el, { render, showToast }) {
     saveGame(ui.game);
     render();
   } else if (act === 'finishBattle') {
+    const foe = ui.game.battle?.foe.id;
     if (!finishStoryBattle(ui.game)) return;
     if (ui.game.player.dead) setModal(ui, 'dead', {});
+    else if (!ui.game.pendingEventId && ui.game.location === 'zhulin' && ['yezhu', 'zhuwang'].includes(foe)) {
+      ui.tab = 'place';
+      setModal(ui, 'place');
+    }
     saveGame(ui.game);
     render();
   } else if (act === 'saveCicada') {

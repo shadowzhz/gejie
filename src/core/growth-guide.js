@@ -1,3 +1,4 @@
+import { fieldTrialStatus } from './field-trial.js';
 import { STORY_EVENTS } from '../data/story.js';
 import { formatDateTime, parseTimeExpr } from './calendar.js';
 import { evalCond } from './story-engine.js';
@@ -32,11 +33,13 @@ export function mainGrowthGoal(gs) {
     return { text: '三月三日前回学堂向家老交卷', place: 'xuetang' };
   }
   if (!flags.practiced) return { text: '到演武场与草人傀儡对练，开启出寨历练', place: 'yanwu' };
+  const trial = fieldTrialStatus(gs);
+  if (trial?.active && (!trial.repeat || trial.ready)) {
+    if (trial.ready) return { text: `${trial.title}已完成，回任务堂交付并选择奖励`, place: 'renwutang' };
+    return { text: `${trial.title} · ${trial.next.text}`, place: 'zhulin' };
+  }
   if (flags['clue:huajiu'] && !flags['looted:huajiu'] && !flags.langchao_seen) {
     return { text: '探索暗涧遗洞，搜寻花酒行者遗藏', place: 'huajiu' };
-  }
-  if (!flags['clear:zhulin'] && !flags.nianmo_done && minutes < milestones[0].date) {
-    return { text: '到月下竹林搜山历练，实力足够后挑战兽王', place: 'zhulin' };
   }
   const next = milestones.find(({ id }) => !flags[`event_done:${id}`]);
   if (next) {

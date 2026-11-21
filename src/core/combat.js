@@ -1,3 +1,4 @@
+import { recordFieldTrial } from './field-trial.js';
 import { GU_DEFS } from '../data/gu.js';
 import { ENEMIES } from '../data/enemies.js';
 import { addGu, addItem, addLog, hasGu, isGuWeak, recalcStats, recordQuestProgress } from './state.js';
@@ -319,6 +320,7 @@ export function battleAct(gs, action, arg = '', rng = Math.random) {
   if (foe.hp <= 0) {
     b.state = 'win';
     recordQuestProgress(gs, 'victory', foe.id);
+    if (foe.id === 'yezhu' || foe.id === 'zhuwang') recordFieldTrial(gs, 'won');
     const rw = foe.reward || {};
     const ys = (rw.yuanshi || 0) + (b.lethal ? 15 : 0);
     if (ys > 0) p.yuanshi += ys;

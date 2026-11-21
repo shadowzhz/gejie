@@ -11,6 +11,7 @@ import { createBreakSession, nextRealmRequirements, stepBreakSession, validBreak
 import { availableRecipeDiscovery, canStartRefine, createRefineSession, isRecipeSold, knowsRefineRecipe, purchaseRecipe, REFINE_SESSION_VERSION, refineChance, refineReady, refineRealm, refineTechniques, restoreRefineSession, stepRefineSession } from '../src/core/refine.js';
 import { renderCustomKillerModal, renderEventModal } from '../src/ui/rituals.js';
 import { mainGrowthGoal } from '../src/core/growth-guide.js';
+import { fieldRecommendation } from '../src/core/field-trial.js';
 import { renderCultivationView, renderGoalShortcut } from '../src/ui/cultivation-view.js';
 import { renderPlaceView } from '../src/ui/place-view.js';
 import { changeStoryRelation, storyRelation } from '../src/core/story-progress.js';
@@ -1525,4 +1526,95 @@ test('修行页与冲刷、破壁共用蛊虫、修为和真元门槛', () => {
   assert.equal(createBreakSession(gs).state, 'ongoing');
   p.rank = 4;
   assert.equal(nextRealmRequirements(p), null);
+});
+
+test('首次出寨试炼和重复巡守串起竹林行动、跨存档交付与单次领赏', () => {
+  const storage = new Map();
+  const save = { setItem: (key, value) => storage.set(key, value), getItem: (key) => storage.get(key) };
+  let gs = createNewGame('试炼者', { grade: '丙', hai: 5, desc: '' });
+  applyEventChoice(gs, 'kaike', 0);
+  moveToPlace(gs, 'xuetang');
+  claimBenming(gs);
+  refineBenming(gs);
+  assert.equal(checkStoryTriggers(gs, 'toumin_win')?.id, 'toumin_win');
+  applyEventChoice(gs, 'toumin_win', 0);
+  assert.ok(moveToPlace(gs, 'yanwu').ok);
+  assert.ok(performPlaceAction(gs, 'caoren').ok);
+  for (let i = 0; i < 10 && gs.battle.state === 'ongoing'; i++) battleAct(gs, 'attack', '', () => 0.5);
+  assert.equal(gs.battle.state, 'win');
+  finishStoryBattle(gs);
+  assert.equal(mainGrowthGoal(gs).place, 'zhulin');
+  assert.ok(moveToPlace(gs, 'zhulin').ok);
+  assert.match(renderPlaceView(gs), /勘察兽径/);
+  assert.ok(performPlaceAction(gs, 'fieldScout').ok);
+  const petals = gs.player.items.yuelanhua;
+  assert.ok(performPlaceAction(gs, 'gatherPetals').ok);
+  assert.equal(gs.player.items.yuelanhua, petals + 2);
+  assert.match(renderPlaceView(gs), /2\/3/);
+
+  assert.ok(performPlaceAction(gs, 'exploreFight').ok);
+  assert.equal(gs.battle.scouted, true);
+  battleAct(gs, 'flee', '', () => 0);
+  assert.equal(gs.battle.state, 'fled');
+  finishStoryBattle(gs);
+  assert.equal(mainGrowthGoal(gs).place, 'zhulin');
+  assert.ok(performPlaceAction(gs, 'exploreFight').ok);
+  for (let i = 0; i < 10 && gs.battle.state === 'ongoing'; i++) {
+    battleAct(gs, 'gu', gs.player.benming);
+    battleAct(gs, 'resolveGu', '', () => 0.5);
+  }
+  assert.equal(gs.battle.state, 'win');
+  finishStoryBattle(gs);
+  assert.equal(mainGrowthGoal(gs).place, 'renwutang');
+  assert.equal(performPlaceAction(gs, 'fieldReward:healing').ok, false);
+
+  assert.ok(saveGame(gs, save));
+  gs = loadGame(save);
+  assert.equal(mainGrowthGoal(gs).place, 'renwutang');
+  assert.ok(moveToPlace(gs, 'renwutang').ok);
+  assert.match(renderPlaceView(gs), /止血草膏 ×3/);
+  assert.match(renderPlaceView(gs), /勘察竹林兽径/);
+  assert.match(renderPlaceView(gs), /3\/3/);
+  const stones = gs.player.yuanshi;
+  assert.ok(performPlaceAction(gs, 'fieldReward:healing').ok);
+  assert.equal(gs.player.items.zhixuegao, 3);
+  assert.equal(gs.player.yuanshi, stones + 6);
+  assert.equal(performPlaceAction(gs, 'fieldReward:stones').ok, false);
+  assert.ok(performPlaceAction(gs, 'fieldPatrol').ok);
+  assert.equal(performPlaceAction(gs, 'fieldPatrol').ok, false);
+  assert.match(renderPlaceView(gs), /竹林巡守[\s\S]*0\/3[\s\S]*勘察竹林兽径/);
+  assert.doesNotMatch(renderCultivationView(gs, mainGrowthGoal(gs)), /<h3>竹林巡守<\/h3>|勘察竹林兽径/);
+  assert.ok(moveToPlace(gs, 'zhulin').ok);
+  assert.match(renderPlaceView(gs), /0\/3/);
+
+  // 复巡可先采集再勘察，重复采集仍只算一项。
+  performPlaceAction(gs, 'gather');
+  performPlaceAction(gs, 'gather');
+  assert.match(renderPlaceView(gs), /1\/3/);
+  performPlaceAction(gs, 'fieldScout');
+  performPlaceAction(gs, 'exploreFight');
+  gs.battle.foe.hp = 1;
+  battleAct(gs, 'attack', '', () => 0.5);
+  finishStoryBattle(gs);
+  assert.ok(moveToPlace(gs, 'renwutang').ok);
+  const food = gs.player.items.yuelanhua;
+  assert.ok(performPlaceAction(gs, 'fieldReward:food').ok);
+  assert.equal(gs.player.items.yuelanhua, food + 6);
+});
+
+test('历练推荐照顾受伤玩家，并随境界和区域解锁切换', () => {
+  const gs = createNewGame();
+  const p = gs.player;
+  p.benming = addGu(gs, 'yueguang').uid;
+  gs.flags.practiced = true;
+  assert.equal(fieldRecommendation(gs).place, 'zhulin');
+  p.rank = 2;
+  p.xiao = 2;
+  assert.equal(fieldRecommendation(gs).place, 'xuefu');
+  gs.flags['clear:xuefu'] = true;
+  assert.equal(fieldRecommendation(gs).place, 'langchao');
+  p.zy = 0;
+  assert.equal(fieldRecommendation(gs).place, 'zhulin');
+  p.hp = 1;
+  assert.equal(fieldRecommendation(gs).place, 'zhulou');
 });

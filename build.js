@@ -24,6 +24,7 @@ const ORDER = [
   'src/core/story-progress.js',
   'src/core/state.js',
   'src/core/killer.js',
+  'src/core/field-trial.js',
   'src/core/combat.js',
   'src/core/story-engine.js',
   'src/core/clock.js',

@@ -2378,7 +2378,88 @@ function createKillerMove(gs, patternId, customName = '') {
 }
 
 
+/* === src/core/field-trial.js === */
+
+
+const fieldTrialSteps = [
+  { id: 'scouted', text: '勘察竹林兽径' },
+  { id: 'gathered', text: '在竹林采集一次' },
+  { id: 'won', text: '击败一只铁鬃野猪或野猪王' }
+];
+
+const fieldRewards = [
+  { id: 'stones', stones: [18, 9] },
+  { id: 'healing', stones: [6, 3], item: 'zhixuegao', count: [3, 1] },
+  { id: 'food', stones: [6, 3], item: 'yuelanhua', count: [12, 6] }
+];
+function fieldTrialStatus(gs) {
+  const p = gs.player;
+  if (!p.benming || !gs.flags.practiced || p.escapedMountain) return null;
+  const record = p.fieldTrial;
+  const repeat = !!record?.firstClaimed;
+  const active = !repeat || !!record.active;
+  const steps = fieldTrialSteps.map((step) => ({ ...step, done: active && record?.[step.id] === true }));
+  const next = steps.find((step) => !step.done);
+  const ready = active && !next;
+  return {
+    title: repeat ? '竹林巡守' : '首次出寨试炼',
+    active, steps, next, ready, repeat,
+    rewards: ready ? fieldRewards.map(({ id, stones, item, count }) => {
+      const index = Number(repeat);
+      const quantity = count?.[index];
+      const text = `${stones[index]} 元石${item ? ` ＋ ${ITEMS[item].name} ×${quantity}` : ''}`;
+      return { id, stones: stones[index], item, quantity, text };
+    }) : []
+  };
+}
+function recordFieldTrial(gs, step) {
+  if (gs.location !== 'zhulin') return;
+  const trial = fieldTrialStatus(gs);
+  const entry = trial?.steps.find(({ id }) => id === step);
+  if (!trial?.active || !entry || entry.done) return;
+  (gs.player.fieldTrial ??= {})[step] = true;
+  const progress = trial.steps.filter(({ done }) => done).length + 1;
+  addLog(gs, `【${trial.title}】${entry.text} · ${progress}/${trial.steps.length}${progress === trial.steps.length ? '，可回任务堂交付' : ''}。`, 'log-good');
+}
+function settleFieldTrial(gs, id) {
+  const trial = fieldTrialStatus(gs);
+  if (gs.location !== 'renwutang' || !trial) return { ok: false, reason: '请到任务堂办理历练。' };
+  if (id === 'fieldPatrol' && !trial.active) {
+    gs.player.fieldTrial = { firstClaimed: true, active: true };
+    addLog(gs, '【竹林巡守】已接取巡守，去月下竹林勘察、采集与清理兽患。');
+    return { ok: true, message: '已接取竹林巡守' };
+  }
+  const reward = trial.rewards.find((entry) => entry.id === id);
+  if (!reward) return { ok: false, reason: '请完成三项历练后再选领赏格。' };
+  gs.player.fieldTrial = { firstClaimed: true };
+  gs.player.yuanshi += reward.stones;
+  if (reward.item) addItem(gs, reward.item, reward.quantity);
+  const message = `${trial.title}已交付，获得 ${reward.text}`;
+  addLog(gs, `【历练】${message}。`, 'log-gold');
+  return { ok: true, message };
+}
+function fieldRecommendation(gs) {
+  const { player: p, flags } = gs;
+  if (!p.benming || !flags.practiced || p.escapedMountain) return null;
+  const attack = p.gu.some((gu) => {
+    const def = GU_DEFS[gu.id];
+    return p.equipped.includes(gu.uid) && !isGuWeak(gu)
+      && ['攻击', '控制'].includes(def?.kind) && p.zy >= def.cost * 2;
+  });
+  if (p.hp < p.hpMax / 2) return { place: 'zhulou', text: '气血不足一半，先回竹楼歇息。' };
+  if (!attack) return { place: 'zhulin', text: '先在月下竹林勘察、采集。备好出战的攻击蛊和真元后再搜山。' };
+  if (flags['clear:xuefu'] && (p.rank >= 3 || (p.rank === 2 && p.xiao >= 2))) {
+    return { place: 'langchao', text: '可去电狼坡迎战电狼，采集矿石等山材。' };
+  }
+  if (p.rank >= 2 || (p.xiao >= 2 && flags['clear:zhulin'])) {
+    return { place: 'xuefu', text: '可去血蝠洞搜山，收集玉石与元石渣。' };
+  }
+  return { place: 'zhulin', text: '月下竹林适合练手。先采口粮、打铁鬃野猪攒元石，再考虑挑战野猪王。' };
+}
+
+
 /* === src/core/combat.js === */
+
 
 
 
@@ -2696,6 +2777,7 @@ function battleAct(gs, action, arg = '', rng = Math.random) {
   if (foe.hp <= 0) {
     b.state = 'win';
     recordQuestProgress(gs, 'victory', foe.id);
+    if (foe.id === 'yezhu' || foe.id === 'zhuwang') recordFieldTrial(gs, 'won');
     const rw = foe.reward || {};
     const ys = (rw.yuanshi || 0) + (b.lethal ? 15 : 0);
     if (ys > 0) p.yuanshi += ys;
@@ -3664,24 +3746,41 @@ function performPlaceAction(gs, id) {
     } else {
       return { reason: '族中近来暂无新赏格' };
     }
+  } else if (id === 'fieldScout') {
+    const trial = fieldTrialStatus(gs);
+    if (gs.location !== 'zhulin' || !trial?.active || trial.steps[0].done) return;
+    advanceMinutes(gs, 30);
+    if (gs.pendingEventId || p.dead) return { ok: true };
+    recordFieldTrial(gs, 'scouted');
+    const message = '你记下了兽径和月兰花丛的位置。此轮历练在竹林搜山时可看清对手意图。';
+    addLog(gs, `【勘察】${message}`);
+    return { ok: true, message };
+  } else if (id.startsWith('fieldReward:') || id === 'fieldPatrol') {
+    return settleFieldTrial(gs, id === 'fieldPatrol' ? id : id.slice('fieldReward:'.length));
   } else if (id === 'exploreFight') {
     const place = PLACES[gs.location];
     advanceMinutes(gs, 60);
-    if (!gs.pendingEventId && place.exploreEnemy) startBattle(gs, place.exploreEnemy, `${place.name}遭遇`);
+    if (!gs.pendingEventId && place.exploreEnemy) {
+      const battle = startBattle(gs, place.exploreEnemy, `${place.name}遭遇`);
+      if (battle && place.id === 'zhulin' && fieldTrialStatus(gs)?.steps[0].done) battle.scouted = true;
+    }
   } else if (id === 'exploreBoss') {
     const place = PLACES[gs.location];
     advanceMinutes(gs, 60);
     if (!gs.pendingEventId && place.bossEnemy) startBattle(gs, place.bossEnemy, `讨伐${place.name}`);
-  } else if (id === 'gather') {
+  } else if (id === 'gather' || id === 'gatherPetals') {
     const place = PLACES[gs.location];
-    if (!place.gather) return;
+    const petals = id === 'gatherPetals';
+    if (!place.gather || (petals && (place.id !== 'zhulin' || !fieldTrialStatus(gs)?.steps[0].done))) return;
     advanceMinutes(gs, 120);
-    const rare = rareGathering(gs, place);
+    if (place.id === 'zhulin' && (gs.pendingEventId || p.dead)) return { ok: true };
+    const rare = petals ? null : rareGathering(gs, place);
     if (rare) gs.flags[`gathered:${place.id}`] = Math.floor(gs.minutes / MIN_PER_DAY);
-    const got = rare || place.gather[Math.floor(Math.random() * place.gather.length)];
+    const got = petals ? 'yuelanhua' : rare || place.gather[Math.floor(Math.random() * place.gather.length)];
     const count = rare ? 4 : 2;
     addItem(gs, got, count);
     recordQuestProgress(gs, 'gather', gs.location);
+    recordFieldTrial(gs, 'gathered');
     const message = `采集完成，获得「${ITEMS[got].name}」×${count}`;
     addLog(gs, `${message}。`, 'log-good');
     return { ok: true, message };
@@ -3719,6 +3818,7 @@ function performPlaceAction(gs, id) {
 
 
 
+
 const submission = STORY_EVENTS.find(({ id }) => id === 'toumin_win');
 const milestones = [
   ['nianmo_exam', '先修行与历练，为年末大考做准备。'],
@@ -3748,11 +3848,13 @@ function mainGrowthGoal(gs) {
     return { text: '三月三日前回学堂向家老交卷', place: 'xuetang' };
   }
   if (!flags.practiced) return { text: '到演武场与草人傀儡对练，开启出寨历练', place: 'yanwu' };
+  const trial = fieldTrialStatus(gs);
+  if (trial?.active && (!trial.repeat || trial.ready)) {
+    if (trial.ready) return { text: `${trial.title}已完成，回任务堂交付并选择奖励`, place: 'renwutang' };
+    return { text: `${trial.title} · ${trial.next.text}`, place: 'zhulin' };
+  }
   if (flags['clue:huajiu'] && !flags['looted:huajiu'] && !flags.langchao_seen) {
     return { text: '探索暗涧遗洞，搜寻花酒行者遗藏', place: 'huajiu' };
-  }
-  if (!flags['clear:zhulin'] && !flags.nianmo_done && minutes < milestones[0].date) {
-    return { text: '到月下竹林搜山历练，实力足够后挑战兽王', place: 'zhulin' };
   }
   const next = milestones.find(({ id }) => !flags[`event_done:${id}`]);
   if (next) {
@@ -3777,6 +3879,7 @@ function renderGoalShortcut(gs, goal) {
 function renderCultivationView(gs, goal) {
   const p = gs.player;
   const next = nextRealmRequirements(p);
+  const recommendation = fieldRecommendation(gs);
   const requirements = next ? `
     <h3>下一境界 · ${esc(next.target)}</h3>
     <div class="kv"><span>蛊虫</span><b>${esc(next.gu.text)}</b></div>
@@ -3797,6 +3900,10 @@ function renderCultivationView(gs, goal) {
       ${goal.tab === 'cultivation' ? `<button class="primary" data-action="refineBenming">炼化本命蛊 · ${BENMING_ZY_COST} 真元</button>` : renderGoalShortcut(gs, goal)}
       ${gs.flags.toumin_won ? '<p class="muted">已夺得学堂头名。</p>' : gs.flags['event_done:toumin_lost'] ? '<p class="muted">学堂头名已旁落，仍可继续修行。</p>' : ''}
     </section>
+    ${recommendation ? `<section class="card">
+      <h3>推荐历练</h3><p>${esc(recommendation.text)}</p>
+      ${renderGoalShortcut(gs, recommendation)}
+    </section>` : ''}
     <section class="card">${requirements}</section>`;
 }
 
@@ -4131,9 +4238,40 @@ function renderMapPanel(gs, title = '青茅山舆图 · 可去之处') {
 
 
 /* === src/ui/place-view.js === */
+
+
+
+
+
+
+
+
+
+function renderFieldTrial(gs, trial) {
+  if (!trial) return '';
+  const progress = trial.steps.filter(({ done }) => done).length;
+  if (gs.location === 'zhulin') {
+    return trial.active ? `<p class="muted">${trial.title} · ${progress}/${trial.steps.length}
+      ${trial.ready ? renderGoalShortcut(gs, { place: 'renwutang' }) : ''}</p>` : '';
+  }
+  const steps = trial.active
+    ? `<ul>${trial.steps.map(({ text, done }) => `<li>${esc(text)} · ${done ? '已完成' : '待完成'}</li>`).join('')}</ul>`
+    : '<p>去竹林勘察、采料、清理兽患后，可回任务堂领赏。</p>';
+  const rewards = trial.rewards.map(({ id, text }) =>
+    `<button class="gold" data-action="placeAct" data-id="fieldReward:${id}">${esc(text)}</button>`).join('');
+  const controls = trial.ready ? `<p>选择一份奖赏并交付。</p><div class="row">${rewards}</div>`
+    : trial.active ? renderGoalShortcut(gs, { place: 'zhulin' })
+    : '<button class="primary" data-action="placeAct" data-id="fieldPatrol">接取竹林巡守</button>';
+  return `<section class="card">
+    <div class="kv"><h3>${trial.title}</h3>${trial.active ? `<b>${progress}/${trial.steps.length}</b>` : ''}</div>
+    ${steps}
+    ${controls}
+  </section>`;
+}
 function renderPlaceView(gs) {
   const place = PLACES[gs.location] || PLACES.zhulou;
   const night = isNight(gs.minutes);
+  const trial = ['zhulin', 'renwutang'].includes(place.id) ? fieldTrialStatus(gs) : null;
   const scenes = availableLocalScenes(gs).map(({ id, title }) =>
     `<button class="gold" data-action="checkEvents" data-id="${esc(id)}">${esc(title)}</button>`);
   if (hasLocalLifeScene(gs)) scenes.push('<button data-action="lookForLifeScene">留意四周</button>');
@@ -4169,6 +4307,12 @@ function renderPlaceView(gs) {
     actions.push('<button class="gold" data-action="placeAct" data-id="clanGift">领取二转赏赐</button>');
   }
   if (place.services.includes('explore')) {
+    if (trial?.active && !trial.steps[0].done) {
+      actions.push('<button class="primary" data-action="placeAct" data-id="fieldScout">勘察兽径 · 2 刻</button>');
+    }
+    if (trial?.steps[0].done) {
+      actions.push('<button data-action="placeAct" data-id="gatherPetals">采月兰花瓣 ×2 · 1 时辰</button>');
+    }
     actions.push('<button class="blood" data-action="placeAct" data-id="exploreFight">深入搜山（遭遇战）</button>');
     if (place.bossEnemy && !gs.flags[`clear:${place.id}`]) {
       actions.push('<button class="gold" data-action="placeAct" data-id="exploreBoss">直捣兽王巢穴</button>');
@@ -4261,6 +4405,7 @@ function renderPlaceView(gs) {
     </section>
     ${scenes.length ? `<section class="card"><h3>此地剧情</h3><div class="row">${scenes.join('')}</div></section>` : ''}
     ${merchantRefuses(gs) ? '<p class="card muted">贾家封了你的货帖，商队暂不与你做生意。</p>' : ''}
+    ${renderFieldTrial(gs, trial)}
     ${questHtml}
     ${shopHtml}
     ${recipeHtml}`;
@@ -4788,6 +4933,7 @@ function dismissModal(ui) {
 
 
 
+
 function updateLiveDisplay(ui) {
   const p = ui.game.player;
   const need = minorXpNeed(p);
@@ -4819,13 +4965,16 @@ function startGameLoop(ui, render) {
     if (!ui.game || ui.game.paused || ui.game.player.dead || ui.game.battle || ui.game.pendingEventId || ui.modal) return;
     const day = Math.floor(ui.game.minutes / MIN_PER_DAY);
     const hallOpen = ui.game.flags['open:jiazhuge'];
+    const inCultivation = ui.tab === 'cultivation';
+    const recommendation = inCultivation ? fieldRecommendation(ui.game)?.text : undefined;
     advanceMinutes(ui.game, 15);
+    const recommendationChanged = inCultivation && recommendation !== fieldRecommendation(ui.game)?.text;
     if (ui.game.pendingEventId) saveGame(ui.game);
     if (ui.game.player.dead) {
       setModal(ui, 'dead', {});
       render();
     } else if (ui.game.battle || ui.game.pendingEventId || day !== Math.floor(ui.game.minutes / MIN_PER_DAY)
-      || hallOpen !== ui.game.flags['open:jiazhuge']) render();
+      || recommendationChanged || hallOpen !== ui.game.flags['open:jiazhuge']) render();
     else updateLiveDisplay(ui);
   }, 1000);
 }
@@ -5125,8 +5274,13 @@ function handleAction(ui, el, { render, showToast }) {
     saveGame(ui.game);
     render();
   } else if (act === 'finishBattle') {
+    const foe = ui.game.battle?.foe.id;
     if (!finishStoryBattle(ui.game)) return;
     if (ui.game.player.dead) setModal(ui, 'dead', {});
+    else if (!ui.game.pendingEventId && ui.game.location === 'zhulin' && ['yezhu', 'zhuwang'].includes(foe)) {
+      ui.tab = 'place';
+      setModal(ui, 'place');
+    }
     saveGame(ui.game);
     render();
   } else if (act === 'saveCicada') {

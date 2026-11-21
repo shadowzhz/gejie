@@ -1,3 +1,5 @@
+import { fieldTrialStatus } from '../core/field-trial.js';
+import { renderGoalShortcut } from './cultivation-view.js';
 import { GU_DEFS, ITEMS, REFINE_RECIPES, guEffectText, recipeIngredientsText, recipeOutputText } from '../data/gu.js';
 import { MERCHANT_GU, PLACES, placeShopEntries, merchantRefuses, rareGathering, shopUnitPrice } from '../data/places.js';
 import { formatDateTime, isNight } from '../core/calendar.js';
@@ -6,9 +8,32 @@ import { availableLocalScenes, evalCond, hasLocalLifeScene, nextRetreatTime } fr
 import { availableRecipeDiscovery, isRecipeSold } from '../core/refine.js';
 import { STORY_EVENTS } from '../data/story.js';
 
+function renderFieldTrial(gs, trial) {
+  if (!trial) return '';
+  const progress = trial.steps.filter(({ done }) => done).length;
+  if (gs.location === 'zhulin') {
+    return trial.active ? `<p class="muted">${trial.title} · ${progress}/${trial.steps.length}
+      ${trial.ready ? renderGoalShortcut(gs, { place: 'renwutang' }) : ''}</p>` : '';
+  }
+  const steps = trial.active
+    ? `<ul>${trial.steps.map(({ text, done }) => `<li>${esc(text)} · ${done ? '已完成' : '待完成'}</li>`).join('')}</ul>`
+    : '<p>去竹林勘察、采料、清理兽患后，可回任务堂领赏。</p>';
+  const rewards = trial.rewards.map(({ id, text }) =>
+    `<button class="gold" data-action="placeAct" data-id="fieldReward:${id}">${esc(text)}</button>`).join('');
+  const controls = trial.ready ? `<p>选择一份奖赏并交付。</p><div class="row">${rewards}</div>`
+    : trial.active ? renderGoalShortcut(gs, { place: 'zhulin' })
+    : '<button class="primary" data-action="placeAct" data-id="fieldPatrol">接取竹林巡守</button>';
+  return `<section class="card">
+    <div class="kv"><h3>${trial.title}</h3>${trial.active ? `<b>${progress}/${trial.steps.length}</b>` : ''}</div>
+    ${steps}
+    ${controls}
+  </section>`;
+}
+
 export function renderPlaceView(gs) {
   const place = PLACES[gs.location] || PLACES.zhulou;
   const night = isNight(gs.minutes);
+  const trial = ['zhulin', 'renwutang'].includes(place.id) ? fieldTrialStatus(gs) : null;
   const scenes = availableLocalScenes(gs).map(({ id, title }) =>
     `<button class="gold" data-action="checkEvents" data-id="${esc(id)}">${esc(title)}</button>`);
   if (hasLocalLifeScene(gs)) scenes.push('<button data-action="lookForLifeScene">留意四周</button>');
@@ -44,6 +69,12 @@ export function renderPlaceView(gs) {
     actions.push('<button class="gold" data-action="placeAct" data-id="clanGift">领取二转赏赐</button>');
   }
   if (place.services.includes('explore')) {
+    if (trial?.active && !trial.steps[0].done) {
+      actions.push('<button class="primary" data-action="placeAct" data-id="fieldScout">勘察兽径 · 2 刻</button>');
+    }
+    if (trial?.steps[0].done) {
+      actions.push('<button data-action="placeAct" data-id="gatherPetals">采月兰花瓣 ×2 · 1 时辰</button>');
+    }
     actions.push('<button class="blood" data-action="placeAct" data-id="exploreFight">深入搜山（遭遇战）</button>');
     if (place.bossEnemy && !gs.flags[`clear:${place.id}`]) {
       actions.push('<button class="gold" data-action="placeAct" data-id="exploreBoss">直捣兽王巢穴</button>');
@@ -136,6 +167,7 @@ export function renderPlaceView(gs) {
     </section>
     ${scenes.length ? `<section class="card"><h3>此地剧情</h3><div class="row">${scenes.join('')}</div></section>` : ''}
     ${merchantRefuses(gs) ? '<p class="card muted">贾家封了你的货帖，商队暂不与你做生意。</p>' : ''}
+    ${renderFieldTrial(gs, trial)}
     ${questHtml}
     ${shopHtml}
     ${recipeHtml}`;

@@ -1,3 +1,4 @@
+import { fieldTrialStatus, recordFieldTrial, settleFieldTrial } from './field-trial.js';
 import { ITEMS, REFINE_RECIPES, recipeOutputText } from '../data/gu.js';
 import { PLACES, rareGathering } from '../data/places.js';
 import { formatDateTime, MIN_PER_DAY } from './calendar.js';
@@ -63,24 +64,41 @@ export function performPlaceAction(gs, id) {
     } else {
       return { reason: '族中近来暂无新赏格' };
     }
+  } else if (id === 'fieldScout') {
+    const trial = fieldTrialStatus(gs);
+    if (gs.location !== 'zhulin' || !trial?.active || trial.steps[0].done) return;
+    advanceMinutes(gs, 30);
+    if (gs.pendingEventId || p.dead) return { ok: true };
+    recordFieldTrial(gs, 'scouted');
+    const message = '你记下了兽径和月兰花丛的位置。此轮历练在竹林搜山时可看清对手意图。';
+    addLog(gs, `【勘察】${message}`);
+    return { ok: true, message };
+  } else if (id.startsWith('fieldReward:') || id === 'fieldPatrol') {
+    return settleFieldTrial(gs, id === 'fieldPatrol' ? id : id.slice('fieldReward:'.length));
   } else if (id === 'exploreFight') {
     const place = PLACES[gs.location];
     advanceMinutes(gs, 60);
-    if (!gs.pendingEventId && place.exploreEnemy) startBattle(gs, place.exploreEnemy, `${place.name}遭遇`);
+    if (!gs.pendingEventId && place.exploreEnemy) {
+      const battle = startBattle(gs, place.exploreEnemy, `${place.name}遭遇`);
+      if (battle && place.id === 'zhulin' && fieldTrialStatus(gs)?.steps[0].done) battle.scouted = true;
+    }
   } else if (id === 'exploreBoss') {
     const place = PLACES[gs.location];
     advanceMinutes(gs, 60);
     if (!gs.pendingEventId && place.bossEnemy) startBattle(gs, place.bossEnemy, `讨伐${place.name}`);
-  } else if (id === 'gather') {
+  } else if (id === 'gather' || id === 'gatherPetals') {
     const place = PLACES[gs.location];
-    if (!place.gather) return;
+    const petals = id === 'gatherPetals';
+    if (!place.gather || (petals && (place.id !== 'zhulin' || !fieldTrialStatus(gs)?.steps[0].done))) return;
     advanceMinutes(gs, 120);
-    const rare = rareGathering(gs, place);
+    if (place.id === 'zhulin' && (gs.pendingEventId || p.dead)) return { ok: true };
+    const rare = petals ? null : rareGathering(gs, place);
     if (rare) gs.flags[`gathered:${place.id}`] = Math.floor(gs.minutes / MIN_PER_DAY);
-    const got = rare || place.gather[Math.floor(Math.random() * place.gather.length)];
+    const got = petals ? 'yuelanhua' : rare || place.gather[Math.floor(Math.random() * place.gather.length)];
     const count = rare ? 4 : 2;
     addItem(gs, got, count);
     recordQuestProgress(gs, 'gather', gs.location);
+    recordFieldTrial(gs, 'gathered');
     const message = `采集完成，获得「${ITEMS[got].name}」×${count}`;
     addLog(gs, `${message}。`, 'log-good');
     return { ok: true, message };
