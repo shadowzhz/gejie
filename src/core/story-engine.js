@@ -1,14 +1,22 @@
-import { STORY_EVENTS } from '../data/story.js';
-import { makeTime, MIN_PER_MONTH, parseTimeExpr } from './calendar.js';
+import { STORY_EVENTS, STORY_QUESTS } from '../data/story.js';
+import { isNight, makeTime, MIN_PER_DAY, MIN_PER_MONTH, MIN_PER_SHICHEN, parseTimeExpr } from './calendar.js';
 import { GU_DEFS, ITEMS } from '../data/gu.js';
-import { addGu, addItem, addLog, recalcStats } from './state.js';
+import { addGu, addItem, addLog, hasGu, recalcStats, useItem } from './state.js';
 import { startBattle } from './combat.js';
 import { PLACES, rareGathering } from '../data/places.js';
+import { addStoryClue, advanceStoryQuest, changeStoryRelation, storyRelation } from './story-progress.js';
 
 export function finishStoryBattle(gs) {
   if (!gs.battle || gs.battle.state === 'ongoing') return false;
   if (gs.battle.storyEvent === 'qingmao_endgame' && gs.battle.state === 'fled') {
     delete gs.flags['event_done:qingmao_endgame'];
+  }
+  if (gs.battle.storyEvent === 'bai_encounter') {
+    if (gs.battle.state === 'win') changeStoryRelation(gs, 'bainingbing', 15, 20, '切磋取胜');
+    else changeStoryRelation(gs, 'bainingbing', -2, 0, '切磋未能占上风');
+  }
+  if (gs.battle.storyEvent === 'three_clans' && gs.battle.state === 'win') {
+    changeStoryRelation(gs, 'bainingbing', 6, 8, '三寨大比决出胜负');
   }
   gs.battle = null;
   if (!gs.player.dead) checkStoryTriggers(gs);
@@ -39,11 +47,17 @@ export function nextRetreatTime(gs) {
     .map((event) => event.cond.match(/(?:^|&)after:([\d-]+)/)?.[1])
     .filter(Boolean).map(parseTimeExpr);
   if (gs.flags.wine_bid && !gs.flags.merchant_jiuchong_bought) dates.push(makeTime(2, 3, 1));
+  for (const [id, progress] of Object.entries(gs.story.quests)) {
+    if (!gs.flags[`event_done:${STORY_QUESTS[id].followupEvent}`] && progress.followupAt) dates.push(progress.followupAt);
+  }
   return Math.min(gs.minutes + MIN_PER_MONTH, ...dates.filter((date) => date > gs.minutes));
 }
 
 function evalToken(gs, token) {
   if (!token) return true;
+  if (token === 'night') return isNight(gs.minutes);
+  if (token === 'day') return !isNight(gs.minutes);
+  if (token.startsWith('gu:')) return hasGu(gs, token.slice(3));
   if (token === 'benming') return !!gs.player.benming;
   if (token.startsWith('flag:')) return !!gs.flags[token.slice(5)];
   if (token.startsWith('at:')) return gs.location === token.slice(3);
@@ -53,6 +67,18 @@ function evalToken(gs, token) {
   if (token.startsWith('stones:')) return gs.player.yuanshi >= Number(token.slice(7));
   if (token.startsWith('rank:')) return gs.player.rank === Number(token.slice(5));
   if (token.startsWith('haiBelow:')) return gs.player.hai < Number(token.slice(9));
+  const [kind, questId, value] = token.split(':');
+  const quest = gs.story.quests[questId];
+  if (kind === 'item') return (gs.player.items[questId] ?? 0) >= Number(value);
+  if (kind === 'quest') return quest?.stage === value;
+  if (kind === 'clue') return !!quest?.clues.includes(value);
+  if (kind === 'outcome') return quest?.outcome === value;
+  if (kind === 'due') return Number.isFinite(quest?.followupAt) && gs.minutes >= quest.followupAt;
+  if (token.startsWith('trust:') || token.startsWith('favor:')) {
+    const [axis, id, minimum] = token.split(':');
+    const relation = storyRelation(gs, id);
+    return !!relation && relation[axis] >= Number(minimum);
+  }
   if (token === 'true') return true;
   return false;
 }
@@ -70,10 +96,39 @@ export function evalCond(gs, cond) {
   }));
 }
 
+export function availableLocalScenes(gs) {
+  return STORY_EVENTS.filter((ev) => (ev.quest || ev.person) && ev.manual
+    && !gs.flags[`event_done:${ev.id}`] && evalCond(gs, ev.cond));
+}
+
+function storyBlocked(gs) {
+  return !gs || gs.player.dead || gs.pendingEventId || gs.battle || gs.refining || gs.breakthrough;
+}
+
+export function hasLocalLifeScene(gs) {
+  return !gs.player.escapedMountain && STORY_EVENTS.some((ev) => ev.ambient
+    && !gs.flags[`event_done:${ev.id}`]
+    && ev.cond.split('&').includes(`at:${gs.location}`));
+}
+
+export function lookForLifeScene(gs, rng = Math.random) {
+  if (storyBlocked(gs) || gs.player.escapedMountain) return { message: '眼下不便打听。' };
+  if (gs.minutes < (gs.story.lifeReadyAt ?? 0)) return { message: '方才已留意过四周，过些时辰再来。' };
+  const scenes = STORY_EVENTS.filter((ev) => ev.ambient && !gs.flags[`event_done:${ev.id}`] && evalCond(gs, ev.cond));
+  if (!scenes.length || rng() >= 0.7) {
+    gs.story.lifeReadyAt = gs.minutes + MIN_PER_SHICHEN;
+    return { message: '暂时没有新见闻。' };
+  }
+  const event = scenes[Math.floor(rng() * scenes.length)];
+  gs.story.lifeReadyAt = gs.minutes + MIN_PER_DAY;
+  gs.pendingEventId = event.id;
+  return { event };
+}
+
 export function checkStoryTriggers(gs, eventId) {
-  if (!gs || gs.player.dead || gs.pendingEventId || gs.battle) return null;
+  if (storyBlocked(gs)) return null;
   for (const ev of STORY_EVENTS) {
-    if (eventId ? ev.id !== eventId : ev.manual) continue;
+    if (ev.ambient || (eventId ? ev.id !== eventId : ev.manual)) continue;
     if (gs.flags[`event_done:${ev.id}`]) continue;
     if (evalCond(gs, ev.cond)) {
       gs.pendingEventId = ev.id;
@@ -85,17 +140,27 @@ export function checkStoryTriggers(gs, eventId) {
 
 export function applyEventChoice(gs, eventId, choiceIdx) {
   const ev = STORY_EVENTS.find((e) => e.id === eventId);
-  if (!ev) { gs.pendingEventId = null; return; }
+  if (!ev || gs.flags[`event_done:${eventId}`]) return;
   const choice = ev.choices[choiceIdx];
   if (gs.pendingEventId !== eventId || gs.player.dead || gs.battle || !choice || !evalCond(gs, choice.cond)) return;
   gs.flags[`event_done:${ev.id}`] = true;
   gs.pendingEventId = null;
+  gs.story.history[eventId] = { minute: gs.minutes, choice: choiceIdx };
 
   for (const eff of choice.effects || []) {
     if (eff.startsWith('flag:')) {
       gs.flags[eff.slice(5)] = true;
     } else if (eff.startsWith('unflag:')) {
       delete gs.flags[eff.slice(7)];
+    } else if (eff.startsWith('relation:')) {
+      const [, id, favor, trust, progress] = eff.split(':');
+      changeStoryRelation(gs, id, Number(favor), Number(trust), progress);
+    } else if (eff.startsWith('clue:')) {
+      const [, quest, clue] = eff.split(':');
+      addStoryClue(gs, quest, clue);
+    } else if (eff.startsWith('quest:')) {
+      const [, quest, stage, outcome] = eff.split(':');
+      advanceStoryQuest(gs, quest, stage, outcome);
     } else if (eff.startsWith('goal:')) {
       gs.goal = eff.slice(5);
     } else if (eff.startsWith('yuanshi:')) {
@@ -107,6 +172,9 @@ export function applyEventChoice(gs, eventId, choiceIdx) {
       gs.player.mo = Math.max(0, before + Number(eff.slice(3)));
       const change = gs.player.mo - before;
       if (change) addLog(gs, `【${ev.title}】恶名 ${change > 0 ? '+' : ''}${change}。`, change > 0 ? 'log-bad' : 'log-good');
+    } else if (eff.startsWith('take:')) {
+      const [, id, count] = eff.split(':');
+      useItem(gs, id, Number(count));
     } else if (eff.startsWith('item:')) {
       const [, id, count] = eff.split(':');
       addItem(gs, id, Number(count));
@@ -139,6 +207,9 @@ export function applyEventChoice(gs, eventId, choiceIdx) {
         storyEvent: ev.id
       });
     }
+  }
+  if (eventId === 'tie_inquiry') {
+    advanceStoryQuest(gs, 'caravan', 'failed', gs.flags.jia_missing_stones ? 'theft' : 'expired');
   }
   if (gs.player.rank >= 2) gs.flags['open:jiazhuge'] = true;
 }

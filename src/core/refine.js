@@ -9,8 +9,6 @@ const REFINE_REALMS = [
 ];
 
 const RECIPE_SOURCES = {
-  r_yueguang: 'kaike',
-  r_xiaoguang: 'kaike',
   r_yuemang: 'nianmo_done',
   r_yuexuan: 'nianmo_done',
   r_yuehen: 'nianmo_done',
@@ -244,6 +242,7 @@ function finishRefining(gs, sess, rc, success, message) {
   if (success) {
     if (!rc.preserveGu) for (const gu of sess.ingredients) removeGuByUid(gs, gu.uid);
     if (GU_DEFS[rc.out]) {
+      gs.flags.story_refined_gu = true;
       const first = addGu(gs, rc.out);
       if (usesBenming) gs.player.benming = first.uid;
       for (let count = 1; count < (rc.outCount ?? 1); count++) addGu(gs, rc.out);

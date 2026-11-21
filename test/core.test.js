@@ -1,16 +1,21 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createNewGame, addGu, BENMING_ZY_COST, claimBenming, handleQuest, loadGame, purchaseShopEntry, questBoard, refineBenming, realmText, recordQuestProgress, removeGuByUid, saveGame, useHealItem, useHealingGu, useBoarGu } from '../src/core/state.js';
+import { createNewGame, addGu, BENMING_ZY_COST, claimBenming, feedGu, handleQuest, loadGame, purchaseShopEntry, questBoard, refineBenming, realmText, recordQuestProgress, removeGuByUid, saveGame, useHealItem, useHealingGu, useBoarGu } from '../src/core/state.js';
 import { PLACES, placeShopEntries, rareGathering } from '../src/data/places.js';
 import { advanceMinutes, moveToPlace, rewindSpringCicada, saveSpringSnapshot } from '../src/core/clock.js';
-import { makeTime, MIN_PER_MONTH } from '../src/core/calendar.js';
-import { applyEventChoice, checkStoryTriggers, innRumors, nextRetreatTime } from '../src/core/story-engine.js';
+import { makeTime, MIN_PER_DAY, MIN_PER_MONTH } from '../src/core/calendar.js';
+import { applyEventChoice, availableLocalScenes, checkStoryTriggers, evalCond, finishStoryBattle, lookForLifeScene, innRumors, nextRetreatTime } from '../src/core/story-engine.js';
 import { createKillerMove, forgetKillerMove } from '../src/core/killer.js';
 import { battleAct, battleGuPlan, startBattle } from '../src/core/combat.js';
 import { createBreakSession, stepBreakSession, validBreakSession, washMinorWall } from '../src/core/breakthrough.js';
-import { availableRecipeDiscovery, canStartRefine, createRefineSession, isRecipeSold, knowsRefineRecipe, REFINE_SESSION_VERSION, refineChance, refineReady, refineRealm, refineTechniques, restoreRefineSession, stepRefineSession } from '../src/core/refine.js';
+import { availableRecipeDiscovery, canStartRefine, createRefineSession, isRecipeSold, knowsRefineRecipe, purchaseRecipe, REFINE_SESSION_VERSION, refineChance, refineReady, refineRealm, refineTechniques, restoreRefineSession, stepRefineSession } from '../src/core/refine.js';
 import { renderCustomKillerModal, renderEventModal } from '../src/ui/rituals.js';
 import { renderPlaceView } from '../src/ui/place-view.js';
+import { changeStoryRelation, storyRelation } from '../src/core/story-progress.js';
+import { performPlaceAction } from '../src/core/place-actions.js';
+import { renderBagView } from '../src/ui/bag-view.js';
+import { STORY_EVENTS, STORY_QUESTS } from '../src/data/story.js';
+import { importProgress } from '../src/ui/persistence.js';
 import { GU_DEFS, ITEMS, REFINE_RECIPES } from '../src/data/gu.js';
 
 test('破壁跨存档保留进度，成功、失败和退关都只结算一次', () => {
@@ -46,13 +51,14 @@ test('破壁跨存档保留进度，成功、失败和退关都只结算一次',
 
 test('炼蛊会话可从旧版恢复，未识别版本和损坏输入安全拒绝', () => {
   const gs = createNewGame();
-  gs.flags.kaike = true;
+  gs.player.recipes.push('r_yueguang');
   gs.player.yuanshi = 100;
   gs.player.items.yuanshi_zha = 1;
   const sess = createRefineSession(gs, 'r_yueguang');
   assert.equal(sess.version, REFINE_SESSION_VERSION);
   stepRefineSession(gs, sess, 'ignite');
   stepRefineSession(gs, sess, 'add:0', Math.random, 0.5);
+  gs.player.recipes = [];
   const legacy = JSON.parse(JSON.stringify(sess));
   delete legacy.version;
   assert.deepEqual(restoreRefineSession(gs, legacy), sess);
@@ -651,18 +657,40 @@ test('幡然蛊和浪子蛊分别将四味酒虫逆炼成一只和两只酒虫',
   }
 });
 
-test('蛊铺隐藏传承蛊方，剧情解锁后可用于炼蛊', () => {
+test('蛊铺出售月光蛊和小光蛊的蛊方，开课不会自动习得', () => {
   const gs = createNewGame();
   gs.location = 'gupu';
   const recipes = renderPlaceView(gs);
   assert.match(recipes, /data-id="r_shipi"/);
-  assert.doesNotMatch(recipes, /data-id="r_(?:yueguang|chunqiuchan|chitie_sheli)"|原创/);
-  const moon = REFINE_RECIPES.find(({ id }) => id === 'r_yueguang');
-  assert.equal(isRecipeSold(moon), false);
-  assert.match(canStartRefine(gs, moon.id).reason, /尚未习得/);
+  assert.doesNotMatch(recipes, /data-id="r_(?:chunqiuchan|chitie_sheli)"|原创/);
   gs.flags.kaike = true;
-  assert.equal(knowsRefineRecipe(gs, moon), true);
-  assert.doesNotMatch(canStartRefine(gs, moon.id).reason ?? '', /尚未习得/);
+  for (const id of ['r_yueguang', 'r_xiaoguang']) {
+    const recipe = REFINE_RECIPES.find((entry) => entry.id === id);
+    assert.match(recipes, new RegExp(`data-id="${id}"`));
+    assert.equal(isRecipeSold(recipe), true);
+    assert.equal(knowsRefineRecipe(gs, recipe), false);
+    assert.match(canStartRefine(gs, id).reason, /尚未习得/);
+    gs.player.yuanshi = 8;
+    assert.ok(purchaseRecipe(gs, id));
+    assert.equal(gs.player.yuanshi, 0);
+    assert.equal(knowsRefineRecipe(gs, recipe), true);
+  }
+  assert.ok(placeShopEntries(gs).includes('gu:yueguang'));
+  assert.ok(placeShopEntries(gs).includes('gu:xiaoguang'));
+});
+
+test('聚财坊不出售光阴河水，旧档已有河水仍可喂养春秋蝉', () => {
+  const gs = createNewGame();
+  gs.location = 'jucaifang';
+  gs.player.yuanshi = 100;
+  gs.player.items.guangyin_water = 1;
+  assert.equal(placeShopEntries(gs).includes('item:guangyin_water'), false);
+  assert.equal(purchaseShopEntry(gs, 'item:guangyin_water', 1).ok, false);
+  const cicada = addGu(gs, 'chunqiuchan', 25);
+  assert.equal(feedGu(gs, cicada), true);
+  assert.equal(cicada.satiety, 75);
+  assert.equal(gs.player.items.guangyin_water, undefined);
+  assert.equal(saveSpringSnapshot(gs).ok, true);
 });
 
 test('电狼蛊与血蝠蛊的掉落及蛊方发现相互独立', () => {
@@ -939,4 +967,422 @@ test('三转蛊虫可由二转蛊合炼并满足三转破壁条件', () => {
   assert.ok(gs.player.gu.some((g) => g.id === 'huangjinyue'));
   gs.player.zy = gs.player.zyMax;
   assert.ok(!createBreakSession(gs).error);
+});
+
+function caravanGame(firstChoice) {
+  const gs = createNewGame();
+  gs.minutes = makeTime(2, 3, 2);
+  gs.pendingEventId = 'jia_missing';
+  for (const id of ['kaike', 'uncle', 'classmates', 'wine_lead', 'early_sheli', 'jiuyecao_inheritance', 'nianmo_exam', 'wolf_signs']) {
+    gs.flags[`event_done:${id}`] = true;
+  }
+  gs.flags.kaike = true;
+  applyEventChoice(gs, 'jia_missing', firstChoice);
+  return gs;
+}
+
+function caravanHearing(gs, choice) {
+  advanceMinutes(gs, makeTime(2, 3, 6) - gs.minutes);
+  assert.equal(gs.pendingEventId, 'jia_questions');
+  applyEventChoice(gs, 'jia_questions', choice);
+}
+
+function caravanScene(gs, place, id, choice) {
+  gs.location = place;
+  assert.equal(checkStoryTriggers(gs, id)?.id, id);
+  applyEventChoice(gs, id, choice);
+}
+
+test('人物好感和信任分别封顶，存档恢复保留绝对值', () => {
+  const gs = createNewGame();
+  assert.deepEqual(storyRelation(gs, 'bainingbing'), { favor: -5, trust: 0, progress: '' });
+  changeStoryRelation(gs, 'bainingbing', 250, -150, '初见');
+  assert.deepEqual(storyRelation(gs, 'bainingbing'), { favor: 100, trust: -100, progress: '初见' });
+  assert.ok(evalCond(gs, 'favor:bainingbing:100&!trust:bainingbing:0'));
+  changeStoryRelation(gs, 'bainingbing', -107, 120);
+  const restored = importProgress(JSON.stringify(gs));
+  assert.deepEqual(storyRelation(restored, 'bainingbing'), { favor: -7, trust: 20, progress: '初见' });
+  assert.equal(evalCond(restored, 'trust:unknown:0'), false);
+});
+
+test('商队卷宗需要互证，铁家回信在两日后开启听证选择', () => {
+  const gs = caravanGame(0);
+  assert.equal(gs.story.quests.caravan.stage, 'investigate');
+  assert.match(renderBagView(gs, 'journal'), /雨中足迹与失物/);
+  caravanHearing(gs, 0);
+  assert.equal(gs.story.quests.caravan.stage, 'verify');
+
+  gs.location = 'renwutang';
+  assert.ok(checkStoryTriggers(gs, 'jia_submit_case'));
+  applyEventChoice(gs, 'jia_submit_case', 0);
+  assert.equal(gs.pendingEventId, 'jia_submit_case');
+  gs.pendingEventId = null;
+  caravanScene(gs, 'kezhan', 'jia_witness_visit', 0);
+  caravanScene(gs, 'renwutang', 'jia_submit_case', 0);
+  assert.equal(gs.story.quests.caravan.stage, 'completed');
+  assert.equal(gs.story.quests.caravan.outcome, 'iron');
+  assert.equal(checkStoryTriggers(gs, 'jia_missing'), null);
+  assert.equal(checkStoryTriggers(gs, 'jia_road_visit'), null);
+  assert.equal(nextRetreatTime(gs), gs.story.quests.caravan.followupAt);
+  advanceMinutes(gs, 2 * MIN_PER_DAY - 1);
+  assert.equal(gs.pendingEventId, null);
+  advanceMinutes(gs, 1);
+  assert.equal(gs.pendingEventId, 'jia_case_followup');
+  assert.doesNotMatch(renderEventModal(gs, 'tie_inquiry'), /出示复核卷宗/);
+  applyEventChoice(gs, 'jia_case_followup', 0);
+  assert.match(renderEventModal(gs, 'tie_inquiry'), /出示复核卷宗/);
+  assert.match(renderBagView(gs, 'journal'), /铁若男的复核回函/);
+});
+
+test('贾富只向可信玩家公开私账，回信和危机援助跨刷新且只结算一次', () => {
+  const suspicious = caravanGame(0);
+  caravanHearing(suspicious, 2);
+  suspicious.location = 'gupu';
+  assert.equal(checkStoryTriggers(suspicious, 'jia_private_ledger'), null);
+
+  const gs = caravanGame(2);
+  caravanHearing(gs, 2);
+  gs.location = 'gupu';
+  assert.match(renderPlaceView(gs), /贾富的私账/);
+  caravanScene(gs, 'gupu', 'jia_private_ledger', 0);
+  let raw;
+  const storage = { setItem: (_, value) => { raw = value; }, getItem: () => raw };
+  assert.ok(saveGame(gs, storage));
+  const loaded = loadGame(storage);
+  assert.deepEqual(loaded.story, gs.story);
+  caravanScene(loaded, 'renwutang', 'jia_submit_case', 1);
+  advanceMinutes(loaded, 2 * MIN_PER_DAY);
+  assert.ok(saveGame(loaded, storage));
+  const letter = loadGame(storage);
+  assert.equal(letter.pendingEventId, 'jia_case_followup');
+  const stones = letter.player.yuanshi;
+  applyEventChoice(letter, 'jia_case_followup', 1);
+  assert.ok(saveGame(letter, storage));
+  const finished = loadGame(storage);
+  applyEventChoice(finished, 'jia_case_followup', 1);
+  assert.equal(checkStoryTriggers(finished, 'jia_case_followup'), null);
+  assert.equal(finished.player.yuanshi, stones + 24);
+  assert.match(renderEventModal(finished, 'wolf_breach'), /用贾富留下的货车/);
+});
+
+test('放弃、扣款和逾期会归档为失败，铁家听证仍有可选路线', () => {
+  for (const [opening, choice, outcome] of [[2, 2, 'refused'], [1, 3, 'theft'], [0, null, 'expired']]) {
+    const gs = caravanGame(opening);
+    caravanHearing(gs, 2);
+    if (choice !== null) {
+      caravanScene(gs, 'renwutang', 'jia_submit_case', choice);
+      advanceMinutes(gs, 2 * MIN_PER_DAY);
+      assert.equal(gs.pendingEventId, 'jia_case_followup');
+      applyEventChoice(gs, 'jia_case_followup', opening === 1 ? 2 : 3);
+    }
+    assert.match(renderEventModal(gs, 'tie_inquiry'), /领取协查文书|迎战铁家追兵/);
+    gs.pendingEventId = 'tie_inquiry';
+    applyEventChoice(gs, 'tie_inquiry', gs.player.mo >= 30 ? 2 : 1);
+    assert.equal(gs.story.quests.caravan.stage, 'failed');
+    assert.equal(gs.story.quests.caravan.outcome, outcome);
+    assert.equal(checkStoryTriggers(gs, 'jia_missing'), null);
+    assert.match(renderBagView(gs, 'journal'), /已失败/);
+    if (opening === 1) assert.equal(storyRelation(gs, 'tieruonan').trust, -15);
+  }
+});
+
+test('延迟回信等待进行中的战斗、会话和已有剧情，遭遇战不会遮住刚触发的剧情', () => {
+  for (const blocker of ['battle', 'refining', 'breakthrough', 'pendingEventId']) {
+    const gs = caravanGame(2);
+    caravanHearing(gs, 2);
+    caravanScene(gs, 'renwutang', 'jia_submit_case', 2);
+    gs[blocker] = blocker === 'pendingEventId' ? 'uncle' : {};
+    advanceMinutes(gs, 2 * MIN_PER_DAY);
+    assert.equal(gs.pendingEventId, blocker === 'pendingEventId' ? 'uncle' : null);
+    delete gs[blocker];
+    assert.equal(checkStoryTriggers(gs)?.id, 'jia_case_followup');
+  }
+  const gs = caravanGame(2);
+  caravanHearing(gs, 2);
+  caravanScene(gs, 'renwutang', 'jia_submit_case', 2);
+  gs.minutes = gs.story.quests.caravan.followupAt - 1;
+  gs.location = 'zhulin';
+  performPlaceAction(gs, 'exploreFight');
+  assert.equal(gs.pendingEventId, 'jia_case_followup');
+  assert.equal(gs.battle, null);
+});
+
+test('旧存档和春秋蝉旧影按已有旗标迁移，保留原奖励和路线', () => {
+  const gs = caravanGame(0);
+  caravanHearing(gs, 0);
+  Object.assign(gs.flags, { chi_faction: true, tie_bond: true, bai_read: true });
+  delete gs.story;
+  gs.snapshot = JSON.parse(JSON.stringify(gs));
+  const raw = JSON.stringify(gs);
+  const loaded = loadGame({ getItem: () => raw });
+  assert.equal(loaded.story.quests.caravan.stage, 'completed');
+  assert.equal(loaded.story.quests.caravan.followupAt, null);
+  assert.deepEqual(loaded.snapshot.story, loaded.story);
+  assert.deepEqual(loaded.story.quests.caravan.clues, ['tracks']);
+  assert.equal(loaded.player.yuanshi, gs.player.yuanshi);
+  assert.match(renderEventModal(loaded, 'three_clans'), /护盾 28/);
+  assert.match(renderBagView(loaded, 'journal'), /旧档记录/);
+  assert.equal(checkStoryTriggers(loaded, 'jia_missing'), null);
+  assert.equal(checkStoryTriggers(loaded, 'jia_case_followup'), null);
+});
+
+test('白凝冰切磋胜负影响大比准备，战后重复确认不再改变关系', () => {
+  const gs = createNewGame();
+  gs.pendingEventId = 'bai_encounter';
+  gs.flags.tie_cleared = true;
+  applyEventChoice(gs, 'bai_encounter', 0);
+  assert.doesNotMatch(renderEventModal(gs, 'three_clans'), /护盾 28/);
+  gs.battle.foe.hp = 1;
+  battleAct(gs, 'attack', '', () => 0.5);
+  finishStoryBattle(gs);
+  assert.match(renderEventModal(gs, 'three_clans'), /护盾 28/);
+  const relation = storyRelation(gs, 'bainingbing');
+  assert.equal(finishStoryBattle(gs), false);
+  assert.deepEqual(storyRelation(gs, 'bainingbing'), relation);
+});
+
+function localStoryGame() {
+  const gs = createNewGame('剧情验收', { grade: '乙', hai: 7 });
+  gs.pendingEventId = null;
+  gs.flags.kaike = true;
+  return gs;
+}
+
+function finishLocalScene(gs, place, id, choice = 0) {
+  gs.location = place;
+  assert.ok(availableLocalScenes(gs).some((event) => event.id === id), id);
+  assert.equal(checkStoryTriggers(gs, id)?.id, id);
+  applyEventChoice(gs, id, choice);
+  assert.equal(gs.pendingEventId, null, id);
+  assert.ok(gs.story.history[id], id);
+  assert.equal(checkStoryTriggers(gs, id), null, id);
+}
+
+test('五条新支线可逐阶段走完两种结局，读档保留线索和后续选择', () => {
+  const paths = [
+    ['estate', 'event_done:uncle', [
+      ['renwutang', 'estate_start'], ['renwutang', 'estate_receipt'], ['kezhan', 'estate_terms']
+    ], ['public', 'private'], [
+      ['tie_inquiry', /在册的证人和伤者/], ['jiuyecao_inheritance', /先把药圃收入留给赈济/]
+    ]],
+    ['grotto', 'clue:huajiu', [
+      ['huajiu', 'grotto_start'], ['huajiu', 'grotto_measure', 1], ['huajiu', 'grotto_dispose']
+    ], ['closed', 'marked'], [
+      ['qingmao_endgame', /隐蔽路线避过混战/], ['wolf_breach', /循遗洞记号开通水道/]
+    ]],
+    ['hunter', 'kaike', [
+      ['kezhan', 'hunter_start'], ['zhulin', 'hunter_spoor'], ['renwutang', 'hunter_report']
+    ], ['patrol', 'hidden'], [
+      ['langchao_start', /用备好的药粮接济守军/], ['langchao_start', /随猎户从私道引走/]
+    ]],
+    ['survivors', 'event_done:langchao_start', [
+      ['yaotang', 'survivor_start'], ['yaotang', 'survivor_roster'], ['renwutang', 'survivor_terms']
+    ], ['record', 'shelter'], [
+      ['tie_inquiry', /在册的证人和伤者/], ['qingmao_endgame', /隐蔽路线避过混战/]
+    ]],
+    ['furnace', 'event_done:wine_lead', [
+      ['gupu', 'furnace_start'], ['gupu', 'furnace_check', 1], ['renwutang', 'furnace_terms']
+    ], ['open', 'private'], [
+      ['wolf_breach', /开炉坊的公示后巷/], ['wolf_breach', /商人签过的药费单/]
+    ]]
+  ];
+  for (const [questId, flag, steps, outcomes, exits] of paths) {
+    for (const outcomeIndex of [0, 1]) {
+      let gs = localStoryGame();
+      const quest = STORY_QUESTS[questId];
+      gs.flags[flag] = true;
+      finishLocalScene(gs, ...steps[0]);
+      assert.equal(gs.story.quests[questId].stage, Object.keys(quest.steps)[0]);
+      gs = importProgress(JSON.stringify(gs));
+      finishLocalScene(gs, ...steps[1]);
+      assert.equal(gs.story.quests[questId].stage, Object.keys(quest.steps)[1]);
+      assert.deepEqual(gs.story.quests[questId].clues, Object.keys(quest.clues));
+      gs = importProgress(JSON.stringify(gs));
+      finishLocalScene(gs, ...steps[2], outcomeIndex);
+      const loaded = importProgress(JSON.stringify(gs));
+      assert.equal(loaded.story.quests[questId].stage, 'completed');
+      assert.equal(loaded.story.quests[questId].outcome, outcomes[outcomeIndex]);
+      const [main, text] = exits[outcomeIndex];
+      assert.match(renderEventModal(loaded, main), text);
+      const [otherMain, otherText] = exits[1 - outcomeIndex];
+      assert.doesNotMatch(renderEventModal(loaded, otherMain), otherText);
+      assert.match(renderBagView(loaded, 'journal'), /已完成/);
+    }
+  }
+});
+
+test('漠北、赤城和白凝冰均有完整的合作与竞争路线，分支影响主线', () => {
+  for (const rival of [0, 1]) {
+    const mobei = localStoryGame();
+    mobei.flags['event_done:classmates'] = true;
+    finishLocalScene(mobei, 'yanwu', 'mobei_roster', rival);
+    assert.equal(checkStoryTriggers(mobei, 'mobei_watch'), null);
+    mobei.flags['event_done:nianmo_exam'] = true;
+    finishLocalScene(mobei, 'yanwu', 'mobei_watch', rival);
+    mobei.flags['event_done:langchao_start'] = true;
+    finishLocalScene(mobei, 'yanwu', 'mobei_wall', rival);
+    mobei.player.rank = 2;
+    assert.equal(renderEventModal(mobei, 'wolf_breach').includes('把后队调到东门'), !rival);
+    assert.equal(renderEventModal(mobei, 'three_clans').includes('公开比试约一并呈上'), Boolean(rival));
+
+    const chi = localStoryGame();
+    chi.flags['event_done:classmates'] = true;
+    finishLocalScene(chi, 'jucaifang', 'chi_delivery', rival);
+    assert.equal(checkStoryTriggers(chi, 'chi_quota'), null);
+    chi.minutes = makeTime(2, 1, 1);
+    finishLocalScene(chi, 'jucaifang', 'chi_quota', rival);
+    chi.flags['event_done:wolf_breach'] = true;
+    finishLocalScene(chi, 'jucaifang', 'chi_guarantee', rival);
+    assert.equal(renderEventModal(chi, 'tie_inquiry').includes('赤城签过的互保文书'), !rival);
+    assert.equal(renderEventModal(chi, 'three_clans').includes('出示公买凭据'), Boolean(rival));
+
+    const bai = localStoryGame();
+    bai.flags['event_done:classmates'] = true;
+    finishLocalScene(bai, 'zhulin', 'bai_footprints', rival);
+    bai.flags['event_done:bai_encounter'] = true;
+    finishLocalScene(bai, 'zhulin', 'bai_after_spar', rival);
+    bai.flags.tie_cleared = true;
+    assert.equal(renderEventModal(bai, 'three_clans').includes('与白凝冰交换的起手'), !rival);
+    bai.flags['event_done:three_clans'] = true;
+    finishLocalScene(bai, 'zhulin', 'bai_broken_flag', rival);
+    assert.equal(renderEventModal(bai, 'qingmao_endgame').includes('白凝冰指过的落脚点'), Boolean(rival));
+    assert.equal(renderEventModal(bai, 'qingmao_endgame').includes('带人出山'), !rival);
+  }
+});
+
+test('七种见闻可在各自地点时辰触发，冷却、进行中的剧情及已阅状态均跨档', () => {
+  const sightings = [
+    ['life_inn', 'kezhan', 0, () => {}],
+    ['life_carrier', 'jucaifang', 6, (gs) => { gs.flags.chi_open_books = true; }],
+    ['life_school', 'xuetang', 6, (gs) => { gs.minutes = makeTime(1, 5, 1, 6); }],
+    ['life_apprentice', 'gupu', 6, (gs) => { gs.player.benming = addGu(gs, 'yueguang').uid; }],
+    ['life_whisper', 'kezhan', 0, (gs) => {
+      gs.flags['event_done:life_inn'] = true;
+      gs.player.rank = 2;
+      changeStoryRelation(gs, 'jiafu', 10, 0);
+      gs.story.quests.caravan = { stage: 'verify', clues: ['ledger'], followupAt: null };
+    }],
+    ['life_bamboo', 'zhulin', 6, (gs) => { gs.flags.practiced = true; }],
+    ['life_east_lamp', 'yaotang', 0, (gs) => { gs.flags['event_done:langchao_start'] = true; }]
+  ];
+  for (const [id, place, time, prep] of sightings) {
+    let gs = localStoryGame();
+    gs.minutes = makeTime(2, 3, 1, time);
+    gs.location = place;
+    prep(gs);
+    assert.equal(checkStoryTriggers(gs, id), null);
+    assert.equal(lookForLifeScene(gs, () => 0.99).event, undefined);
+    gs = importProgress(JSON.stringify(gs));
+    assert.match(lookForLifeScene(gs, () => 0).message, /过些时辰/);
+    gs.minutes = gs.story.lifeReadyAt;
+    assert.equal(lookForLifeScene(gs, () => 0).event?.id, id);
+    const readyAt = gs.story.lifeReadyAt;
+    gs = importProgress(JSON.stringify(gs));
+    assert.equal(gs.pendingEventId, id);
+    assert.equal(gs.story.lifeReadyAt, readyAt);
+    assert.equal(lookForLifeScene(gs, () => 0).event, undefined);
+    const event = STORY_EVENTS.find((entry) => entry.id === id);
+    const choice = event.choices.findIndex((entry) => evalCond(gs, entry.cond));
+    assert.ok(choice >= 0);
+    applyEventChoice(gs, id, choice);
+    gs.minutes = readyAt;
+    assert.notEqual(lookForLifeScene(gs, () => 0).event?.id, id);
+    if (id === 'life_inn') assert.equal(gs.story.quests.hunter.stage, 'spoor');
+    if (id === 'life_apprentice') assert.equal(gs.story.quests.furnace.stage, 'inspect');
+  }
+  const gs = localStoryGame();
+  gs.location = 'kezhan';
+  gs.minutes = makeTime(1, 5, 1, 6);
+  assert.equal(lookForLifeScene(gs, () => 0).event, undefined);
+  gs.minutes = makeTime(1, 5, 1);
+  for (const blocker of ['battle', 'refining', 'breakthrough', 'pendingEventId']) {
+    gs[blocker] = {};
+    assert.match(lookForLifeScene(gs, () => 0).message, /眼下不便/);
+    delete gs[blocker];
+  }
+});
+
+test('商队封帖保留至读档，依然可以使用寨中蛊铺，补录证人可参与听证', () => {
+  const gs = caravanGame(1);
+  caravanHearing(gs, 3);
+  const loaded = importProgress(JSON.stringify(gs));
+  loaded.location = 'gupu';
+  assert.match(renderPlaceView(loaded), /贾家封了你的货帖/);
+  assert.ok(placeShopEntries(loaded).includes('gu:yueguang'));
+  assert.ok(!placeShopEntries(loaded).includes('gu:jiuchong'));
+  assert.equal(purchaseShopEntry(loaded, 'gu:jiuchong', 1).ok, false);
+  const witness = caravanGame(0);
+  caravanHearing(witness, 0);
+  finishLocalScene(witness, 'kezhan', 'jia_witness_visit');
+  finishLocalScene(witness, 'renwutang', 'jia_submit_case');
+  advanceMinutes(witness, 2 * MIN_PER_DAY);
+  applyEventChoice(witness, 'jia_case_followup', 0);
+  finishLocalScene(witness, 'renwutang', 'jia_safe_statement');
+  assert.match(renderEventModal(witness, 'tie_inquiry'), /手压着自己写下的证词/);
+});
+
+test('真实炼蛊成果、狼潮旧行径与救济物资改变可选剧情', () => {
+  const gs = localStoryGame();
+  gs.flags['event_done:wine_lead'] = true;
+  gs.flags['event_done:langchao_start'] = true;
+  gs.player.yuanshi = 100;
+  gs.player.recipes.push('r_yuexuan');
+  addGu(gs, 'yueguang');
+  addGu(gs, 'xuanfeng');
+  runRefining(gs, createRefineSession(gs, 'r_yuexuan'));
+  assert.equal(gs.flags.story_refined_gu, true);
+  finishLocalScene(gs, 'gupu', 'furnace_start');
+  finishLocalScene(gs, 'gupu', 'furnace_check');
+  finishLocalScene(gs, 'renwutang', 'furnace_terms', 2);
+  assert.match(renderEventModal(gs, 'qingmao_endgame'), /带人出山/);
+  finishLocalScene(gs, 'yaotang', 'survivor_start');
+  finishLocalScene(gs, 'yaotang', 'survivor_roster');
+  gs.player.items.zhixuegao = 2;
+  finishLocalScene(gs, 'renwutang', 'survivor_terms', 2);
+  assert.equal(gs.player.items.zhixuegao, undefined);
+  assert.doesNotMatch(renderEventModal(gs, 'tie_inquiry'), /承认改引狼道/);
+  gs.pendingEventId = 'wolf_breach';
+  gs.flags.wolf_trail = true;
+  applyEventChoice(gs, 'wolf_breach', 1);
+  assert.match(renderEventModal(gs, 'tie_inquiry'), /有人动了路|把改引狼道的经过写进案卷/);
+  gs.pendingEventId = 'tie_inquiry';
+  const hearing = STORY_EVENTS.find(({ id }) => id === 'tie_inquiry');
+  applyEventChoice(gs, 'tie_inquiry', hearing.choices.findIndex(({ text }) => text.includes('改引狼道')));
+  assert.equal(gs.flags.wolf_betrayal_admitted, true);
+  assert.equal(gs.flags.tie_bond, true);
+});
+
+test('方源夜行的线索能提前指向遗洞，也能留到铁家查验值夜记录', () => {
+  for (const choice of [0, 1]) {
+    const gs = localStoryGame();
+    gs.pendingEventId = 'toumin_lost';
+    gs.flags.toumin_race = true;
+    applyEventChoice(gs, 'toumin_lost', 1);
+    finishLocalScene(gs, 'kezhan', 'fangyuan_night_road', choice);
+    assert.equal(Boolean(gs.flags['clue:huajiu']), choice === 0);
+    gs.story.quests.caravan = { stage: 'verify', clues: ['trail'], followupAt: null };
+    assert.equal(renderEventModal(gs, 'tie_inquiry').includes('方源交卷当晚'), choice === 1);
+  }
+});
+
+test('保护商队证人能换来私路救援，撤离分支可在原终章结算', () => {
+  const gs = caravanGame(0);
+  caravanHearing(gs, 0);
+  finishLocalScene(gs, 'kezhan', 'jia_witness_visit');
+  finishLocalScene(gs, 'renwutang', 'jia_submit_case');
+  advanceMinutes(gs, MIN_PER_DAY * 2);
+  applyEventChoice(gs, 'jia_case_followup', 0);
+  finishLocalScene(gs, 'renwutang', 'jia_safe_statement', 1);
+  gs.pendingEventId = 'wolf_breach';
+  const rescue = STORY_EVENTS.find(({ id }) => id === 'wolf_breach');
+  applyEventChoice(gs, rescue.id, rescue.choices.findIndex(({ text }) => text.includes('证人走过的私路')));
+  assert.equal(gs.flags.wolf_rescue, true);
+  gs.pendingEventId = 'qingmao_endgame';
+  const endgame = STORY_EVENTS.find(({ id }) => id === 'qingmao_endgame');
+  applyEventChoice(gs, endgame.id, endgame.choices.findIndex(({ text }) => text.includes('带人出山')));
+  assert.equal(gs.flags.qingmao_finished, true);
+  assert.equal(gs.flags.escape_with_survivors, true);
+  gs.location = 'zhaimen';
+  assert.equal(performPlaceAction(gs, 'escapeMountain').won, true);
+  assert.equal(gs.player.escapedMountain, true);
 });

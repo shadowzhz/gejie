@@ -4,7 +4,7 @@ import { formatDateTime, MIN_PER_DAY, MIN_PER_MONTH, MIN_PER_SHICHEN } from '../
 import { addGu, addItem, addLog, createAptitude, createNewGame, feedGu, handleQuest, loadGame, purchaseShopEntry, RANK_NAMES, realmText, recalcStats, refineBenming, saveGame, useHealItem, useHealingGu, useBoarGu, XIAO_NAMES } from '../core/state.js';
 import { createKillerMove, discoveredKillerPatterns, forgetKillerMove, recordGuUsage } from '../core/killer.js';
 import { battleAct } from '../core/combat.js';
-import { applyEventChoice, checkStoryTriggers, finishStoryBattle } from '../core/story-engine.js';
+import { applyEventChoice, checkStoryTriggers, finishStoryBattle, lookForLifeScene } from '../core/story-engine.js';
 import { advanceMinutes, moveToPlace, rewindSpringCicada, saveSpringSnapshot } from '../core/clock.js';
 import { createRefineSession, knowsRefineRecipe, purchaseRecipe, stepRefineSession } from '../core/refine.js';
 import { createBreakSession, stepBreakSession, useSheli, washMinorWall } from '../core/breakthrough.js';
@@ -85,6 +85,8 @@ function handleDeveloperAction(ui, action, { render, showToast }) {
 export function handleAction(ui, el, { render, showToast }) {
   const act = el.dataset.action;
   if (!act) return;
+  if (ui.game?.pendingEventId && (!ui.modal || ui.modal.kind === 'place') && !ui.game.battle
+    && act !== 'chooseEvent' && act !== 'togglePause') return;
   if (ui.game?.breakthrough && act !== 'breakAct') return;
   if (ui.modal?.kind === 'refine' && act !== 'refineAct' && act !== 'closeModal') return;
   const id = el.dataset.id || '';
@@ -168,8 +170,14 @@ export function handleAction(ui, el, { render, showToast }) {
     saveGame(ui.game);
     render();
     showToast(result.message);
+  } else if (act === 'lookForLifeScene' && ui.modal?.kind === 'place') {
+    const { message } = lookForLifeScene(ui.game);
+    saveGame(ui.game);
+    if (message) showToast(message);
+    render();
   } else if (act === 'checkEvents') {
-    checkStoryTriggers(ui.game, id);
+    if (!checkStoryTriggers(ui.game, id)) return;
+    saveGame(ui.game);
     render();
   } else if (act === 'refineBenming') {
     const res = refineBenming(ui.game);

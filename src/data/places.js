@@ -55,7 +55,7 @@ export const PLACES = {
     links: { shijie: 30 },
     day: '货架上堆着月兰花瓣、腌肉、蜂王蜜与各色一转炼材。',
     night: '柜台亮着油灯，伙计仍在招呼来买口粮和炼材的客人。',
-    shop: ['item:yuelanhua', 'item:shourou', 'item:fengmi', 'item:yushi', 'item:kuangshi', 'item:yuanshi_zha', 'item:yezhuya', 'item:guangyin_water'],
+    shop: ['item:yuelanhua', 'item:shourou', 'item:fengmi', 'item:yushi', 'item:kuangshi', 'item:yuanshi_zha', 'item:yezhuya'],
     services: ['shop']
   },
   gupu: {
@@ -145,12 +145,17 @@ export function shopUnitPrice(gs, id, price) {
   return id === 'jiuchong' && gs.flags.wine_bid ? price - 20 : price;
 }
 
+export function merchantRefuses(gs) {
+  return gs.location === 'gupu' && gs.minutes >= makeTime(2, 3, 1) && gs.minutes < makeTime(2, 3, 9)
+    && !!gs.flags.jia_trade_refused && (gs.story?.relations?.jiafu?.favor ?? 0) <= -40;
+}
+
 export function placeShopEntries(gs) {
   const shop = PLACES[gs.location]?.shop ?? [];
   if (gs.location !== 'gupu') return shop;
   const entries = [...shop];
   if (gs.flags.kaike) entries.push('gu:yueguang', 'gu:xiaoguang', 'gu:henshi');
-  if (gs.minutes >= makeTime(2, 3, 1) && gs.minutes < makeTime(2, 3, 9)) {
+  if (gs.minutes >= makeTime(2, 3, 1) && gs.minutes < makeTime(2, 3, 9) && !merchantRefuses(gs)) {
     for (const id of MERCHANT_GU) {
       if (id === 'chitie_sheli' && gs.minutes < makeTime(2, 3, 7)) continue;
       if (!gs.flags[`merchant_${id}_bought`]) entries.push(`gu:${id}`);

@@ -128,6 +128,11 @@ button.sm { min-height: 32px; padding: 4px 10px; font-size: .85rem; }
 .muted { color: var(--dim); font-size: .88rem; }
 .kv { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; gap: 8px; }
 .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.story-choices button { max-width: 100%; text-align: left; }
+@media (max-width: 540px) {
+  .story-choices button { flex: 1 0 100%; }
+}
+
 .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
 
 /* 场景舞台 + 昼夜氛围 */
@@ -732,7 +737,7 @@ const PLACES = {
     links: { shijie: 30 },
     day: '货架上堆着月兰花瓣、腌肉、蜂王蜜与各色一转炼材。',
     night: '柜台亮着油灯，伙计仍在招呼来买口粮和炼材的客人。',
-    shop: ['item:yuelanhua', 'item:shourou', 'item:fengmi', 'item:yushi', 'item:kuangshi', 'item:yuanshi_zha', 'item:yezhuya', 'item:guangyin_water'],
+    shop: ['item:yuelanhua', 'item:shourou', 'item:fengmi', 'item:yushi', 'item:kuangshi', 'item:yuanshi_zha', 'item:yezhuya'],
     services: ['shop']
   },
   gupu: {
@@ -819,12 +824,16 @@ function rareGathering(gs, place, minute = gs.minutes) {
 function shopUnitPrice(gs, id, price) {
   return id === 'jiuchong' && gs.flags.wine_bid ? price - 20 : price;
 }
+function merchantRefuses(gs) {
+  return gs.location === 'gupu' && gs.minutes >= makeTime(2, 3, 1) && gs.minutes < makeTime(2, 3, 9)
+    && !!gs.flags.jia_trade_refused && (gs.story?.relations?.jiafu?.favor ?? 0) <= -40;
+}
 function placeShopEntries(gs) {
   const shop = PLACES[gs.location]?.shop ?? [];
   if (gs.location !== 'gupu') return shop;
   const entries = [...shop];
   if (gs.flags.kaike) entries.push('gu:yueguang', 'gu:xiaoguang', 'gu:henshi');
-  if (gs.minutes >= makeTime(2, 3, 1) && gs.minutes < makeTime(2, 3, 9)) {
+  if (gs.minutes >= makeTime(2, 3, 1) && gs.minutes < makeTime(2, 3, 9) && !merchantRefuses(gs)) {
     for (const id of MERCHANT_GU) {
       if (id === 'chitie_sheli' && gs.minutes < makeTime(2, 3, 7)) continue;
       if (!gs.flags[`merchant_${id}_bought`]) entries.push(`gu:${id}`);
@@ -836,7 +845,7 @@ function placeShopEntries(gs) {
 
 /* === src/data/gu.js === */
 const ITEMS = {
-  guangyin_water: { id: 'guangyin_water', name: '光阴河水', kind: '口粮', price: 22, desc: '维持残存春秋蝉的生机，也可用于修复其残躯。' },
+  guangyin_water: { id: 'guangyin_water', name: '光阴河水', kind: '口粮', price: 22, desc: '可喂养春秋蝉（残）。' },
   fanran: { id: 'fanran', name: '幡然蛊', kind: '炼蛊用蛊', price: 20, desc: '可将四味酒虫逆炼为一只一转酒虫。' },
   langzi: { id: 'langzi', name: '浪子蛊', kind: '炼蛊用蛊', price: 85, desc: '可将四味酒虫逆炼为两只一转酒虫。' },
   shengjiye: { id: 'shengjiye', name: '生机叶', kind: '一转消耗蛊', price: 22, heal: 24, healCooldown: 60, desc: '取自九叶生机草，疗伤后叶片消散。一小时内再次使用无效。' },
@@ -1062,15 +1071,426 @@ const ENEMIES = {
 };
 
 
+/* === src/data/characters.js === */
+// 人物身份参照原著青茅山篇。目标、态度及交往进度用于本作剧情。
+const STORY_CHARACTERS = {
+  mobei: {
+    name: '古月漠北', identity: '古月学堂同窗，漠脉子弟',
+    voice: '好胜直率，开口常问敢不敢同去。', goal: '带同窗练出能守寨的队伍。',
+    interest: '漠脉在学堂与守军中的声望。', initial: { favor: 0, trust: 0 },
+    change: '到演武场与他谈名册。合作能让后队在狼潮时救人，公开竞争可换来大比的见证。'
+  },
+  chicheng: {
+    name: '古月赤城', identity: '古月学堂同窗，赤脉子弟',
+    voice: '做事圆转，说话先讲彼此能给什么。', goal: '替赤脉结交能独当一面的蛊师。',
+    interest: '赤脉声望与保结担保的风险。', initial: { favor: 0, trust: 0 },
+    change: '到聚财坊谈货单。履约可争取互保，选择公买也能凭单据争取三寨大比的资格。'
+  },
+  bainingbing: {
+    name: '白凝冰', identity: '白家寨蛊师，曾在三寨会盟时当众邀战',
+    voice: '语气冷淡，遇到值得交手的人会当面下战帖。', goal: '找到能逼自己全力出手的对手。',
+    interest: '看重交手的价值，对寨间交情兴趣淡薄。', initial: { favor: -5, trust: 0 },
+    change: '到月下竹林找他。交换招法能改变大比与撤离的选项，约战也可换来一处决战落脚点。'
+  },
+  jiafu: {
+    name: '贾富', identity: '贾家行商，贾金生随他离家行商',
+    voice: '重礼数，谈及失踪案时习惯把来龙去脉问清。', goal: '找出贾金生的去向，带一份交代回贾家。',
+    interest: '护住同行伙计与贾家商誉。', initial: { favor: 0, trust: 0 },
+    change: '交还失物或照料伙计会增加信任，足够可信才可看私账。私吞货款会留下追偿记录。'
+  },
+  tieruonan: {
+    name: '铁若男', identity: '铁血冷之女，随父查访贾金生一案',
+    voice: '追问细节，喜欢把几人的说辞放在一起核对。', goal: '寻到可以独立复查的证据。',
+    interest: '保全证词与证人，避免案卷只剩传言。', initial: { favor: 0, trust: 0 },
+    change: '交来两份能互证的线索，会得到她的复核与引见。'
+  },
+  tiexueleng: {
+    name: '铁血冷', identity: '铁家捕神，受贾富之请查案',
+    voice: '持重简洁，先问证据能证明什么。', goal: '查清失踪案，同时稳住寨中秩序。',
+    interest: '铁家办案公信与各寨平民的安全。', initial: { favor: 0, trust: 0 },
+    change: '复核通过后，他愿在入寨听证时接纳你的调查卷宗。'
+  }
+};
+
+
+/* === src/data/qingmao-stories.js === */
+// 青茅山支线与人物对话为游戏原创。沿用已有地点、人物身份与蛊虫。
+const QINGMAO_QUESTS = {
+  estate: {
+    name: '古宅旧账',
+    steps: {
+      trace: { name: '追索副账', hint: '到任务堂询问夹在过继文书里的收据。' },
+      hearing: { name: '决定副账去向', hint: '到山寨客栈见旧管事。' }
+    },
+    clues: { receipt: { name: '药圃旧收据', detail: '药圃收成一直入公账，末年的支领却写在另一册上。' } },
+    outcomes: { public: '副账归公，两家在执事面前重做交割。', private: '以封存副账换回份额，并替旧管事保住生计。' }
+  },
+  grotto: {
+    name: '水帘后的第二道痕',
+    steps: {
+      marks: { name: '勘察水痕', hint: '从血蝠洞进入暗涧遗洞，查看洞壁。' },
+      vault: { name: '决定怎么处置遗洞', hint: '在暗涧遗洞查看水道尽头。线索也能靠徒手厘清。' }
+    },
+    clues: { waterline: { name: '两道水痕', detail: '外侧水道会进水，石壁上却刻出了留给后来人脱身的回路。' } },
+    outcomes: { closed: '封住通向内层的水道，遗洞仍可留作藏身。', marked: '把安全回路留给后来人，猎户也知道了如何绕路。' }
+  },
+  hunter: {
+    name: '猎户的空套索',
+    steps: {
+      spoor: { name: '辨明山兽行踪', hint: '去月下竹林寻找失效的套索。若山路未开，先去演武场练手。' },
+      report: { name: '决定如何预警', hint: '去任务堂见猎户。若赶在次年六月前交图，巡山队和猎户能在狼潮来时接应。' }
+    },
+    clues: { spoor: { name: '朝寨移动的狼迹', detail: '野猪早已离开，狼群的足迹却一拨比一拨靠近寨门。' } },
+    outcomes: { patrol: '公开狼迹，巡山队接过预警。', hidden: '护住猎户的私路，让他们自行撤人。' }
+  },
+  survivors: {
+    name: '狼潮幸存者',
+    steps: {
+      names: { name: '核对幸存者名册', hint: '狼潮后到药堂盘点席位与伤者。' },
+      supplies: { name: '安排物资和通路', hint: '到任务堂与族中执事谈判。铁家还没来时，可以先保存听证要用的材料。' }
+    },
+    clues: { roster: { name: '名册上的空名', detail: '有些药材用在了名册之外的伤者身上，签名来自东门值夜的人。' } },
+    outcomes: { record: '公布真实名册，留作东门责任听证的证据。', shelter: '暂封姓名，给伤者留一条避开盘查的出寨路。' }
+  },
+  furnace: {
+    name: '熄炉之前',
+    steps: {
+      inspect: { name: '查验失火的炼炉', hint: '到蛊铺查看焦黑的炉箍。炼成过蛊虫的玩家能亲自试炉。' },
+      terms: { name: '决定如何追责', hint: '替小工到任务堂讲清事故，或让商人出钱私下修缮。' }
+    },
+    clues: { hoop: { name: '有旧裂的炉箍', detail: '裂口里已积满灰，失火前就有裂缝。' } },
+    outcomes: { open: '公开事故，让新手能查到缺陷并试炉。', private: '商人私下修炉，替小工负担药费。' }
+  }
+};
+const QINGMAO_SCENES = [
+  {
+    id: 'mobei_roster', person: 'mobei', manual: true, title: '名次先给谁看',
+    cond: 'at:yanwu&flag:event_done:classmates',
+    text: '漠北蹲在沙地边，把尺一寸寸压进同窗留下的脚印里。管事来问名册，他用袖子把最浅的两行盖住。\n“人是我叫来的，练得不好我担着。你肯不肯留到收场？要争第一，我也等你开口。”',
+    choices: [
+      { text: '留下来陪人练，把名次留到最后', effects: ['flag:mobei_partner', 'relation:mobei:15:18:一起带完学堂的散队'] },
+      { text: '当众约一个公开的比试名次', effects: ['flag:mobei_rival', 'relation:mobei:-5:8:立下公开比试之约'] }
+    ]
+  },
+  {
+    id: 'mobei_watch', person: 'mobei', manual: true, title: '后队的木牌',
+    cond: 'at:yanwu&flag:event_done:mobei_roster&flag:event_done:nianmo_exam',
+    text: '大考过后，管事把末等学徒划到后队，牌上没有替补。漠北翻到最后一页，发现自己的名字被提前写进了头队。\n“这是给漠脉看的名册。若真遇险，后面的人只能看见我的背。”',
+    choices: [
+      { text: '愿与他轮流替后队守夜', cond: 'flag:mobei_partner', effects: ['flag:mobei_shared_watch', 'relation:mobei:10:18:同守后队'] },
+      { text: '让他自证能守两头，我来做见证', effects: ['flag:mobei_public_test', 'relation:mobei:0:8:为公开校场作证'] }
+    ]
+  },
+  {
+    id: 'mobei_wall', person: 'mobei', manual: true, title: '东墙上的半面旗',
+    cond: 'at:yanwu&flag:event_done:mobei_watch&flag:event_done:langchao_start',
+    text: '旗面叫狼爪掏去半截。漠北把它铺在墙头，拿饭牌压住四角。\n“练的时候我总喊往前。底下那几个人撤下来前，我才知道还有一句该喊。”',
+    choices: [
+      { text: '请他派轮值旧队接走东门伤员', cond: 'flag:mobei_shared_watch&trust:mobei:35', effects: ['flag:mobei_relief', 'relation:mobei:12:10:答应出人接应东门'] },
+      { text: '把比试留到三寨，照实记下后队的战功', effects: ['flag:mobei_contender', 'relation:mobei:3:5:承认彼此是对手'] }
+    ]
+  },
+  {
+    id: 'chi_delivery', person: 'chicheng', manual: true, title: '两手交割',
+    cond: 'at:jucaifang&flag:event_done:classmates',
+    text: '赤城把两份货单叠起来，缺了一角的那份放在上头。“挑一份签。签上面，伙计有工钱；签下面，管事记得是谁替他省了钱。两样我只保一样。”',
+    choices: [
+      { text: '签实收的货单，和赤城各留一份', effects: ['flag:chi_open_books', 'relation:chicheng:8:18:约定双方各留凭据'] },
+      { text: '公开账上的差额，把欠工钱的人叫来', effects: ['relation:chicheng:-18:-22:货单被当众揭开'] }
+    ]
+  },
+  {
+    id: 'chi_quota', person: 'chicheng', manual: true, title: '赤脉预留的一箱药',
+    cond: 'at:jucaifang&flag:event_done:chi_delivery&after:2-1-1-0',
+    text: '箱盖上还留着旧货单的朱印。赤城蹲下去，把贴纸揭得平平整整。\n“开春会涨价。等你用得上时，谁来问我都说这一箱有主。”他把空白的领条递给你。货价之外，领条上还留了手印的位置。',
+    choices: [
+      { text: '签下领条，约定危时由救人一方先用', cond: 'flag:chi_open_books', effects: ['flag:chi_reserved', 'relation:chicheng:12:18:谈妥药箱的去向'] },
+      { text: '请任务堂按市价公买，免去领条', effects: ['flag:chi_public_bid', 'relation:chicheng:-8:-8:药箱改走公买'] }
+    ]
+  },
+  {
+    id: 'chi_guarantee', person: 'chicheng', manual: true, title: '保人也要按手印',
+    cond: 'at:jucaifang&flag:event_done:chi_quota&flag:event_done:wolf_breach',
+    text: '赤城把盖过印的纸摆在算盘旁。窗外有人挨家问东门的事，他把窗推开，让声音进来。\n“写你名字容易。以后若有人问起这张纸，我也要站过去答。”',
+    choices: [
+      { text: '彼此担责，请他为听证后的出入作保', cond: 'flag:chi_reserved&trust:chicheng:30', effects: ['flag:chi_joint_bond', 'relation:chicheng:8:12:签了互保的文书'] },
+      { text: '取回自己的领条，约定今后各自担责', effects: ['flag:chi_separate', 'relation:chicheng:-4:-10:按条款拆伙'] }
+    ]
+  },
+  {
+    id: 'bai_footprints', person: 'bainingbing', manual: true, title: '竹叶翻到霜面',
+    cond: 'at:zhulin&flag:event_done:classmates',
+    text: '湿竹叶翻到背面，寒意隔着鞋底渗上来。石上的少年收回手，没问你是哪一寨的，先问你走来时踩断了几根枝。\n“听不见也行，出手之前别急着报自己的名字。”',
+    choices: [
+      { text: '指出地上第三道脚印，有人比我们先离开', effects: ['flag:bai_observer', 'relation:bainingbing:10:12:拆穿了竹径上的虚步'] },
+      { text: '请他改日当面过招', effects: ['flag:bai_challenge', 'relation:bainingbing:15:4:在竹径约战'] }
+    ]
+  },
+  {
+    id: 'bai_after_spar', person: 'bainingbing', manual: true, title: '第二刀留着',
+    cond: 'at:zhulin&flag:event_done:bai_footprints&flag:event_done:bai_encounter',
+    text: '白凝冰指间夹着两截细竹，一截已裂开，一截还完好。\n“那天你转身时，我还能再出一刀。若只为赢，那一刀也够了。我想看看你下一回会怎么走。”',
+    choices: [
+      { text: '交换起手破绽，各练自己最容易失手的一招', cond: 'flag:bai_read|flag:bai_observer|!rank:1', effects: ['flag:bai_joint_read', 'relation:bainingbing:12:20:交换了起手破绽'] },
+      { text: '把这一刀留到大比，场上见分晓', effects: ['flag:bai_duel_terms', 'relation:bainingbing:8:6:约好大比上再较量'] }
+    ]
+  },
+  {
+    id: 'bai_broken_flag', person: 'bainingbing', manual: true, title: '旗落之后',
+    cond: 'at:zhulin&flag:event_done:bai_after_spar&flag:event_done:three_clans',
+    text: '会盟坡的旗落了，白凝冰用一块石头压住一角。山风把远处呼喊的人声吹散，他一直看着白家那条下山道。\n“旗能换，再立一面就是。山塌下来的时候，你要走哪条路？”',
+    choices: [
+      { text: '对照两寨走过的路，约好遇险时各带一队人', cond: 'flag:bai_joint_read&trust:bainingbing:30', effects: ['flag:bai_escape_route', 'relation:bainingbing:10:12:留下三寨互通的撤离路线'] },
+      { text: '把路位置换成下次交手的落脚点', effects: ['flag:bai_last_challenge', 'relation:bainingbing:5:3:留待山外再见'] }
+    ]
+  },
+
+  {
+    id: 'fangyuan_night_road', person: 'fangyuan', manual: true, title: '方源没借第二盏灯',
+    cond: 'at:kezhan&flag:fangyuan_night_steps',
+    text: '方源把半盏灯搁回来，灯芯剪得比来时更短。你提起学堂头名，他看了看灯油。\n“有一盏就够了。你若想知道我走哪条路，可以看看门槛上哪边先干。”他说完起身，你看见桌脚旁有一道连向后门的水印。',
+    choices: [
+      { text: '跟水印查过去，请伙计认出石片的来处', effects: ['flag:clue:huajiu', 'flag:fangyuan_trail_seen'] },
+      { text: '还灯给店家，将自己的观察记在纸上', effects: ['flag:fangyuan_written_note'] }
+    ]
+  },
+  {
+    id: 'estate_start', quest: 'estate', manual: true, title: '纸背透出一笔账',
+    cond: 'at:renwutang&flag:event_done:uncle',
+    text: '执事把旧过继文书照着灯举起来，另一面透出一笔药圃收成。那年账上写的是受涝无收，他的桌下却还垫着晒药用的旧竹席。',
+    choices: [{ text: '请执事翻出附在文书后的收据', effects: ['quest:estate:trace'] }]
+  },
+  {
+    id: 'estate_receipt', quest: 'estate', manual: true, title: '领款人用了两种笔',
+    cond: 'at:renwutang&quest:estate:trace',
+    text: '收据上的支笔细得像描画，落款却压破了纸。执事认得后面那支是旧管事的。\n“账我能给你看。他若肯说，你还得答应让他把话说完。”',
+    choices: [{ text: '抄下收据，赴客栈见旧管事', effects: ['clue:estate:receipt', 'quest:estate:hearing'] }]
+  },
+  {
+    id: 'estate_terms', quest: 'estate', manual: true, title: '旧管事吃完那碗面',
+    cond: 'at:kezhan&quest:estate:hearing',
+    text: '老人把面汤喝净，才将账交来。少掉的收成里有三成拿去养死役家属，其余叫人以管事的名义提走。\n“若明早要对簿，劳烦今晚先给那几户送个信。账是账，他们过日子还靠那几顿饭。”',
+    choices: [
+      { text: '一并提交账册和赈济名单，由执事复核', effects: ['quest:estate:completed:public', 'flag:estate_public', 'flag:inheritance_claim'] },
+      { text: '和舅父议定返还份额，将赈济先留给旧管事发放', effects: ['quest:estate:completed:private', 'flag:estate_private'] }
+    ]
+  },
+  {
+    id: 'grotto_start', quest: 'grotto', manual: true, title: '酒香随水而来',
+    cond: 'at:huajiu&flag:clue:huajiu',
+    text: '洞口闻得到酒，往里三步倒淡了。你回到水帘旁再闻了一次，香味竟跟着半湿的脚印往外走。壁上有人顺着被水抹过的地方刻了两道细线。',
+    choices: [{ text: '顺着两道水线记下高低位置', effects: ['quest:grotto:marks'] }]
+  },
+  {
+    id: 'grotto_measure', quest: 'grotto', manual: true, title: '第二道线低了一寸',
+    cond: 'at:huajiu&quest:grotto:marks',
+    text: '两道水线之间夹着一枚竹楔。水涨到这儿，竹楔会浮起，洞外便有人能从背坡拉开绳扣。越往深处，酒香越像是为了替退路留下记号。',
+    choices: [
+      { text: '借月道蛊光照清楚回路并刻下拓记', cond: 'gu:yueguang|gu:yuexuan|gu:yuehen|gu:yueni|gu:yuemang', effects: ['clue:grotto:waterline', 'quest:grotto:vault', 'flag:grotto_lit'] },
+      { text: '用一截干竹试水，沿石壁摸清回路', effects: ['clue:grotto:waterline', 'quest:grotto:vault'] }
+    ]
+  },
+  {
+    id: 'grotto_dispose', quest: 'grotto', manual: true, title: '水闸留给谁',
+    cond: 'at:huajiu&quest:grotto:vault',
+    text: '石闸后是旧人的遗藏，旁边留的一条狭道只能让人贴着水走。撬开挡石时，你在反面摸到了几道新指甲痕。还有旁人来过，也许下次会跟着你留下的记号走。',
+    choices: [
+      { text: '封住内层水道，在洞里备下一处藏身地', effects: ['quest:grotto:completed:closed', 'flag:grotto_shelter'] },
+      { text: '留下退路标记，让熟悉山路的猎户也能通行', effects: ['quest:grotto:completed:marked', 'flag:grotto_map'] }
+    ]
+  },
+  {
+    id: 'hunter_start', quest: 'hunter', manual: true, title: '猎户来问一段山路',
+    cond: 'at:kezhan&flag:kaike&!flag:hunter_started',
+    text: '猎户把两只空套索搁到桌下，占去半张长凳。“猪撞断了绳，绳头得往林子里去。这两回，绳头都朝寨门。”他说完打翻了一点盐，没低头去收。',
+    choices: [{ text: '答应去竹林查查套索为何朝寨门倒', effects: ['flag:hunter_started', 'quest:hunter:spoor'] }]
+  },
+  {
+    id: 'hunter_spoor', quest: 'hunter', manual: true, title: '狼有退路，猪没有',
+    cond: 'at:zhulin&quest:hunter:spoor',
+    text: '你拨开擦白的竹节，土上叠着几层狼印。最后一层从前印横切过去，循着猎户往常收套的方向，直逼山寨。',
+    choices: [
+      { text: '画出狼迹和两条能够撤人的路', effects: ['clue:hunter:spoor', 'quest:hunter:report'] },
+      { text: '把酒客说的狼声和足迹对照，标出兽群回头的山坳', cond: 'flag:hunter_rumor', effects: ['clue:hunter:spoor', 'quest:hunter:report', 'flag:hunter_spoor_read'] }
+    ]
+  },
+  {
+    id: 'hunter_report', quest: 'hunter', manual: true, title: '只呈一份山图',
+    cond: 'at:renwutang&quest:hunter:report',
+    text: '执事愿派巡山队出面，只要猎户把所有小路画出来。几条路通向族规禁猎的地界。猎户将嘴闭得很紧，手指却还按着足迹最靠近寨门的那一处。',
+    choices: [
+      { text: '公开路径，请巡山队接手防线', effects: ['quest:hunter:completed:patrol', 'flag:hunter_patrol', 'flag:wolf_supplies'] },
+      { text: '把危险处交给执事，私路只留给猎户撤人', effects: ['quest:hunter:completed:hidden', 'flag:hunter_evac', 'flag:wolf_trail'] }
+    ]
+  },
+  {
+    id: 'survivor_start', quest: 'survivors', manual: true, title: '多出来的一双鞋',
+    cond: 'at:yaotang&flag:event_done:langchao_start',
+    text: '药堂门边的鞋子排到墙根。看席的人数了三遍，把一双沾着山泥的鞋藏到凳下。床上有三名山外伤者，领药的册上只剩两道空栏。',
+    choices: [{ text: '留下帮忙，把每一席的去处核对清楚', effects: ['quest:survivors:names'] }]
+  },
+  {
+    id: 'survivor_roster', quest: 'survivors', manual: true, title: '没有空栏的那个名字',
+    cond: 'at:yaotang&quest:survivors:names',
+    text: '药师把灯剪短半截。缺的那一笔用东门值夜人的名字领了药，对方认得伤者，也记得出事前有人改过撤人的路。点名查过去，两件事都要翻出来。',
+    choices: [{ text: '抄一份名册，请执事到场商量', effects: ['clue:survivors:roster', 'quest:survivors:supplies'] }]
+  },
+  {
+    id: 'survivor_terms', quest: 'survivors', manual: true, title: '留在名册里，还是走出门',
+    cond: 'at:renwutang&quest:survivors:supplies',
+    text: '执事的笔还没落，伤者托人来问：姓名入卷后，家里将来能领抚恤，可两寨一旦追查，又有谁肯出面护他们回家？\n门外有人牵来一头驮药的骡，缰绳递到你手里。',
+    choices: [
+      { text: '请伤者自己署名，交存一份实录', effects: ['quest:survivors:completed:record', 'flag:survivor_record'] },
+      { text: '封存姓名，先用药队的文书送人下山', effects: ['quest:survivors:completed:shelter', 'flag:survivor_pass'] },
+      { text: '自付两份止血膏，替愿作证的伤者留出休养时间', cond: 'item:zhixuegao:2', effects: ['take:zhixuegao:2', 'quest:survivors:completed:record', 'flag:survivor_record', 'flag:survivor_recuperation'] }
+    ]
+  },
+  {
+    id: 'furnace_start', quest: 'furnace', manual: true, title: '门边晾着一只焦手套',
+    cond: 'at:gupu&!flag:furnace_started&(flag:event_done:wine_lead|flag:furnace_rumor)',
+    text: '炉边小工用左手给客人找钱，右手的布换了一层又一层。商人说小工错了火候。小工先点了头，等商人走远，又把一片烧裂的炉箍悄悄压在柜台上。',
+    choices: [{ text: '请小工带你看看那台炉', effects: ['flag:furnace_started', 'quest:furnace:inspect'] }]
+  },
+  {
+    id: 'furnace_check', quest: 'furnace', manual: true, title: '火从旧裂口窜出',
+    cond: 'at:gupu&quest:furnace:inspect',
+    text: '炉箍焦在外圈，缝里却积着冷灰。小工给了你前几日的炉温记录。商人脚步停在后门，隔了一阵，才进去翻能补换的箍。',
+    choices: [
+      { text: '用成蛊的经验复现泄压，亲手写下证词', cond: 'flag:story_refined_gu', effects: ['clue:furnace:hoop', 'quest:furnace:terms', 'flag:furnace_expert'] },
+      { text: '请隔壁炉师验过裂口，代录见证', effects: ['clue:furnace:hoop', 'quest:furnace:terms'] }
+    ]
+  },
+  {
+    id: 'furnace_terms', quest: 'furnace', manual: true, title: '把名字写在报修单上',
+    cond: 'at:renwutang&quest:furnace:terms',
+    text: '商人带来一副新炉箍和一张药费单。若上公示，待人核查之前他要停几日买卖。小工看了很久自己的名字，说这几日还能帮着看炉，往后的学徒也得知道从哪边泄压。',
+    choices: [
+      { text: '贴出事故记录，请小工一起讲给学徒听', effects: ['quest:furnace:completed:open', 'flag:furnace_public', 'flag:workshop_route'] },
+      { text: '由商人赔医药并修炉，单据由小工自己收着', effects: ['quest:furnace:completed:private', 'flag:workshop_aid'] },
+      { text: '当众示范避开裂口，领小工把后门留作安全通道', cond: 'flag:furnace_expert', effects: ['quest:furnace:completed:open', 'flag:furnace_public', 'flag:workshop_route', 'flag:workshop_escape_route'] }
+    ]
+  },
+  {
+    id: 'jia_safe_statement', quest: 'caravan', manual: true, title: '替证人留一扇门',
+    cond: 'at:renwutang&flag:event_done:jia_case_followup&(outcome:caravan:iron|outcome:caravan:jia)',
+    text: '失踪案卷宗已经送走，商队伙计却还在寨里。有人赌他讲得太多，有人赌他一句真话也没讲。伙计把房门纸糊了两遍，隔着纸问你，他要是走了，还能不能回来作证。',
+    choices: [
+      { text: '公开担保他的安全，请他留一份正式证词', effects: ['flag:jia_named_witness', 'relation:tieruonan:5:10:取得在册证人的补录'] },
+      { text: '送他上商路，将新住址只交给贾富', effects: ['flag:jia_safe_passage', 'relation:jiafu:10:10:替证人守住了新住址'] }
+    ]
+  },
+  {
+    id: 'life_inn', manual: true, ambient: true, title: '倒扣的酒盅',
+    cond: 'at:kezhan&night&flag:kaike',
+    text: '酒客把酒盅倒扣，杯底有从山上带来的白石粉。“猎户今天空手。他只谈他走回来时听见几只狼在答声。”',
+    choices: [
+      { text: '请酒客把猎户引来，谈谈空套索', cond: '!flag:hunter_started', effects: ['flag:hunter_started', 'quest:hunter:spoor'] },
+      { text: '记下狼的答声方向', effects: ['flag:hunter_rumor'] }
+    ]
+  },
+  {
+    id: 'life_carrier', manual: true, ambient: true, title: '一箱药认两家',
+    cond: 'at:jucaifang&day&after:2-1-1-0&before:2-6-1-0&flag:chi_open_books',
+    text: '送货人按赤城的口信把两张价签并在一起。他愿把药先送到东墙，条件是有人替他在雨天看一趟车。',
+    choices: [
+      { text: '用八块元石雇短工，药箱先运去东墙', cond: 'stones:8', effects: ['yuanshi:-8', 'flag:wolf_supplies', 'relation:chicheng:6:6:交割时践约'] },
+      { text: '让他连箱退回，避免另欠人情', effects: [] }
+    ]
+  },
+  {
+    id: 'life_school', manual: true, ambient: true, title: '谁把名字写小了',
+    cond: 'at:xuetang&day&flag:kaike&before:1-12-15-0',
+    text: '两名同窗把抄错的练功簿举到窗边，一人说是漠家插手，一人说是赤家先来过。门边的方源看了一眼纸角，借走一块砚石便走了。',
+    choices: [
+      { text: '把原簿和副本留给家老共同核验', effects: ['relation:mobei:4:5:在学堂留存原簿', 'relation:chicheng:4:5:在学堂留存原簿'] },
+      { text: '用原簿换赤城说出管事的名字', effects: ['relation:mobei:-8:-8:当着同窗交出名簿', 'relation:chicheng:8:5:透露抄簿管事'] }
+    ]
+  },
+  {
+    id: 'life_apprentice', manual: true, ambient: true, title: '炉坊的求助',
+    cond: 'at:gupu&day&benming&!flag:furnace_started&!flag:event_done:wine_lead',
+    text: '柜台后有人拣起一截烧坏的炉箍，认出你腰间有本命蛊的名牌。他把一张药费单折进袖子，低声问你愿不愿看一眼事故的地方。',
+    choices: [
+      { text: '去看炉伤，接下小工的请求', effects: ['flag:furnace_started', 'quest:furnace:inspect'] },
+      { text: '告诉他可以另约人来验炉', effects: ['flag:furnace_rumor'] }
+    ]
+  },
+  {
+    id: 'life_whisper', manual: true, ambient: true, title: '夜柜后的交易',
+    cond: 'at:kezhan&night&!rank:1&favor:jiafu:10&clue:caravan:ledger',
+    text: '柜房吹熄了灯。旧押车人把值夜簿压在杯下，想换一句承诺：今后有人问起他的同乡，只提事由，别提人名。',
+    choices: [
+      { text: '把问询范围说清，留下可核对的值夜记录', effects: ['clue:caravan:trail', 'relation:jiafu:4:8:遵守证人的约定'] },
+      { text: '拒绝担保，把值夜簿推回去', effects: [] }
+    ]
+  },
+  {
+    id: 'life_bamboo', manual: true, ambient: true, title: '血迹倒着走',
+    cond: 'at:zhulin&day&flag:practiced',
+    text: '竹节崩口凝着一点血，几步外蹄子却印得格外轻。那头受伤的兽爬过这儿之后，有东西拖着它倒走了一段。',
+    choices: [
+      { text: '在土坡画个三角记号，提醒过路人', effects: ['flag:hunter_rumor'] },
+      { text: '借探知蛊找出拖痕朝向', cond: 'gu:nianxi', effects: ['flag:hunter_rumor', 'flag:hunter_spoor_read'] }
+    ]
+  },
+  {
+    id: 'life_east_lamp', manual: true, ambient: true, title: '三更的借灯人',
+    cond: 'at:yaotang&night&flag:event_done:langchao_start',
+    text: '有人在药堂外敲了两短一长。伤者不用药，要一盏没有寨记的灯，好让家里人认得他今晚要走哪道坡。',
+    choices: [
+      { text: '带他走药队用的山路', cond: 'flag:survivor_pass|flag:grotto_map', effects: ['flag:survivor_lamp_guided'] },
+      { text: '留下一盏灯，请他等到队伍天明再出发', effects: ['flag:survivor_lamp'] }
+    ]
+  }
+];
+
+
 /* === src/data/story.js === */
+const STORY_QUEST_STAGES = {
+  completed: '已完成',
+  failed: '已失败'
+};
+const STORY_QUESTS = {
+  ...QINGMAO_QUESTS,
+  caravan: {
+    name: '贾家商队失踪',
+    followupDays: 2,
+    followupEvent: 'jia_case_followup',
+    steps: {
+      investigate: {
+        name: '调查取证',
+        hint: '去山寨客栈问访商队伙计，或到任务堂抄录驿道登记。次年三月初六起，贾富会在寨中问询。'
+      },
+      verify: {
+        name: '核对证词',
+        hint: '继续去山寨客栈、任务堂取证。贾富信得过你时，可在蛊铺查私账。铁家入寨听证结束前，到任务堂提交卷宗。'
+      }
+    },
+    clues: {
+      tracks: { name: '雨中足迹与失物', detail: '窄道脚印与一件商队失物，能证明有人经过山涧。' },
+      witness: { name: '伙计的口供', detail: '客栈伙计亲见贾金生离开车队，记得他的出发时辰。' },
+      trail: { name: '寨门驿道的复查', detail: '守门人记下货车过门的时辰，可与口供对照。' },
+      ledger: { name: '贾富的私账', detail: '出货时辰与车队登记不同，贾富愿私下解释其中缘由。' }
+    },
+    outcomes: {
+      iron: '证据交由铁家复核',
+      jia: '私账交回贾富，贾家自行追查',
+      refused: '玩家放弃继续追查',
+      theft: '贾家发现货款未归还',
+      expired: '铁家收卷时，调查仍无结论',
+      legacy: '原有问询结果已归档'
+    }
+  }
+};
 const STORY_EVENTS = [
   {
     id: 'kaike',
     title: '学堂开课',
     cond: '!flag:kaike',
-    text: '开窍大典散后，学堂家老把今年新开窍的少年召到堂前。\n“从今日起，你们便是一转蛊师。去堂后蛊室挑一只本命蛊，谁先在三月三日之前炼化交卷，赏二十块元石。”\n人群顿时起了骚动。',
+    text: '开窍大典散后，学堂家老把今年新开窍的少年召到堂前。\n“从今日起，你们便是一转蛊师。去堂后蛊室挑一只本命蛊，谁先在三月三日之前炼化交卷，赏二十块元石。”\n人群顿时起了骚动。\n\n家老把铜簿翻到空白页，没急着写名字。“从蛊室领出来算借给你，留住它、炼化它，才算你的本事。出了寨，没人照着这上面的次序救你。”门边一个孩子摸了摸自己的空口袋，把手缩回袖中。',
     choices: [
-      { text: '记下规矩，前往学堂领蛊', effects: ['flag:kaike', 'flag:toumin_race', 'goal:前往「学堂」领取本命蛊，并赶在三月三日前交卷夺取头名赏'] }
+      { text: '记下规矩，前往学堂领蛊', effects: ['flag:kaike', 'flag:toumin_race', 'goal:前往「学堂」领取本命蛊，并赶在三月三日前交卷夺取头名赏'] },
+      { text: '借家老的领蛊簿，问清领蛊与炼化的区别', effects: ['flag:kaike', 'flag:toumin_race', 'flag:academy_ledger', 'goal:到学堂的蛊室领蛊，再到空窍炼化本命蛊'] }
     ]
   },
   {
@@ -1087,16 +1507,17 @@ const STORY_EVENTS = [
     id: 'toumin_lost',
     title: '头名旁落',
     cond: 'flag:toumin_race&after:1-3-3-0',
-    text: '天刚蒙蒙亮，学堂外便传开了消息：昨夜半夜，古月方源敲开了家老的门，抢先领走了头名赏的二十块元石。\n谁也没想到，丙等资质的他竟比甲等的方正还快一步。',
+    text: '天刚蒙蒙亮，学堂外便传开了消息：昨夜半夜，古月方源敲开了家老的门，抢先领走了头名赏的二十块元石。\n谁也没想到，丙等资质的他竟比甲等的方正还快一步。\n\n门房说方源站在阶下报的是自己的名，语气像报天亮的时辰。有人说他有藏起来的蛊，有人只记得那一夜借过他半盏灯。',
     choices: [
-      { text: '专心眼下修行', effects: ['unflag:toumin_race', 'goal:前往「演武场」练手，尽快攒够实力出寨历练'] }
+      { text: '专心眼下修行', effects: ['unflag:toumin_race', 'goal:前往「演武场」练手，尽快攒够实力出寨历练'] },
+      { text: '问方源为何半夜来交卷，记下他走过的石阶', effects: ['unflag:toumin_race', 'flag:fangyuan_night_steps', 'goal:去演武场练手，也可到客栈问问方源走过的路'] }
     ]
   },
   {
     id: 'uncle',
     title: '舅父设局',
     cond: 'after:1-4-1-0',
-    text: '古月冻土请你在过继文书上画押，许诺先给一笔安家钱。你翻到末页，发现旧产仍由他代管。族中执事愿替你留一份文书，却要你自己承担日后的争讼。',
+    text: '古月冻土请你在过继文书上画押，许诺先给一笔安家钱。你翻到末页，发现旧产仍由他代管。族中执事愿替你留一份文书，却要你自己承担日后的争讼。\n\n冻土拢了拢袖子，把笔又往你面前推半寸。“药圃年年要修沟，账上亏的是我。你只消按手印，手上就干净。”执事没有插话，先把垫在竹席下的旧纸翻了个面。',
     choices: [
       { text: '拒绝画押，请执事封存文书', effects: ['flag:inheritance_claim'] },
       { text: '签下文书，领取二十八块元石', effects: ['yuanshi:+28'] }
@@ -1106,10 +1527,10 @@ const STORY_EVENTS = [
     id: 'classmates',
     title: '学堂推举班头',
     cond: 'after:1-5-1-0',
-    text: '古月漠北与古月赤城各自招揽同窗。漠北邀你随队练手，赤城愿借家中的人脉帮你备货。你也可以独行，去听酒客说说山里的旧事。',
+    text: '古月漠北与古月赤城各自招揽同窗。漠北邀你随队练手，赤城愿借家中的人脉帮你备货。你也可以独行，去听酒客说说山里的旧事。\n\n漠北把几根练歪了的木桩一一扶正。赤城分货签时给看门的也留了一份。方源坐得最靠门，听完两人的价码，拿起早已喝空的竹杯，先一步出了学堂。',
     choices: [
-      { text: '与漠北同练，领一只石皮蛊', effects: ['flag:mo_faction', 'gu:shipi'] },
-      { text: '随赤城备货，领十八块元石', effects: ['flag:chi_faction', 'yuanshi:+18'] },
+      { text: '与漠北同练，领一只石皮蛊', effects: ['flag:mo_faction', 'relation:mobei:20:30:学堂同练', 'gu:shipi'] },
+      { text: '随赤城备货，领十八块元石', effects: ['flag:chi_faction', 'relation:chicheng:20:30:替赤脉备货', 'yuanshi:+18'] },
       { text: '独行，追查酒香（解锁暗涧遗洞）', effects: ['flag:clue:huajiu', 'goal:循血蝠洞旁的小径探访暗涧遗洞'] }
     ]
   },
@@ -1117,7 +1538,7 @@ const STORY_EVENTS = [
     id: 'wine_lead',
     title: '石缝里的酒香',
     cond: 'after:1-6-1-0',
-    text: '客栈伙计拾到一片沾着酒香的石片，指得出它来自哪一道山涧。行商也肯替你留意下一趟商队的酒虫拍卖。',
+    text: '客栈伙计拾到一片沾着酒香的石片，指得出它来自哪一道山涧。行商也肯替你留意下一趟商队的酒虫拍卖。\n\n伙计取清水把石片冲了一遍，杯底仍有香气。他看了看后门：“寻酒的人要看哪家酒好。要是石头比酒还香，得先问它是从哪儿往外流的。”',
     choices: [
       { text: '收下石片，私探遗洞', effects: ['flag:clue:huajiu', 'goal:从血蝠洞旁前往暗涧遗洞，寻找酒虫'] },
       { text: '等商队开拍（凭帖竞买酒虫）', effects: ['flag:wine_bid', 'goal:次年三月初一至初八去蛊铺竞买酒虫'] }
@@ -1137,18 +1558,19 @@ const STORY_EVENTS = [
     id: 'jiuyecao_inheritance',
     title: '家产交割',
     cond: 'after:1-9-1-0',
-    text: '族中执事摊开旧账，酒肆和药圃须重新清点。此前封存的文书足以证明你对药圃的份额。若已经签下过继文书，眼下只能接受舅父拨给你的补偿。',
+    text: '族中执事摊开旧账，酒肆和药圃须重新清点。此前封存的文书足以证明你对药圃的份额。若已经签下过继文书，眼下只能接受舅父拨给你的补偿。\n\n门外排着等结工钱的人。执事每念一处田产，便有人把头抬起来。轮到药圃时，旧管事没应声，手里捏着那束晒干的账绳。',
     choices: [
       { text: '按旧账分产，收下九叶生机草', cond: 'flag:inheritance_claim', effects: ['gu:jiuyecao'] },
       { text: '拿酒肆分红作本钱（四十二块元石）', cond: 'flag:inheritance_claim', effects: ['yuanshi:+42'] },
-      { text: '收下过继后的补偿（十八块元石）', cond: '!flag:inheritance_claim', effects: ['yuanshi:+18'] }
+      { text: '收下过继后的补偿（十八块元石）', cond: '!flag:inheritance_claim', effects: ['yuanshi:+18'] },
+      { text: '按旧管事说的办法分账，先把药圃收入留给赈济', cond: 'flag:estate_private', effects: ['flag:estate_relief', 'item:zhixuegao:3'] }
     ]
   },
   {
     id: 'nianmo_exam',
     title: '年末大考',
     cond: 'after:1-12-15-0&!flag:nianmo_done',
-    text: '转眼已至腊月十五，古月山寨迎来一年一度的年末考核。全族长老坐在演武场高台之上，按修为、蛊虫与实战功绩评定甲乙丙丁。',
+    text: '转眼已至腊月十五，古月山寨迎来一年一度的年末考核。全族长老坐在演武场高台之上，按修为、蛊虫与实战功绩评定甲乙丙丁。\n\n沙地还没扫净，上午落下的脚印盖着下午第一场的界线。漠北弯腰把边上的尺摆正。赤城在棚下替两名迟到的学徒留了位，等家老唱名，也没说他们是谁家的人。',
     choices: [
       { text: '登台应考（按当前实力评定赏格）', effects: ['exam:nianmo', 'flag:nianmo_done', 'goal:继续修行突破二转，或打听后山暗涧遗洞的传闻'] }
     ]
@@ -1167,86 +1589,118 @@ const STORY_EVENTS = [
     id: 'jia_missing',
     title: '商队少了一人',
     cond: 'after:2-3-2-0',
-    text: '贾家商队点货时，贾金生迟迟没有回来。伙计记得他打听过山涧方向，求你搭把手。窄道泥泞，车辙和脚印正在被雨冲散。',
+    quest: 'caravan',
+    text: '贾家商队点货时，贾金生迟迟没有回来。伙计记得他打听过山涧方向，求你搭把手。窄道泥泞，车辙和脚印正在被雨冲散。\n\n最后一辆车倒是回来了。车夫把本该交给贾金生的钥匙搁在半空，问该递给谁。伙计仓促掀开防水布，布下的货款散了一地。',
     choices: [
-      { text: '描下脚印，保管商队失物', effects: ['flag:jia_evidence'] },
-      { text: '拾走散落货款（四十块元石，恶名 +22）', effects: ['yuanshi:+40', 'mo:+22', 'flag:jia_missing_stones'] },
-      { text: '护送车队回寨，领十二块元石', effects: ['yuanshi:+12'] }
+      { text: '描下脚印，保管商队失物', effects: ['flag:jia_evidence', 'quest:caravan:investigate', 'clue:caravan:tracks', 'relation:jiafu:5:5:替商队保管失物'] },
+      { text: '拾走散落货款（四十块元石，恶名 +22）', effects: ['yuanshi:+40', 'mo:+22', 'flag:jia_missing_stones', 'quest:caravan:investigate', 'relation:jiafu:-30:-25:伙计指认你拿了货款'] },
+      { text: '护送车队回寨，领十二块元石', effects: ['yuanshi:+12', 'quest:caravan:investigate', 'relation:jiafu:15:25:护送伙计回寨'] }
     ]
   },
   {
     id: 'jia_questions',
     title: '贾富问询',
     cond: 'after:2-3-6-0&flag:event_done:jia_missing',
-    text: '贾富借竹君子逐一问话，想知道谁见过贾金生和失踪前的货物。问到山涧时，伙计将目光移向了你。',
+    quest: 'caravan',
+    text: '贾富借竹君子逐一问话，想知道谁见过贾金生和失踪前的货物。问到山涧时，伙计将目光移向了你。\n\n贾富让人挪开了账桌前的凳子，自己也站着听。“有亲眼见过的，就告诉我那段路朝哪儿走。若是听旁人传的，说清楚是哪一个人。”他把两沓卷页分在两边，一页也没有销掉。',
     choices: [
-      { text: '交出失物与足迹（留下查案凭证）', cond: 'flag:jia_evidence', effects: ['flag:jia_witness', 'yuanshi:+20'] },
-      { text: '退回货款（四十块元石，恶名 -15）', cond: 'flag:jia_missing_stones&stones:40', effects: ['yuanshi:-40', 'mo:-15'] },
-      { text: '只说自己亲眼所见，到此为止', effects: [] }
+      { text: '交出失物与足迹（留下查案凭证）', cond: 'flag:jia_evidence', effects: ['flag:jia_witness', 'yuanshi:+20', 'quest:caravan:verify', 'relation:jiafu:15:30:已收下失物与足迹'] },
+      { text: '退回货款（四十块元石，恶名 -15）', cond: 'flag:jia_missing_stones&stones:40', effects: ['yuanshi:-40', 'mo:-15', 'unflag:jia_missing_stones', 'unflag:jia_trade_refused', 'quest:caravan:verify', 'relation:jiafu:15:20:货款已退，仍待核实'] },
+      { text: '只说自己亲眼所见，不交出手上的东西', effects: ['quest:caravan:verify'] },
+      { text: '说货款交给了寨门值夜人，请他自己去问', cond: 'flag:jia_missing_stones', effects: ['quest:caravan:verify', 'flag:jia_trade_refused', 'mo:+8', 'relation:jiafu:-20:-25:谎称货款交给了守门人'] }
     ]
   },
   {
     id: 'langchao_start',
     title: '青茅狼潮',
     cond: 'after:2-6-1-0&!flag:langchao_seen',
-    text: '次年六月，黑压压的电狼群终于顺着山脊压向古月山寨！山脚木栅接连告急，族中下令所有二转以上蛊师轮值迎敌。\n混乱之中，有人在趁乱发财，也有人在死守寨门。',
+    text: '次年六月，黑压压的电狼群终于顺着山脊压向古月山寨！山脚木栅接连告急，族中下令所有二转以上蛊师轮值迎敌。\n混乱之中，有人在趁乱发财，也有人在死守寨门。\n\n头一轮号角还没吹完，传令的人就从石阶上滚下来。他张嘴先问后队到了没有，手里的旗却还是给头队用的。东墙守夜的饭碗一个也没收。',
     choices: [
-      { text: '随漠北登墙，迎击电狼（从护盾 30 开战）', cond: 'flag:mo_faction', effects: ['flag:langchao_seen', 'battle:dianlang', 'shield:30', 'onwin:wall_held'] },
+      { text: '随漠北登墙，迎击电狼（从护盾 30 开战）', cond: 'flag:mo_faction&trust:mobei:25', effects: ['relation:mobei:10:10:狼潮并肩守寨', 'flag:langchao_seen', 'battle:dianlang', 'shield:30', 'onwin:wall_held'] },
       { text: '用备好的药粮接济守军（立下战功）', cond: 'flag:wolf_supplies', effects: ['flag:langchao_seen', 'flag:wall_held', 'yuanshi:+20'] },
       { text: '亲自迎击电狼，守住缺口', effects: ['flag:langchao_seen', 'battle:dianlang', 'onwin:wall_held'] },
-      { text: '趁夜搜刮遗物（六十块元石，恶名 +25）', effects: ['flag:langchao_seen', 'yuanshi:+60', 'mo:+25'] }
+      { text: '趁夜搜刮遗物（六十块元石，恶名 +25）', effects: ['flag:langchao_seen', 'yuanshi:+60', 'mo:+25'] },
+      { text: '随猎户从私道引走受伤的巡山人（记下战功）', cond: 'flag:hunter_evac', effects: ['flag:langchao_seen', 'flag:wall_held', 'flag:hunter_people_rescued'] },
+      { text: '对照巡山队的山图，截住侧翼狼群（从护盾 20 开战）', cond: 'flag:hunter_patrol&flag:hunter_spoor_read', effects: ['flag:langchao_seen', 'battle:dianlang', 'shield:20', 'onwin:wall_held'] }
     ]
   },
   {
     id: 'bai_encounter',
     title: '白家来客',
     cond: 'after:2-6-15-0&flag:langchao_seen',
-    text: '白凝冰出关后接连向两寨蛊师挑战。你在巡山换防时遇见他，石径上凝着一层薄霜。他邀你过招，守军却正等着这批人回寨。',
+    text: '白凝冰出关后接连向两寨蛊师挑战。你在巡山换防时遇见他，石径上凝着一层薄霜。他邀你过招，守军却正等着这批人回寨。\n\n他一脚把湿柴踢离石径，给你留出了侧身的位置。“现在借半丈，明天你未必肯借我。”他看了看你身后的同窗，长袖收得紧了一点。',
     choices: [
-      { text: '接下邀约（切磋，胜后再会有备）', effects: ['battle:bainingbing', 'onwin:bai_read'] },
-      { text: '护送同窗回寨（领十块元石）', effects: ['yuanshi:+10'] }
+      { text: '接下邀约（切磋，胜后再会有备）', effects: ['relation:bainingbing:10:5:应下白家邀战', 'battle:bainingbing', 'onwin:bai_read'] },
+      { text: '护送同窗回寨，先把这场约战记着（领十块元石）', effects: ['yuanshi:+10', 'relation:bainingbing:-2:5:他记下了此时你要护送的人'] }
     ]
   },
   {
     id: 'wolf_breach',
     title: '东门告急',
     cond: 'after:2-7-10-0&flag:langchao_seen',
-    text: '狼群扑向东门，熊家求援队也被困在山坳。你可以点烽火引守军接应，或把狼群引向对方的退路，趁混乱取得遗落的物资。',
+    text: '狼群扑向东门，熊家求援队也被困在山坳。你可以点烽火引守军接应，或把狼群引向对方的退路，趁混乱取得遗落的物资。\n\n东门灯绳上打的是救援才用的活扣。拽一下，山坳里的人就会出来。有人已经看清那条路会把狼一同引过去，仍在等你动手。',
     choices: [
       { text: '点烽火接应（有守寨战功，领四十块元石）', cond: 'flag:wall_held', effects: ['flag:wolf_rescue', 'yuanshi:+40'] },
       { text: '从小径引狼截路（赤铁舍利蛊，恶名 +35）', cond: 'flag:wolf_trail', effects: ['flag:wolf_betrayal', 'gu:chitie_sheli', 'item:kuangshi:3', 'mo:+35'] },
       { text: '守住驿道，迎战豪电狼王', effects: ['battle:langwang', 'onwin:wolf_rescue'] },
-      { text: '留守内寨，护送伤员撤退', effects: ['item:shengjiye:2'] }
+      { text: '留守内寨，护送伤员撤退', effects: ['item:shengjiye:2'] },
+      { text: '用贾富留下的货车撤走伤员（记下救援战功）', cond: 'flag:jia_wagon_aid&trust:jiafu:50', effects: ['flag:wolf_rescue', 'relation:jiafu:5:5:借来货车救援伤员'] },
+      { text: '依漠北此前定下的轮值，把后队调到东门救人', cond: 'flag:mobei_relief', effects: ['flag:wolf_rescue', 'relation:mobei:10:10:后队从东门接走伤员'] },
+      { text: '循遗洞记号开通水道，带伤员绕过东门', cond: 'flag:grotto_map', effects: ['flag:wolf_rescue', 'flag:survivor_pass'] },
+      { text: '把药圃留作赈济的份额调给东门伤员', cond: 'flag:estate_relief', effects: ['flag:wolf_rescue', 'flag:estate_relief_used'] },
+      { text: '把赤城预留的药箱交给东门守军', cond: 'flag:chi_reserved', effects: ['flag:wolf_rescue', 'relation:chicheng:8:12:依领条把药箱用在救人上'] },
+      { text: '开炉坊的公示后巷，让东门脚夫照着通路接人', cond: 'flag:workshop_route', effects: ['flag:wolf_rescue', 'flag:survivor_pass'] },
+      { text: '出示修炉商人签过的药费单，调一批药给东门', cond: 'flag:workshop_aid', effects: ['flag:wolf_rescue', 'flag:workshop_paid_aid'] },
+      { text: '托过境的商队沿证人走过的私路接走伤员', cond: 'flag:jia_safe_passage&trust:jiafu:25', effects: ['flag:wolf_rescue', 'flag:survivor_pass', 'relation:jiafu:5:8:伙计引商队接走了伤员'] },
+      { text: '照着药堂点下的无记灯，领巡守送伤者出寨', cond: 'flag:survivor_lamp&(flag:survivor_record|flag:survivor_pass)', effects: ['flag:wolf_rescue', 'flag:survivor_lamp_guided'] }
     ]
   },
   {
     id: 'tie_inquiry',
     title: '铁血冷入寨',
     cond: 'after:2-8-20-0&flag:event_done:wolf_breach',
-    text: '铁血冷与铁若男查起贾金生一案，同时复核狼潮时几支队伍的行迹。贾家问话时的证词、东门的战功和乡人的指认都摆上了案头。',
+    text: '铁血冷与铁若男查起贾金生一案，同时复核狼潮时几支队伍的行迹。贾家问话时的证词、东门的战功和乡人的指认都摆上了案头。\n\n铁若男把两份山路图叠起来，专盯不重合的那一角。铁血冷把灯挪过去，让墙上的影子避开桌面。“有件事众口一词，也得看看这话最先是谁说的。”',
+    notes: [
+      { cond: 'flag:wolf_betrayal', text: '铁若男把手按在山路图上偏出的一截：“狼本该追着烽火走。有人动了路。等你说完，我还要去找走丢的人。”' },
+      { cond: 'flag:jia_named_witness', text: '铁案桌后留出了一处空位。商队伙计就坐在那里，手压着自己写下的证词。' }
+    ],
     choices: [
-      { text: '以失踪案证词或救援记录结案（恶名 -15）', cond: '!mo:30&(flag:jia_witness|flag:wolf_rescue)', effects: ['mo:-15', 'flag:tie_cleared', 'yuanshi:+24'] },
+      { text: '以失踪案证词或救援记录结案（恶名 -15）', cond: '!mo:30&(flag:jia_witness|flag:wolf_rescue)', effects: ['mo:-15', 'flag:tie_cleared', 'yuanshi:+24', 'relation:tiexueleng:10:15:核验旧证后准予通行'] },
       { text: '领取协查文书，以后出入须登记', cond: '!mo:30', effects: ['flag:tie_cleared'] },
       { text: '交三十块元石赔偿，接受保结（恶名 -20）', cond: 'mo:30&stones:30', effects: ['yuanshi:-30', 'mo:-20', 'flag:tie_bond'] },
-      { text: '趁夜冲出封锁，迎战铁家追兵', cond: 'mo:30', effects: ['battle:tie_patrol', 'onwin:tie_fugitive'] }
+      { text: '趁夜冲出封锁，迎战铁家追兵', cond: 'mo:30', effects: ['relation:tiexueleng:-20:-30:违令闯过封锁', 'battle:tie_patrol', 'onwin:tie_fugitive'] },
+      { text: '请铁若男出示复核卷宗（恶名 -15，获准通行）', cond: '!mo:30&flag:jia_iron_review&trust:tieruonan:30&trust:tiexueleng:20', effects: ['mo:-15', 'flag:tie_cleared', 'relation:tiexueleng:10:10:正式采信复核卷宗'] },
+      { text: '在铁家见证下偿还货款（四十块元石，恶名 -15）', cond: '!favor:jiafu:-39&flag:jia_missing_stones&stones:40', effects: ['yuanshi:-40', 'mo:-15', 'unflag:jia_missing_stones', 'unflag:jia_trade_refused', 'flag:tie_bond', 'relation:jiafu:15:10:在铁家听证时还款'] },
+      { text: '请在册的证人和伤者当面核对记录，获准通行', cond: '!mo:30&(flag:survivor_record|flag:jia_named_witness|flag:estate_public)', effects: ['flag:tie_cleared', 'relation:tieruonan:10:15:核查了可追溯的证词'] },
+      { text: '把改引狼道的经过写进案卷，带铁家找失散的人', cond: 'flag:wolf_betrayal&flag:survivor_record', effects: ['mo:-12', 'flag:tie_bond', 'flag:wolf_betrayal_admitted', 'relation:tiexueleng:-5:10:承认改引狼道并交出路线'] },
+      { text: '用赤城签过的互保文书答复盘查（接受保结）', cond: 'flag:chi_joint_bond&!flag:wolf_betrayal&!flag:jia_trade_refused', effects: ['flag:tie_bond', 'relation:chicheng:5:10:在听证时共同担责'] },
+      { text: '把方源交卷当晚的见闻作为旁证，请铁家核对两份值夜记录', cond: '!mo:30&flag:fangyuan_written_note&clue:caravan:trail', effects: ['flag:tie_cleared', 'relation:tieruonan:5:12:拿旧夜行记录核实了值守程序'] }
     ]
   },
   {
     id: 'three_clans',
     title: '三寨斗蛊大比',
     cond: 'after:2-9-10-0&flag:event_done:tie_inquiry',
-    text: '狼潮过后，古月、白、熊三家要以斗蛊重划山路和猎场。白凝冰已经登台。寨门仍有铁家的人盘查，保结在身的人可请赤城作保递帖。',
+    text: '狼潮过后，古月、白、熊三家要以斗蛊重划山路和猎场。白凝冰已经登台。寨门仍有铁家的人盘查，保结在身的人可请赤城作保递帖。\n\n演武执事摆出三只装界绳的木匣，起绳的一段都磨出了亮色。白凝冰抬了抬眼，望向你来时那边：“有人今天来划界，有人只想看自己能站到哪儿。”',
+    notes: [
+      { cond: 'flag:mobei_contender', text: '漠北把比试簿放到三家面前：“上头还有我的名次。要是不认他的，我这一行也划去。”' },
+      { cond: 'flag:chi_joint_bond', text: '赤城把两枚盖过印的领条摆开，又将自己的名字签得大了一点，让三个执事都看得清。' },
+      { cond: 'flag:bai_joint_read', text: '白凝冰在场上换了同你谈过的起手。远处的人只当是一阵风把他衣摆吹斜了。' }
+    ],
     choices: [
-      { text: '登台挑战白凝冰（胜得赤铁舍利蛊）', cond: 'flag:tie_cleared|(flag:tie_bond&flag:chi_faction)', effects: ['battle:bainingbing', 'onwin:tournament_won', 'wingu:chitie_sheli'] },
-      { text: '依上次交手所见先护住要害（护盾 28，胜得赤铁舍利蛊）', cond: 'flag:bai_read&(flag:tie_cleared|(flag:tie_bond&flag:chi_faction))', effects: ['battle:bainingbing', 'shield:28', 'onwin:tournament_won', 'wingu:chitie_sheli'] },
-      { text: '在场外观战，记下撤往山外的路', effects: [] }
+      { text: '登台挑战白凝冰（胜得赤铁舍利蛊）', cond: 'flag:tie_cleared|(flag:tie_bond&flag:chi_faction&trust:chicheng:25)', effects: ['relation:bainingbing:5:5:在三寨大比应战', 'battle:bainingbing', 'onwin:tournament_won', 'wingu:chitie_sheli'] },
+      { text: '依上次交手所见先护住要害（护盾 28，胜得赤铁舍利蛊）', cond: 'flag:bai_read&trust:bainingbing:20&(flag:tie_cleared|(flag:tie_bond&flag:chi_faction&trust:chicheng:25))', effects: ['relation:bainingbing:8:5:在大比认出了上次的起手', 'battle:bainingbing', 'shield:28', 'onwin:tournament_won', 'wingu:chitie_sheli'] },
+      { text: '在场外观战，记下撤往山外的路', effects: ['relation:bainingbing:0:2:在场外看完了他最后一场比试'] },
+      { text: '按与白凝冰交换的起手提前备战（护盾 28）', cond: 'flag:bai_joint_read&(flag:tie_cleared|(flag:tie_bond&flag:chi_joint_bond))', effects: ['relation:bainingbing:8:8:用交换的起手再试高低', 'battle:bainingbing', 'shield:28', 'onwin:tournament_won', 'wingu:chitie_sheli'] },
+      { text: '请漠北把公开比试约一并呈上，依名册登台', cond: 'flag:mobei_contender&!rank:1', effects: ['relation:mobei:5:8:一同兑现公开比试约', 'relation:bainingbing:5:0:登台应战', 'battle:bainingbing', 'onwin:tournament_won', 'wingu:chitie_sheli'] },
+      { text: '出示公买凭据，以任务堂见证人身份入场', cond: 'flag:chi_separate&flag:chi_public_bid&!mo:30', effects: ['relation:chicheng:2:5:用公买凭据为队伍作证', 'relation:bainingbing:5:0:登台应战', 'battle:bainingbing', 'onwin:tournament_won', 'wingu:chitie_sheli'] }
     ]
   },
   {
     id: 'blood_skull',
     title: '血池边的取舍',
     cond: 'after:2-10-1-0&flag:event_done:three_clans',
-    text: '地下血池翻涌，古月一代现身。血颅蛊能以血亲之血提升资质。乱局中有人想夺取这份力量，也有人打算趁通道尚在，叫醒身边还活着的族人。',
+    text: '地下血池翻涌，古月一代现身。血颅蛊能以血亲之血提升资质。乱局中有人想夺取这份力量，也有人打算趁通道尚在，叫醒身边还活着的族人。\n\n与你擦肩的那人还背着药堂用的木架，架上的绑带空着。地底传来第二声震动，有人沿阶回头数名字，数到一半，忽然不知道该往哪一边喊。',
     choices: [
       { text: '夺血颅蛊，以血亲献祭（元海最多 +2 成，恶名 +55）', cond: 'flag:wolf_betrayal|flag:tie_fugitive', effects: ['hai:+2', 'mo:+55'] },
       { text: '疏散族人，备好干粮继续突围', effects: ['item:shourou:6'] }
@@ -1256,13 +1710,80 @@ const STORY_EVENTS = [
     id: 'qingmao_endgame',
     title: '血海降世 · 天鹤来袭',
     cond: 'after:2-10-1-0&!flag:qingmao_finished&flag:event_done:blood_skull',
-    text: '十万大山骤然血光冲天！古月一族先祖「古月一代」从血池杀出，中洲仙鹤门的天鹤上人驾鹤截住了他。\n山崩地裂，整座青茅山已成死地，这是你走出青茅山的最后时机。',
+    text: '十万大山骤然血光冲天！古月一族先祖「古月一代」从血池杀出，中洲仙鹤门的天鹤上人驾鹤截住了他。\n山崩地裂，整座青茅山已成死地，这是你走出青茅山的最后时机。\n\n寨门楼已经低了一截。鼓绳拖到地上，有人把它当成指路的绳，一寸一寸摸过去。你看见山腰上还有数点灯火，各朝不同的坡道移动。',
+    notes: [
+      { cond: 'flag:bai_escape_route', text: '低处有一簇白家人的灯突然转向，照亮此前画在石壁上的折线。你认得白凝冰说的位置。' },
+      { cond: 'flag:grotto_shelter', text: '一道水帘还没断。此时从下风坡过去，暗涧的石顶能挡住乱石一阵。' }
+    ],
     choices: [
       { text: '截击古月一代残躯（胜后可离开青茅山）', effects: ['battle:guyue_yidai', 'onwin:qingmao_finished', 'goal:击败古月一代残躯后，从寨门离开青茅山'] },
       { text: '直面天鹤上人（胜后可离开青茅山）', effects: ['battle:tianhe', 'onwin:qingmao_finished', 'goal:击退天鹤上人后，从寨门离开青茅山'] },
-      { text: '趁双方两败俱伤，潜行绕道直接翻山离去（稳妥脱身）', effects: ['flag:qingmao_finished', 'yuanshi:+40', 'goal:你已避开血海绝境，可于「寨门」或行纪中宣告走出青茅山'] }
+      { text: '趁双方两败俱伤，潜行绕道直接翻山离去（稳妥脱身）', effects: ['flag:qingmao_finished', 'yuanshi:+40', 'goal:你已避开血海绝境，可于「寨门」或行纪中宣告走出青茅山'] },
+      { text: '从事先留下的隐蔽路线避过混战，再带人出山', cond: 'flag:grotto_shelter|flag:survivor_pass|flag:bai_escape_route|flag:hunter_people_rescued|flag:survivor_lamp_guided|flag:workshop_escape_route|flag:survivor_recuperation|(flag:grotto_lit&flag:grotto_map)', effects: ['flag:qingmao_finished', 'flag:escape_with_survivors', 'goal:带避难者从青茅寨门离开'] },
+      { text: '依白凝冰指过的落脚点截住古月一代残躯（护盾 24）', cond: 'flag:bai_last_challenge', effects: ['battle:guyue_yidai', 'shield:24', 'onwin:qingmao_finished', 'goal:取胜后从青茅寨门离开'] }
     ]
-  }
+  },
+  {
+    id: 'jia_witness_visit',
+    title: '问访商队伙计',
+    manual: true,
+    quest: 'caravan',
+    cond: 'at:kezhan&(quest:caravan:investigate|quest:caravan:verify)',
+    text: '伙计在客栈里等车队的消息。那日他忙着缚货，听见贾金生问去山涧的方向。他记得人是什么时辰走的，却没看见人回来。',
+    choices: [
+      { text: '记下时辰，请他核对口供', effects: ['clue:caravan:witness'] }
+    ]
+  },
+  {
+    id: 'jia_road_visit',
+    title: '调阅驿道登记',
+    manual: true,
+    quest: 'caravan',
+    cond: 'at:renwutang&(quest:caravan:investigate|quest:caravan:verify)',
+    text: '执事调来寨门值夜簿。货车回寨时比平日少了一人，守门人把过门的时辰记在旁边。',
+    choices: [
+      { text: '抄录过门时辰与人数', effects: ['clue:caravan:trail'] }
+    ]
+  },
+  {
+    id: 'jia_private_ledger',
+    title: '贾富的私账',
+    manual: true,
+    quest: 'caravan',
+    cond: 'at:gupu&quest:caravan:verify&trust:jiafu:25',
+    text: '贾富关上蛊铺侧门，把自己的货单递了过来。上面的时辰与车队登记不同。伙计怕耽误开市，先报了到，晚些才补写缺员。贾富想保住这个证人，托你先别把私账传出去。',
+    choices: [
+      { text: '记下私账与公簿的差异', effects: ['clue:caravan:ledger', 'relation:jiafu:5:5:获准查阅私账'] }
+    ]
+  },
+  {
+    id: 'jia_submit_case',
+    title: '给失踪案留一份卷宗',
+    manual: true,
+    quest: 'caravan',
+    cond: 'at:renwutang&quest:caravan:verify',
+    text: '任务堂有贾家留下的收件人，也肯代送给铁家。卷宗能查明贾金生离开车队的时辰，至于离队后去了哪里，仍需追查。',
+    choices: [
+      { text: '把两份互证材料封送铁若男', cond: '(clue:caravan:witness&(clue:caravan:tracks|clue:caravan:trail))|(clue:caravan:tracks&clue:caravan:trail)', effects: ['quest:caravan:completed:iron', 'relation:tieruonan:10:15:收到失踪案卷宗'] },
+      { text: '将私账交回贾富，请他自行追查', cond: 'clue:caravan:ledger&trust:jiafu:25', effects: ['quest:caravan:completed:jia', 'relation:jiafu:15:15:受托保护商队证人'] },
+      { text: '放弃追查，撤回自己的卷宗', cond: '!flag:jia_missing_stones', effects: ['quest:caravan:failed:refused'] },
+      { text: '留下货款，撤回自己的卷宗', cond: 'flag:jia_missing_stones', effects: ['quest:caravan:failed:theft', 'flag:jia_trade_refused', 'relation:jiafu:-20:-20:贾家决定追偿'] }
+    ]
+  },
+  {
+    id: 'jia_case_followup',
+    title: '失踪案回音',
+    quest: 'caravan',
+    cond: 'due:caravan',
+    text: '任务堂转来一封信。先前交出去的材料已有回音，先前欠下的账也有人追问。',
+    choices: [
+      { text: '收下铁若男的复核回函', cond: 'outcome:caravan:iron', effects: ['flag:jia_iron_review', 'relation:tieruonan:10:20:证据互证，已复核', 'relation:tiexueleng:5:25:已阅铁若男的复核卷宗'] },
+      { text: '收下贾富留给你的护送酬谢（二十四块元石）', cond: 'outcome:caravan:jia', effects: ['yuanshi:+24', 'flag:jia_wagon_aid', 'relation:jiafu:10:10:贾家回信致谢'] },
+      { text: '得知贾家已把欠款名单交给铁家', cond: 'outcome:caravan:theft&flag:jia_missing_stones', effects: ['mo:+8', 'relation:tieruonan:-10:-15:收到贾家的追偿记录', 'relation:tiexueleng:-5:-10:收录货款争议'] },
+      { text: '收下卷宗存档回条', cond: 'outcome:caravan:refused|outcome:caravan:expired|(outcome:caravan:theft&!flag:jia_missing_stones)', effects: [] }
+    ]
+  },
+  ...QINGMAO_SCENES
 ];
 
 
@@ -1315,7 +1836,93 @@ function parseTimeExpr(str) {
 }
 
 
+/* === src/core/story-progress.js === */
+
+
+
+function boundRelation(value) {
+  return Number.isFinite(value) ? Math.max(-100, Math.min(100, Math.trunc(value))) : 0;
+}
+function storyRelation(gs, id) {
+  if (!Object.hasOwn(STORY_CHARACTERS, id)) return null;
+  const saved = gs.story?.relations?.[id];
+  return saved || { ...STORY_CHARACTERS[id].initial, progress: '' };
+}
+function changeStoryRelation(gs, id, favor, trust, progress) {
+  const current = storyRelation(gs, id);
+  if (!current) return;
+  gs.story.relations[id] = {
+    favor: boundRelation(current.favor + favor),
+    trust: boundRelation(current.trust + trust),
+    progress: progress || current.progress
+  };
+}
+function advanceStoryQuest(gs, id, stage, outcome = '') {
+  const quest = STORY_QUESTS[id];
+  if (!Object.hasOwn(STORY_QUESTS, id)) return;
+  const current = gs.story.quests[id];
+  const stages = [...Object.keys(quest.steps), 'completed'];
+  const index = current ? stages.indexOf(current.stage) : -1;
+  if (current && (index < 0 || current.stage === 'completed')) return;
+  if (stage !== stages[index + 1] && !(current && stage === 'failed')) return;
+  const followupAt = outcome && quest.followupEvent ? gs.minutes + quest.followupDays * MIN_PER_DAY : null;
+  gs.story.quests[id] = { stage, outcome, followupAt, clues: current?.clues ?? [] };
+}
+function addStoryClue(gs, questId, clueId) {
+  const progress = gs.story.quests[questId];
+  if (progress && Object.hasOwn(STORY_QUESTS[questId].clues, clueId) && !progress.clues.includes(clueId)) {
+    progress.clues.push(clueId);
+  }
+}
+function restoreStoryProgress(gs) {
+  if (!gs?.player) return;
+  const saved = gs.story;
+  gs.story = { relations: {}, quests: {}, history: {} };
+  if (saved) {
+    for (const id of Object.keys(STORY_CHARACTERS)) {
+      const relation = saved.relations?.[id];
+      if (relation) gs.story.relations[id] = {
+        favor: boundRelation(relation.favor),
+        trust: boundRelation(relation.trust),
+        progress: typeof relation.progress === 'string' ? relation.progress : ''
+      };
+    }
+    for (const [id, quest] of Object.entries(STORY_QUESTS)) {
+      const progress = saved.quests?.[id];
+      if (!Object.hasOwn(quest.steps, progress?.stage) && !Object.hasOwn(STORY_QUEST_STAGES, progress?.stage)) continue;
+      const { stage, outcome, followupAt, clues } = progress;
+      gs.story.quests[id] = { stage, outcome, followupAt: Number.isFinite(followupAt) ? followupAt : null, clues: [] };
+      if (Array.isArray(clues)) {
+        for (const clue of clues) addStoryClue(gs, id, clue);
+      }
+    }
+    if (Number.isFinite(saved.lifeReadyAt)) gs.story.lifeReadyAt = saved.lifeReadyAt;
+    if (saved.history && typeof saved.history === 'object') gs.story.history = saved.history;
+  } else {
+    const flags = gs.flags ?? {};
+    if (flags.mo_faction) changeStoryRelation(gs, 'mobei', 20, 30, '学堂同练');
+    if (flags.chi_faction) changeStoryRelation(gs, 'chicheng', 20, 30, '替赤脉备货');
+    if (flags.bai_read) changeStoryRelation(gs, 'bainingbing', 20, 20, '切磋取胜');
+    if (flags['event_done:jia_missing']) {
+      gs.story.quests.caravan = flags['event_done:jia_questions']
+        ? { stage: 'completed', outcome: 'legacy', followupAt: null, clues: [] }
+        : { stage: 'investigate', outcome: '', followupAt: null, clues: [] };
+      if (flags.jia_evidence) addStoryClue(gs, 'caravan', 'tracks');
+    }
+    if (flags['event_done:jia_missing'] && !flags['event_done:jia_questions']) {
+      if (flags.jia_evidence) changeStoryRelation(gs, 'jiafu', 5, 5, '替商队保管失物');
+      else if (!flags.jia_missing_stones) changeStoryRelation(gs, 'jiafu', 15, 25, '护送伙计回寨');
+    }
+    if (flags.jia_witness) changeStoryRelation(gs, 'jiafu', 20, 35, '已收下失物与足迹');
+    if (flags.jia_missing_stones && !flags['event_done:jia_questions']) {
+      changeStoryRelation(gs, 'jiafu', -30, -25, '伙计指认你拿了货款');
+    }
+  }
+}
+
+
 /* === src/core/state.js === */
+
 
 
 
@@ -1442,6 +2049,7 @@ function createNewGame(name = '无名', apt = null) {
     pendingEventId: 'kaike',
     paused: false
   };
+  restoreStoryProgress(state);
   recalcStats(state);
   state.player.hp = state.player.hpMax;
   state.player.zy = state.player.zyMax;
@@ -1625,6 +2233,8 @@ function loadGame(storage) {
     const parsed = JSON.parse(raw);
     if (!parsed || !parsed.player) return null;
     if (!PLACES[parsed.location]) parsed.location = 'shijie';
+    restoreStoryProgress(parsed);
+    restoreStoryProgress(parsed.snapshot);
     recalcStats(parsed);
     return parsed;
   } catch {
@@ -2120,6 +2730,13 @@ function finishStoryBattle(gs) {
   if (gs.battle.storyEvent === 'qingmao_endgame' && gs.battle.state === 'fled') {
     delete gs.flags['event_done:qingmao_endgame'];
   }
+  if (gs.battle.storyEvent === 'bai_encounter') {
+    if (gs.battle.state === 'win') changeStoryRelation(gs, 'bainingbing', 15, 20, '切磋取胜');
+    else changeStoryRelation(gs, 'bainingbing', -2, 0, '切磋未能占上风');
+  }
+  if (gs.battle.storyEvent === 'three_clans' && gs.battle.state === 'win') {
+    changeStoryRelation(gs, 'bainingbing', 6, 8, '三寨大比决出胜负');
+  }
   gs.battle = null;
   if (!gs.player.dead) checkStoryTriggers(gs);
   return true;
@@ -2147,11 +2764,17 @@ function nextRetreatTime(gs) {
     .map((event) => event.cond.match(/(?:^|&)after:([\d-]+)/)?.[1])
     .filter(Boolean).map(parseTimeExpr);
   if (gs.flags.wine_bid && !gs.flags.merchant_jiuchong_bought) dates.push(makeTime(2, 3, 1));
+  for (const [id, progress] of Object.entries(gs.story.quests)) {
+    if (!gs.flags[`event_done:${STORY_QUESTS[id].followupEvent}`] && progress.followupAt) dates.push(progress.followupAt);
+  }
   return Math.min(gs.minutes + MIN_PER_MONTH, ...dates.filter((date) => date > gs.minutes));
 }
 
 function evalToken(gs, token) {
   if (!token) return true;
+  if (token === 'night') return isNight(gs.minutes);
+  if (token === 'day') return !isNight(gs.minutes);
+  if (token.startsWith('gu:')) return hasGu(gs, token.slice(3));
   if (token === 'benming') return !!gs.player.benming;
   if (token.startsWith('flag:')) return !!gs.flags[token.slice(5)];
   if (token.startsWith('at:')) return gs.location === token.slice(3);
@@ -2161,6 +2784,18 @@ function evalToken(gs, token) {
   if (token.startsWith('stones:')) return gs.player.yuanshi >= Number(token.slice(7));
   if (token.startsWith('rank:')) return gs.player.rank === Number(token.slice(5));
   if (token.startsWith('haiBelow:')) return gs.player.hai < Number(token.slice(9));
+  const [kind, questId, value] = token.split(':');
+  const quest = gs.story.quests[questId];
+  if (kind === 'item') return (gs.player.items[questId] ?? 0) >= Number(value);
+  if (kind === 'quest') return quest?.stage === value;
+  if (kind === 'clue') return !!quest?.clues.includes(value);
+  if (kind === 'outcome') return quest?.outcome === value;
+  if (kind === 'due') return Number.isFinite(quest?.followupAt) && gs.minutes >= quest.followupAt;
+  if (token.startsWith('trust:') || token.startsWith('favor:')) {
+    const [axis, id, minimum] = token.split(':');
+    const relation = storyRelation(gs, id);
+    return !!relation && relation[axis] >= Number(minimum);
+  }
   if (token === 'true') return true;
   return false;
 }
@@ -2176,10 +2811,36 @@ function evalCond(gs, cond) {
     return neg ? !ok : ok;
   }));
 }
+function availableLocalScenes(gs) {
+  return STORY_EVENTS.filter((ev) => (ev.quest || ev.person) && ev.manual
+    && !gs.flags[`event_done:${ev.id}`] && evalCond(gs, ev.cond));
+}
+
+function storyBlocked(gs) {
+  return !gs || gs.player.dead || gs.pendingEventId || gs.battle || gs.refining || gs.breakthrough;
+}
+function hasLocalLifeScene(gs) {
+  return !gs.player.escapedMountain && STORY_EVENTS.some((ev) => ev.ambient
+    && !gs.flags[`event_done:${ev.id}`]
+    && ev.cond.split('&').includes(`at:${gs.location}`));
+}
+function lookForLifeScene(gs, rng = Math.random) {
+  if (storyBlocked(gs) || gs.player.escapedMountain) return { message: '眼下不便打听。' };
+  if (gs.minutes < (gs.story.lifeReadyAt ?? 0)) return { message: '方才已留意过四周，过些时辰再来。' };
+  const scenes = STORY_EVENTS.filter((ev) => ev.ambient && !gs.flags[`event_done:${ev.id}`] && evalCond(gs, ev.cond));
+  if (!scenes.length || rng() >= 0.7) {
+    gs.story.lifeReadyAt = gs.minutes + MIN_PER_SHICHEN;
+    return { message: '暂时没有新见闻。' };
+  }
+  const event = scenes[Math.floor(rng() * scenes.length)];
+  gs.story.lifeReadyAt = gs.minutes + MIN_PER_DAY;
+  gs.pendingEventId = event.id;
+  return { event };
+}
 function checkStoryTriggers(gs, eventId) {
-  if (!gs || gs.player.dead || gs.pendingEventId || gs.battle) return null;
+  if (storyBlocked(gs)) return null;
   for (const ev of STORY_EVENTS) {
-    if (eventId ? ev.id !== eventId : ev.manual) continue;
+    if (ev.ambient || (eventId ? ev.id !== eventId : ev.manual)) continue;
     if (gs.flags[`event_done:${ev.id}`]) continue;
     if (evalCond(gs, ev.cond)) {
       gs.pendingEventId = ev.id;
@@ -2190,17 +2851,27 @@ function checkStoryTriggers(gs, eventId) {
 }
 function applyEventChoice(gs, eventId, choiceIdx) {
   const ev = STORY_EVENTS.find((e) => e.id === eventId);
-  if (!ev) { gs.pendingEventId = null; return; }
+  if (!ev || gs.flags[`event_done:${eventId}`]) return;
   const choice = ev.choices[choiceIdx];
   if (gs.pendingEventId !== eventId || gs.player.dead || gs.battle || !choice || !evalCond(gs, choice.cond)) return;
   gs.flags[`event_done:${ev.id}`] = true;
   gs.pendingEventId = null;
+  gs.story.history[eventId] = { minute: gs.minutes, choice: choiceIdx };
 
   for (const eff of choice.effects || []) {
     if (eff.startsWith('flag:')) {
       gs.flags[eff.slice(5)] = true;
     } else if (eff.startsWith('unflag:')) {
       delete gs.flags[eff.slice(7)];
+    } else if (eff.startsWith('relation:')) {
+      const [, id, favor, trust, progress] = eff.split(':');
+      changeStoryRelation(gs, id, Number(favor), Number(trust), progress);
+    } else if (eff.startsWith('clue:')) {
+      const [, quest, clue] = eff.split(':');
+      addStoryClue(gs, quest, clue);
+    } else if (eff.startsWith('quest:')) {
+      const [, quest, stage, outcome] = eff.split(':');
+      advanceStoryQuest(gs, quest, stage, outcome);
     } else if (eff.startsWith('goal:')) {
       gs.goal = eff.slice(5);
     } else if (eff.startsWith('yuanshi:')) {
@@ -2212,6 +2883,9 @@ function applyEventChoice(gs, eventId, choiceIdx) {
       gs.player.mo = Math.max(0, before + Number(eff.slice(3)));
       const change = gs.player.mo - before;
       if (change) addLog(gs, `【${ev.title}】恶名 ${change > 0 ? '+' : ''}${change}。`, change > 0 ? 'log-bad' : 'log-good');
+    } else if (eff.startsWith('take:')) {
+      const [, id, count] = eff.split(':');
+      useItem(gs, id, Number(count));
     } else if (eff.startsWith('item:')) {
       const [, id, count] = eff.split(':');
       addItem(gs, id, Number(count));
@@ -2244,6 +2918,9 @@ function applyEventChoice(gs, eventId, choiceIdx) {
         storyEvent: ev.id
       });
     }
+  }
+  if (eventId === 'tie_inquiry') {
+    advanceStoryQuest(gs, 'caravan', 'failed', gs.flags.jia_missing_stones ? 'theft' : 'expired');
   }
   if (gs.player.rank >= 2) gs.flags['open:jiazhuge'] = true;
 }
@@ -2387,8 +3064,6 @@ const REFINE_REALMS = [
 ];
 
 const RECIPE_SOURCES = {
-  r_yueguang: 'kaike',
-  r_xiaoguang: 'kaike',
   r_yuemang: 'nianmo_done',
   r_yuexuan: 'nianmo_done',
   r_yuehen: 'nianmo_done',
@@ -2609,6 +3284,7 @@ function finishRefining(gs, sess, rc, success, message) {
   if (success) {
     if (!rc.preserveGu) for (const gu of sess.ingredients) removeGuByUid(gs, gu.uid);
     if (GU_DEFS[rc.out]) {
+      gs.flags.story_refined_gu = true;
       const first = addGu(gs, rc.out);
       if (usesBenming) gs.player.benming = first.uid;
       for (let count = 1; count < (rc.outCount ?? 1); count++) addGu(gs, rc.out);
@@ -2914,6 +3590,7 @@ function settleBreakSession(gs, sess, state) {
 /* === src/core/place-actions.js === */
 function performPlaceAction(gs, id) {
   const p = gs.player;
+  if (p.dead || gs.battle || gs.pendingEventId || gs.refining || gs.breakthrough) return;
   if (id === 'meditate') {
     advanceMinutes(gs, 120);
     addLog(gs, '你盘膝打坐一个时辰，吐纳天地灵气。');
@@ -2933,10 +3610,10 @@ function performPlaceAction(gs, id) {
   } else if (id === 'caoren') {
     advanceMinutes(gs, 30);
     gs.flags['practiced'] = true;
-    startBattle(gs, 'caoren', '演武场练手');
+    if (!gs.pendingEventId) startBattle(gs, 'caoren', '演武场练手');
   } else if (id === 'sparring') {
     advanceMinutes(gs, 60);
-    startBattle(gs, 'fangzheng', '同窗切磋');
+    if (!gs.pendingEventId) startBattle(gs, 'fangzheng', '同窗切磋');
   } else if (id === 'docHeal') {
     if (p.yuanshi < 10) return { reason: '元石不足 10 块' };
     p.yuanshi -= 10;
@@ -2970,11 +3647,11 @@ function performPlaceAction(gs, id) {
   } else if (id === 'exploreFight') {
     const place = PLACES[gs.location];
     advanceMinutes(gs, 60);
-    if (!gs.battle && place.exploreEnemy) startBattle(gs, place.exploreEnemy, `${place.name}遭遇`);
+    if (!gs.pendingEventId && place.exploreEnemy) startBattle(gs, place.exploreEnemy, `${place.name}遭遇`);
   } else if (id === 'exploreBoss') {
     const place = PLACES[gs.location];
     advanceMinutes(gs, 60);
-    if (!gs.battle && place.bossEnemy) startBattle(gs, place.bossEnemy, `讨伐${place.name}`);
+    if (!gs.pendingEventId && place.bossEnemy) startBattle(gs, place.bossEnemy, `讨伐${place.name}`);
   } else if (id === 'gather') {
     const place = PLACES[gs.location];
     if (!place.gather) return;
@@ -3177,9 +3854,10 @@ function renderRefineModal(sess, effect) {
 function renderEventModal(gs, eventId) {
   const ev = STORY_EVENTS.find((e) => e.id === eventId);
   if (!ev) return '';
-  return `<h2>${esc(ev.title)}</h2>
-    <div class="card" style="white-space:pre-line">${esc(ev.text)}</div>
-    <div class="row">${ev.choices.map((c, idx) => evalCond(gs, c.cond) ? `<button class="primary" data-action="chooseEvent" data-id="${esc(ev.id)}" data-idx="${idx}">${esc(c.text)}</button>` : '').join('')}</div>`;
+  const paragraphs = [ev.text, ...(ev.notes ?? []).filter(({ cond }) => evalCond(gs, cond)).map(({ text }) => text)];
+  return `<h2 id="story-title" tabindex="-1">${esc(ev.title)}</h2>
+    <div class="card" style="white-space:pre-line">${esc(paragraphs.join('\n\n'))}</div>
+    <div class="row story-choices">${ev.choices.map((c, idx) => evalCond(gs, c.cond) ? `<button class="primary" data-action="chooseEvent" data-id="${esc(ev.id)}" data-idx="${idx}">${esc(c.text)}</button>` : '').join('')}</div>`;
 }
 function renderCustomKillerModal(gs) {
   const rows = discoveredKillerPatterns(gs.player).map((pattern) => {
@@ -3350,6 +4028,9 @@ function renderMapPanel(gs, title = '青茅山舆图 · 可去之处') {
 function renderPlaceView(gs) {
   const place = PLACES[gs.location] || PLACES.zhulou;
   const night = isNight(gs.minutes);
+  const scenes = availableLocalScenes(gs).map(({ id, title }) =>
+    `<button class="gold" data-action="checkEvents" data-id="${esc(id)}">${esc(title)}</button>`);
+  if (hasLocalLifeScene(gs)) scenes.push('<button data-action="lookForLifeScene">留意四周</button>');
   const actions = [];
   const discovery = availableRecipeDiscovery(gs);
   if (discovery) actions.push(`<button class="gold" data-action="placeAct" data-id="discoverRecipe">${esc(discovery.action)}</button>`);
@@ -3472,6 +4153,8 @@ function renderPlaceView(gs) {
       ${place.gather ? `<p class="muted">常见山材 · ${esc([...new Set(place.gather)].map((id) => ITEMS[id].name).join('、'))}${rareGathering(gs, place) ? ` · 今日山材丰收，可采${esc(ITEMS[place.rare.item].name)} ×4` : ''}</p>` : ''}
       <div class="row">${actions.join('')}</div>
     </section>
+    ${scenes.length ? `<section class="card"><h3>此地剧情</h3><div class="row">${scenes.join('')}</div></section>` : ''}
+    ${merchantRefuses(gs) ? '<p class="card muted">贾家封了你的货帖，商队暂不与你做生意。</p>' : ''}
     ${questHtml}
     ${shopHtml}
     ${recipeHtml}`;
@@ -3729,7 +4412,7 @@ function renderBagView(gs, tab) {
   }
 
   const hasCicada = hasGu(gs, 'chunqiuchan');
-  return `<div class="card">
+  return `${renderStoryJournal(gs)}<div class="card">
       <h3>春秋蝉与存档</h3>
       <div class="row" style="margin-bottom:8px">
         ${hasCicada ? '<button class="gold" data-action="saveCicada">留下春秋蝉旧影</button>' : '<span class="muted">未持有春秋蝉</span>'}
@@ -3744,9 +4427,69 @@ function renderBagView(gs, tab) {
       </div>
     </div>
     <div class="card">
-      <h3>青茅山行纪</h3>
+      <h3>修行日志</h3>
       <div class="loglist">${gs.logs.map((l) => `<div class="${esc(l.cls || '')}">[第${l.age || 1}年] ${esc(l.text)}</div>`).join('')}</div>
     </div>`;
+}
+
+
+function renderStoryJournal(gs) {
+  const { quests, history } = gs.story;
+  const events = STORY_EVENTS.filter((event) => history[event.id] || gs.flags[`event_done:${event.id}`]);
+  events.reverse().sort((a, b) => (history[b.id]?.minute ?? -1) - (history[a.id]?.minute ?? -1));
+  const latestMain = events.find((event) => !event.quest && !event.person && !event.ambient);
+  const chapter = gs.player.escapedMountain ? '卷一已结束' : '卷一 · 青茅山';
+  const main = gs.flags.qingmao_finished && !gs.player.escapedMountain
+    ? '从青茅寨门离开青茅山' : gs.goal;
+  const records = events
+    .map((event) => {
+      const entry = history[event.id];
+      const choice = event.choices[entry?.choice]?.text;
+      return `<li><b>${esc(event.title)}</b>${choice ? ` · ${esc(choice)}` : ''}
+        <span class="muted">${Number.isFinite(entry?.minute) ? esc(formatDateTime(entry.minute)) : ' · 旧档记录'}</span></li>`;
+    }).join('');
+  const people = Object.entries(STORY_CHARACTERS).map(([id, person]) => {
+    const { favor, trust, progress } = storyRelation(gs, id);
+    return `<details>
+      <summary>${esc(person.name)} · 好感 ${favor} · 信任 ${trust}</summary>
+      <p>${esc(person.identity)}。 ${esc(person.voice)}</p>
+      <p>目标 · ${esc(person.goal)} 利益 · ${esc(person.interest)}</p>
+      <p>交往进度 · ${esc(progress || '尚无记录')}</p>
+      <p class="muted">${esc(person.change)}</p>
+    </details>`;
+  }).join('');
+  const clueList = [];
+  const tasks = Object.entries(quests).map(([id, progress]) => {
+    const quest = STORY_QUESTS[id];
+    for (const clueId of progress.clues) {
+      const { name, detail } = quest.clues[clueId];
+      clueList.push(`<li><b>${esc(name)}</b> · ${esc(detail)}</li>`);
+    }
+    const awaiting = progress.followupAt && !gs.flags[`event_done:${quest.followupEvent}`];
+    const step = quest.steps[progress.stage];
+    return `<p><b>${esc(quest.name)}</b> · ${esc(step?.name || STORY_QUEST_STAGES[progress.stage])}</p>
+      <p>${esc(step?.hint || quest.outcomes[progress.outcome] || '')}</p>
+      ${awaiting ? `<p class="muted">最早回信时间 · ${esc(formatDateTime(progress.followupAt))}</p>` : ''}`;
+  }).join('');
+  if (gs.flags['clue:huajiu']) clueList.push('<li><b>花酒行者的旧事</b> · 从血蝠洞沿下游走，水帘后有暗涧遗洞。</li>');
+  return `<section class="card">
+      <h3>主线 · ${chapter}</h3>
+      ${!gs.player.escapedMountain ? `<p>${esc(main)}</p>` : ''}
+      ${latestMain ? `<p class="muted">最近的主线进展 · ${esc(latestMain.title)}</p>` : ''}
+    </section>
+    <section class="card">
+      <h3>支线任务</h3>
+      ${tasks || '<p class="muted">暂无支线记录。</p>'}
+    </section>
+    <section class="card">
+      <h3>已获得的线索</h3>
+      ${clueList.length ? `<ul>${clueList.join('')}</ul>` : '<p class="muted">尚未记录线索。</p>'}
+    </section>
+    <section class="card"><h3>人物关系</h3>${people}</section>
+    <section class="card">
+      <h3>重要剧情</h3>
+      ${records ? `<ul>${records}</ul>` : '<p class="muted">尚未记录重要剧情。</p>'}
+    </section>`;
 }
 
 
@@ -3791,6 +4534,8 @@ function importProgress(raw) {
   const parsed = JSON.parse(raw);
   if (!parsed?.player || !Array.isArray(parsed.player.gu)) throw new Error('Invalid save');
   if (!PLACES[parsed.location]) parsed.location = 'shijie';
+  restoreStoryProgress(parsed);
+  restoreStoryProgress(parsed.snapshot);
   recalcStats(parsed);
   return parsed;
 }
@@ -3819,10 +4564,19 @@ function renderModal(ui) {
   else sheetEl.removeAttribute('aria-labelledby');
 
   if (ui.game && ui.game.pendingEventId && !ui.game.battle && (!ui.modal || ui.modal.kind === 'place')) {
-    sheetEl.innerHTML = renderEventModal(ui.game, ui.game.pendingEventId);
+    const id = ui.game.pendingEventId;
+    const changed = sheetEl.dataset.storyEvent !== id;
+    sheetEl.dataset.storyEvent = id;
+    sheetEl.setAttribute('aria-labelledby', 'story-title');
+    sheetEl.innerHTML = renderEventModal(ui.game, id);
     modalEl.hidden = false;
+    if (changed) {
+      sheetEl.scrollTop = 0;
+      sheetEl.querySelector('#story-title')?.focus({ preventScroll: true });
+    }
     return;
   }
+  delete sheetEl.dataset.storyEvent;
   if (!ui.modal) {
     modalEl.hidden = true;
     sheetEl.innerHTML = '';
@@ -3849,7 +4603,9 @@ function renderModal(ui) {
       </div>`;
   } else if (ui.modal.kind === 'win') {
     html = `<h2>走出青茅山 · 卷一圆满</h2>
-      <p>血海翻涌、仙鹤坠落，你在两位三转强者的死斗边缘活了下来，终于踏出十万大山，走向五域天地！</p>
+      <p>${ui.game.flags.escape_with_survivors
+        ? '寨门外的山风吹灭了最后一盏灯。你停下点过人数，方才随你穿过山道的人都已经出来了。有人问下一步往哪儿走。这一回，终于还有工夫坐下商量。'
+        : '血海翻涌，仙鹤坠落。你在两位强者的死斗边缘活了下来，踏出了青茅山。天色未明，山外的路才刚刚展开。'}</p>
       <div class="card">
         <div class="kv"><span>最终境界</span><b>${esc(realmText(ui.game.player))}</b></div>
         <div class="kv"><span>持有蛊虫</span><b>${ui.game.player.gu.length} 只</b></div>
@@ -3919,6 +4675,7 @@ function startGameLoop(ui, render) {
     const day = Math.floor(ui.game.minutes / MIN_PER_DAY);
     const hallOpen = ui.game.flags['open:jiazhuge'];
     advanceMinutes(ui.game, 15);
+    if (ui.game.pendingEventId) saveGame(ui.game);
     if (ui.game.player.dead) {
       setModal(ui, 'dead', {});
       render();
@@ -4002,6 +4759,8 @@ function handleDeveloperAction(ui, action, { render, showToast }) {
 function handleAction(ui, el, { render, showToast }) {
   const act = el.dataset.action;
   if (!act) return;
+  if (ui.game?.pendingEventId && (!ui.modal || ui.modal.kind === 'place') && !ui.game.battle
+    && act !== 'chooseEvent' && act !== 'togglePause') return;
   if (ui.game?.breakthrough && act !== 'breakAct') return;
   if (ui.modal?.kind === 'refine' && act !== 'refineAct' && act !== 'closeModal') return;
   const id = el.dataset.id || '';
@@ -4085,8 +4844,14 @@ function handleAction(ui, el, { render, showToast }) {
     saveGame(ui.game);
     render();
     showToast(result.message);
+  } else if (act === 'lookForLifeScene' && ui.modal?.kind === 'place') {
+    const { message } = lookForLifeScene(ui.game);
+    saveGame(ui.game);
+    if (message) showToast(message);
+    render();
   } else if (act === 'checkEvents') {
-    checkStoryTriggers(ui.game, id);
+    if (!checkStoryTriggers(ui.game, id)) return;
+    saveGame(ui.game);
     render();
   } else if (act === 'refineBenming') {
     const res = refineBenming(ui.game);

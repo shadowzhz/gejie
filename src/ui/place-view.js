@@ -1,14 +1,17 @@
 import { GU_DEFS, ITEMS, REFINE_RECIPES, guEffectText, recipeIngredientsText, recipeOutputText } from '../data/gu.js';
-import { MERCHANT_GU, PLACES, placeShopEntries, rareGathering, shopUnitPrice } from '../data/places.js';
+import { MERCHANT_GU, PLACES, placeShopEntries, merchantRefuses, rareGathering, shopUnitPrice } from '../data/places.js';
 import { formatDateTime, isNight } from '../core/calendar.js';
 import { esc, questBoard, SHOP_BATCH_LIMIT } from '../core/state.js';
-import { evalCond, nextRetreatTime } from '../core/story-engine.js';
+import { availableLocalScenes, evalCond, hasLocalLifeScene, nextRetreatTime } from '../core/story-engine.js';
 import { availableRecipeDiscovery, isRecipeSold } from '../core/refine.js';
 import { STORY_EVENTS } from '../data/story.js';
 
 export function renderPlaceView(gs) {
   const place = PLACES[gs.location] || PLACES.zhulou;
   const night = isNight(gs.minutes);
+  const scenes = availableLocalScenes(gs).map(({ id, title }) =>
+    `<button class="gold" data-action="checkEvents" data-id="${esc(id)}">${esc(title)}</button>`);
+  if (hasLocalLifeScene(gs)) scenes.push('<button data-action="lookForLifeScene">留意四周</button>');
   const actions = [];
   const discovery = availableRecipeDiscovery(gs);
   if (discovery) actions.push(`<button class="gold" data-action="placeAct" data-id="discoverRecipe">${esc(discovery.action)}</button>`);
@@ -131,6 +134,8 @@ export function renderPlaceView(gs) {
       ${place.gather ? `<p class="muted">常见山材 · ${esc([...new Set(place.gather)].map((id) => ITEMS[id].name).join('、'))}${rareGathering(gs, place) ? ` · 今日山材丰收，可采${esc(ITEMS[place.rare.item].name)} ×4` : ''}</p>` : ''}
       <div class="row">${actions.join('')}</div>
     </section>
+    ${scenes.length ? `<section class="card"><h3>此地剧情</h3><div class="row">${scenes.join('')}</div></section>` : ''}
+    ${merchantRefuses(gs) ? '<p class="card muted">贾家封了你的货帖，商队暂不与你做生意。</p>' : ''}
     ${questHtml}
     ${shopHtml}
     ${recipeHtml}`;

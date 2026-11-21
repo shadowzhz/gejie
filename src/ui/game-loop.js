@@ -1,5 +1,5 @@
 import { formatDateTime, isNight, MIN_PER_DAY } from '../core/calendar.js';
-import { minorXpNeed } from '../core/state.js';
+import { minorXpNeed, saveGame } from '../core/state.js';
 import { advanceMinutes } from '../core/clock.js';
 import { setModal } from './modal-controller.js';
 
@@ -32,6 +32,7 @@ export function startGameLoop(ui, render) {
     const day = Math.floor(ui.game.minutes / MIN_PER_DAY);
     const hallOpen = ui.game.flags['open:jiazhuge'];
     advanceMinutes(ui.game, 15);
+    if (ui.game.pendingEventId) saveGame(ui.game);
     if (ui.game.player.dead) {
       setModal(ui, 'dead', {});
       render();

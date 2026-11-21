@@ -120,6 +120,11 @@ button.sm { min-height: 32px; padding: 4px 10px; font-size: .85rem; }
 .muted { color: var(--dim); font-size: .88rem; }
 .kv { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; gap: 8px; }
 .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.story-choices button { max-width: 100%; text-align: left; }
+@media (max-width: 540px) {
+  .story-choices button { flex: 1 0 100%; }
+}
+
 .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
 
 /* 场景舞台 + 昼夜氛围 */

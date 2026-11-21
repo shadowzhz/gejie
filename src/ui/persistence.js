@@ -1,3 +1,4 @@
+import { restoreStoryProgress } from '../core/story-progress.js';
 import { PLACES } from '../data/places.js';
 import { addLog, recalcStats, saveGame, SAVE_KEY } from '../core/state.js';
 import { restoreRefineSession } from '../core/refine.js';
@@ -45,6 +46,8 @@ export function importProgress(raw) {
   const parsed = JSON.parse(raw);
   if (!parsed?.player || !Array.isArray(parsed.player.gu)) throw new Error('Invalid save');
   if (!PLACES[parsed.location]) parsed.location = 'shijie';
+  restoreStoryProgress(parsed);
+  restoreStoryProgress(parsed.snapshot);
   recalcStats(parsed);
   return parsed;
 }

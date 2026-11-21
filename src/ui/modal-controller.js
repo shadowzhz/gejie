@@ -24,10 +24,19 @@ export function renderModal(ui) {
   else sheetEl.removeAttribute('aria-labelledby');
 
   if (ui.game && ui.game.pendingEventId && !ui.game.battle && (!ui.modal || ui.modal.kind === 'place')) {
-    sheetEl.innerHTML = renderEventModal(ui.game, ui.game.pendingEventId);
+    const id = ui.game.pendingEventId;
+    const changed = sheetEl.dataset.storyEvent !== id;
+    sheetEl.dataset.storyEvent = id;
+    sheetEl.setAttribute('aria-labelledby', 'story-title');
+    sheetEl.innerHTML = renderEventModal(ui.game, id);
     modalEl.hidden = false;
+    if (changed) {
+      sheetEl.scrollTop = 0;
+      sheetEl.querySelector('#story-title')?.focus({ preventScroll: true });
+    }
     return;
   }
+  delete sheetEl.dataset.storyEvent;
   if (!ui.modal) {
     modalEl.hidden = true;
     sheetEl.innerHTML = '';
@@ -54,7 +63,9 @@ export function renderModal(ui) {
       </div>`;
   } else if (ui.modal.kind === 'win') {
     html = `<h2>走出青茅山 · 卷一圆满</h2>
-      <p>血海翻涌、仙鹤坠落，你在两位三转强者的死斗边缘活了下来，终于踏出十万大山，走向五域天地！</p>
+      <p>${ui.game.flags.escape_with_survivors
+        ? '寨门外的山风吹灭了最后一盏灯。你停下点过人数，方才随你穿过山道的人都已经出来了。有人问下一步往哪儿走。这一回，终于还有工夫坐下商量。'
+        : '血海翻涌，仙鹤坠落。你在两位强者的死斗边缘活了下来，踏出了青茅山。天色未明，山外的路才刚刚展开。'}</p>
       <div class="card">
         <div class="kv"><span>最终境界</span><b>${esc(realmText(ui.game.player))}</b></div>
         <div class="kv"><span>持有蛊虫</span><b>${ui.game.player.gu.length} 只</b></div>

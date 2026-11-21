@@ -1,3 +1,7 @@
+import { STORY_CHARACTERS } from '../data/characters.js';
+import { STORY_EVENTS, STORY_QUESTS, STORY_QUEST_STAGES } from '../data/story.js';
+import { formatDateTime } from '../core/calendar.js';
+import { storyRelation } from '../core/story-progress.js';
 import { GU_DEFS, ITEMS } from '../data/gu.js';
 import { esc, hasGu, realmText, RANK_NAMES, XIAO_NAMES } from '../core/state.js';
 
@@ -67,7 +71,7 @@ export function renderBagView(gs, tab) {
   }
 
   const hasCicada = hasGu(gs, 'chunqiuchan');
-  return `<div class="card">
+  return `${renderStoryJournal(gs)}<div class="card">
       <h3>春秋蝉与存档</h3>
       <div class="row" style="margin-bottom:8px">
         ${hasCicada ? '<button class="gold" data-action="saveCicada">留下春秋蝉旧影</button>' : '<span class="muted">未持有春秋蝉</span>'}
@@ -82,7 +86,67 @@ export function renderBagView(gs, tab) {
       </div>
     </div>
     <div class="card">
-      <h3>青茅山行纪</h3>
+      <h3>修行日志</h3>
       <div class="loglist">${gs.logs.map((l) => `<div class="${esc(l.cls || '')}">[第${l.age || 1}年] ${esc(l.text)}</div>`).join('')}</div>
     </div>`;
+}
+
+
+function renderStoryJournal(gs) {
+  const { quests, history } = gs.story;
+  const events = STORY_EVENTS.filter((event) => history[event.id] || gs.flags[`event_done:${event.id}`]);
+  events.reverse().sort((a, b) => (history[b.id]?.minute ?? -1) - (history[a.id]?.minute ?? -1));
+  const latestMain = events.find((event) => !event.quest && !event.person && !event.ambient);
+  const chapter = gs.player.escapedMountain ? '卷一已结束' : '卷一 · 青茅山';
+  const main = gs.flags.qingmao_finished && !gs.player.escapedMountain
+    ? '从青茅寨门离开青茅山' : gs.goal;
+  const records = events
+    .map((event) => {
+      const entry = history[event.id];
+      const choice = event.choices[entry?.choice]?.text;
+      return `<li><b>${esc(event.title)}</b>${choice ? ` · ${esc(choice)}` : ''}
+        <span class="muted">${Number.isFinite(entry?.minute) ? esc(formatDateTime(entry.minute)) : ' · 旧档记录'}</span></li>`;
+    }).join('');
+  const people = Object.entries(STORY_CHARACTERS).map(([id, person]) => {
+    const { favor, trust, progress } = storyRelation(gs, id);
+    return `<details>
+      <summary>${esc(person.name)} · 好感 ${favor} · 信任 ${trust}</summary>
+      <p>${esc(person.identity)}。 ${esc(person.voice)}</p>
+      <p>目标 · ${esc(person.goal)} 利益 · ${esc(person.interest)}</p>
+      <p>交往进度 · ${esc(progress || '尚无记录')}</p>
+      <p class="muted">${esc(person.change)}</p>
+    </details>`;
+  }).join('');
+  const clueList = [];
+  const tasks = Object.entries(quests).map(([id, progress]) => {
+    const quest = STORY_QUESTS[id];
+    for (const clueId of progress.clues) {
+      const { name, detail } = quest.clues[clueId];
+      clueList.push(`<li><b>${esc(name)}</b> · ${esc(detail)}</li>`);
+    }
+    const awaiting = progress.followupAt && !gs.flags[`event_done:${quest.followupEvent}`];
+    const step = quest.steps[progress.stage];
+    return `<p><b>${esc(quest.name)}</b> · ${esc(step?.name || STORY_QUEST_STAGES[progress.stage])}</p>
+      <p>${esc(step?.hint || quest.outcomes[progress.outcome] || '')}</p>
+      ${awaiting ? `<p class="muted">最早回信时间 · ${esc(formatDateTime(progress.followupAt))}</p>` : ''}`;
+  }).join('');
+  if (gs.flags['clue:huajiu']) clueList.push('<li><b>花酒行者的旧事</b> · 从血蝠洞沿下游走，水帘后有暗涧遗洞。</li>');
+  return `<section class="card">
+      <h3>主线 · ${chapter}</h3>
+      ${!gs.player.escapedMountain ? `<p>${esc(main)}</p>` : ''}
+      ${latestMain ? `<p class="muted">最近的主线进展 · ${esc(latestMain.title)}</p>` : ''}
+    </section>
+    <section class="card">
+      <h3>支线任务</h3>
+      ${tasks || '<p class="muted">暂无支线记录。</p>'}
+    </section>
+    <section class="card">
+      <h3>已获得的线索</h3>
+      ${clueList.length ? `<ul>${clueList.join('')}</ul>` : '<p class="muted">尚未记录线索。</p>'}
+    </section>
+    <section class="card"><h3>人物关系</h3>${people}</section>
+    <section class="card">
+      <h3>重要剧情</h3>
+      ${records ? `<ul>${records}</ul>` : '<p class="muted">尚未记录重要剧情。</p>'}
+    </section>`;
 }

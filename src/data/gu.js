@@ -1,5 +1,5 @@
 export const ITEMS = {
-  guangyin_water: { id: 'guangyin_water', name: '光阴河水', kind: '口粮', price: 22, desc: '维持残存春秋蝉的生机，也可用于修复其残躯。' },
+  guangyin_water: { id: 'guangyin_water', name: '光阴河水', kind: '口粮', price: 22, desc: '可喂养春秋蝉（残）。' },
   fanran: { id: 'fanran', name: '幡然蛊', kind: '炼蛊用蛊', price: 20, desc: '可将四味酒虫逆炼为一只一转酒虫。' },
   langzi: { id: 'langzi', name: '浪子蛊', kind: '炼蛊用蛊', price: 85, desc: '可将四味酒虫逆炼为两只一转酒虫。' },
   shengjiye: { id: 'shengjiye', name: '生机叶', kind: '一转消耗蛊', price: 22, heal: 24, healCooldown: 60, desc: '取自九叶生机草，疗伤后叶片消散。一小时内再次使用无效。' },

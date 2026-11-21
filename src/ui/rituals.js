@@ -166,9 +166,10 @@ export function renderRefineModal(sess, effect) {
 export function renderEventModal(gs, eventId) {
   const ev = STORY_EVENTS.find((e) => e.id === eventId);
   if (!ev) return '';
-  return `<h2>${esc(ev.title)}</h2>
-    <div class="card" style="white-space:pre-line">${esc(ev.text)}</div>
-    <div class="row">${ev.choices.map((c, idx) => evalCond(gs, c.cond) ? `<button class="primary" data-action="chooseEvent" data-id="${esc(ev.id)}" data-idx="${idx}">${esc(c.text)}</button>` : '').join('')}</div>`;
+  const paragraphs = [ev.text, ...(ev.notes ?? []).filter(({ cond }) => evalCond(gs, cond)).map(({ text }) => text)];
+  return `<h2 id="story-title" tabindex="-1">${esc(ev.title)}</h2>
+    <div class="card" style="white-space:pre-line">${esc(paragraphs.join('\n\n'))}</div>
+    <div class="row story-choices">${ev.choices.map((c, idx) => evalCond(gs, c.cond) ? `<button class="primary" data-action="chooseEvent" data-id="${esc(ev.id)}" data-idx="${idx}">${esc(c.text)}</button>` : '').join('')}</div>`;
 }
 
 export function renderCustomKillerModal(gs) {

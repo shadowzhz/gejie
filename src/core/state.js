@@ -1,3 +1,4 @@
+import { restoreStoryProgress } from './story-progress.js';
 import { GU_DEFS, ITEMS } from '../data/gu.js';
 import { MERCHANT_GU, PLACES, placeShopEntries, shopUnitPrice } from '../data/places.js';
 import { MIN_PER_DAY, makeTime, yearOf } from './calendar.js';
@@ -131,6 +132,7 @@ export function createNewGame(name = '无名', apt = null) {
     pendingEventId: 'kaike',
     paused: false
   };
+  restoreStoryProgress(state);
   recalcStats(state);
   state.player.hp = state.player.hpMax;
   state.player.zy = state.player.zyMax;
@@ -336,6 +338,8 @@ export function loadGame(storage) {
     const parsed = JSON.parse(raw);
     if (!parsed || !parsed.player) return null;
     if (!PLACES[parsed.location]) parsed.location = 'shijie';
+    restoreStoryProgress(parsed);
+    restoreStoryProgress(parsed.snapshot);
     recalcStats(parsed);
     return parsed;
   } catch {

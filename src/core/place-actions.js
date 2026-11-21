@@ -9,6 +9,7 @@ import { availableRecipeDiscovery } from './refine.js';
 
 export function performPlaceAction(gs, id) {
   const p = gs.player;
+  if (p.dead || gs.battle || gs.pendingEventId || gs.refining || gs.breakthrough) return;
   if (id === 'meditate') {
     advanceMinutes(gs, 120);
     addLog(gs, '你盘膝打坐一个时辰，吐纳天地灵气。');
@@ -28,10 +29,10 @@ export function performPlaceAction(gs, id) {
   } else if (id === 'caoren') {
     advanceMinutes(gs, 30);
     gs.flags['practiced'] = true;
-    startBattle(gs, 'caoren', '演武场练手');
+    if (!gs.pendingEventId) startBattle(gs, 'caoren', '演武场练手');
   } else if (id === 'sparring') {
     advanceMinutes(gs, 60);
-    startBattle(gs, 'fangzheng', '同窗切磋');
+    if (!gs.pendingEventId) startBattle(gs, 'fangzheng', '同窗切磋');
   } else if (id === 'docHeal') {
     if (p.yuanshi < 10) return { reason: '元石不足 10 块' };
     p.yuanshi -= 10;
@@ -65,11 +66,11 @@ export function performPlaceAction(gs, id) {
   } else if (id === 'exploreFight') {
     const place = PLACES[gs.location];
     advanceMinutes(gs, 60);
-    if (!gs.battle && place.exploreEnemy) startBattle(gs, place.exploreEnemy, `${place.name}遭遇`);
+    if (!gs.pendingEventId && place.exploreEnemy) startBattle(gs, place.exploreEnemy, `${place.name}遭遇`);
   } else if (id === 'exploreBoss') {
     const place = PLACES[gs.location];
     advanceMinutes(gs, 60);
-    if (!gs.battle && place.bossEnemy) startBattle(gs, place.bossEnemy, `讨伐${place.name}`);
+    if (!gs.pendingEventId && place.bossEnemy) startBattle(gs, place.bossEnemy, `讨伐${place.name}`);
   } else if (id === 'gather') {
     const place = PLACES[gs.location];
     if (!place.gather) return;
