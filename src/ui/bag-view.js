@@ -92,6 +92,37 @@ export function renderBagView(gs, tab) {
 }
 
 
+const PROFILE_ARCS = {
+  mobei: { meetings: ['classmates', 'mobei_roster'], closer: 'mobei_watch', finale: 'mobei_wall' },
+  chicheng: { meetings: ['classmates', 'chi_delivery'], closer: 'chi_quota', finale: 'chi_guarantee' },
+  bainingbing: { meetings: ['bai_encounter', 'bai_footprints', 'three_clans'], closer: 'bai_after_spar', finale: 'bai_broken_flag' }
+};
+
+function characterProfileLevel(gs, id) {
+  const seen = (eventId) => Boolean(gs.story.history[eventId] || gs.flags[`event_done:${eventId}`]);
+  const arc = PROFILE_ARCS[id];
+  if (arc) {
+    if (seen(arc.finale)) return 3;
+    if (seen(arc.closer)) return 2;
+    return arc.meetings.some(seen) ? 1 : 0;
+  }
+  if (id === 'jiafu') {
+    if (seen('jia_questions') || seen('jia_private_ledger')) {
+      if (seen('jia_case_followup') && gs.story.quests.caravan?.outcome === 'jia') return 3;
+      if (seen('jia_private_ledger')) return 2;
+      return 1;
+    }
+    return 0;
+  }
+  if (!seen('tie_inquiry')) return 0;
+  if (gs.flags.jia_iron_review && gs.flags.tie_cleared) return 3;
+  if (gs.flags.jia_iron_review) return 2;
+  const hearing = STORY_EVENTS.find((event) => event.id === 'tie_inquiry');
+  const choice = hearing.choices[gs.story.history.tie_inquiry?.choice];
+  const workedTogether = choice?.effects.some((effect) => effect.startsWith(`relation:${id}:`));
+  return workedTogether ? 2 : 1;
+}
+
 function renderStoryJournal(gs) {
   const { quests, history } = gs.story;
   const events = STORY_EVENTS.filter((event) => history[event.id] || gs.flags[`event_done:${event.id}`]);
@@ -108,13 +139,18 @@ function renderStoryJournal(gs) {
         <span class="muted">${Number.isFinite(entry?.minute) ? esc(formatDateTime(entry.minute)) : ' · 旧档记录'}</span></li>`;
     }).join('');
   const people = Object.entries(STORY_CHARACTERS).map(([id, person]) => {
+    const level = characterProfileLevel(gs, id);
+    if (!level) return '<p class="muted">未知人物</p>';
     const { favor, trust, progress } = storyRelation(gs, id);
+    const introduction = id === 'bainingbing' && level === 1 ? '白家寨蛊师' : person.identity;
     return `<details>
       <summary>${esc(person.name)} · 好感 ${favor} · 信任 ${trust}</summary>
-      <p>${esc(person.identity)}。 ${esc(person.voice)}</p>
-      <p>目标 · ${esc(person.goal)} 利益 · ${esc(person.interest)}</p>
-      <p>交往进度 · ${esc(progress || '尚无记录')}</p>
-      <p class="muted">${esc(person.change)}</p>
+      <p>${esc(introduction)}。</p>
+      ${level >= 2 ? `<p>${esc(person.voice)}</p>
+      <p>目标 · ${esc(person.goal)}</p>
+      <p>交往进度 · ${esc(progress || '尚无记录')}</p>` : ''}
+      ${level === 3 ? `<p>利益 · ${esc(person.interest)}</p>
+      <p class="muted">${esc(person.change)}</p>` : ''}
     </details>`;
   }).join('');
   const clueList = [];

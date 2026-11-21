@@ -4,7 +4,7 @@ import { createNewGame, addGu, BENMING_ZY_COST, claimBenming, feedGu, handleQues
 import { PLACES, placeShopEntries, rareGathering } from '../src/data/places.js';
 import { advanceMinutes, moveToPlace, rewindSpringCicada, saveSpringSnapshot } from '../src/core/clock.js';
 import { makeTime, MIN_PER_DAY, MIN_PER_MONTH } from '../src/core/calendar.js';
-import { applyEventChoice, availableLocalScenes, checkStoryTriggers, evalCond, finishStoryBattle, lookForLifeScene, innRumors, nextRetreatTime } from '../src/core/story-engine.js';
+import { applyEventChoice, availableLocalScenes, checkStoryTriggers, evalCond, finishStoryBattle, hasLocalLifeScene, lookForLifeScene, innRumors, nextRetreatTime } from '../src/core/story-engine.js';
 import { createKillerMove, forgetKillerMove } from '../src/core/killer.js';
 import { battleAct, battleGuPlan, startBattle } from '../src/core/combat.js';
 import { createBreakSession, stepBreakSession, validBreakSession, washMinorWall } from '../src/core/breakthrough.js';
@@ -1270,11 +1270,14 @@ test('七种见闻可在各自地点时辰触发，冷却、进行中的剧情�
     gs.minutes = makeTime(2, 3, 1, time);
     gs.location = place;
     prep(gs);
+    assert.equal(hasLocalLifeScene(gs), true, id);
     assert.equal(checkStoryTriggers(gs, id), null);
     assert.equal(lookForLifeScene(gs, () => 0.99).event, undefined);
     gs = importProgress(JSON.stringify(gs));
+    assert.equal(hasLocalLifeScene(gs), false, id);
     assert.match(lookForLifeScene(gs, () => 0).message, /过些时辰/);
     gs.minutes = gs.story.lifeReadyAt;
+    assert.equal(hasLocalLifeScene(gs), true, id);
     assert.equal(lookForLifeScene(gs, () => 0).event?.id, id);
     const readyAt = gs.story.lifeReadyAt;
     gs = importProgress(JSON.stringify(gs));
@@ -1285,7 +1288,9 @@ test('七种见闻可在各自地点时辰触发，冷却、进行中的剧情�
     const choice = event.choices.findIndex((entry) => evalCond(gs, entry.cond));
     assert.ok(choice >= 0);
     applyEventChoice(gs, id, choice);
+    assert.equal(hasLocalLifeScene(gs), false, id);
     gs.minutes = readyAt;
+    assert.equal(hasLocalLifeScene(gs), false, id);
     assert.notEqual(lookForLifeScene(gs, () => 0).event?.id, id);
     if (id === 'life_inn') assert.equal(gs.story.quests.hunter.stage, 'spoor');
     if (id === 'life_apprentice') assert.equal(gs.story.quests.furnace.stage, 'inspect');
@@ -1293,13 +1298,72 @@ test('七种见闻可在各自地点时辰触发，冷却、进行中的剧情�
   const gs = localStoryGame();
   gs.location = 'kezhan';
   gs.minutes = makeTime(1, 5, 1, 6);
+  assert.equal(hasLocalLifeScene(gs), false);
   assert.equal(lookForLifeScene(gs, () => 0).event, undefined);
+  assert.equal(gs.story.lifeReadyAt, undefined);
   gs.minutes = makeTime(1, 5, 1);
+  assert.equal(hasLocalLifeScene(gs), true);
   for (const blocker of ['battle', 'refining', 'breakthrough', 'pendingEventId']) {
     gs[blocker] = {};
+    assert.equal(hasLocalLifeScene(gs), false);
     assert.match(lookForLifeScene(gs, () => 0).message, /眼下不便/);
     delete gs[blocker];
   }
+});
+
+test('见闻按钮受日期、前置剧情和关系条件限制', () => {
+  const gs = localStoryGame();
+  gs.location = 'jucaifang';
+  gs.flags.chi_open_books = true;
+  gs.minutes = makeTime(1, 12, 15, 6);
+  assert.equal(hasLocalLifeScene(gs), false);
+  gs.minutes = makeTime(2, 1, 1, 6);
+  assert.equal(hasLocalLifeScene(gs), true);
+  gs.minutes = makeTime(2, 6, 1, 6);
+  assert.equal(hasLocalLifeScene(gs), false);
+
+  gs.location = 'yaotang';
+  gs.minutes = makeTime(2, 6, 1);
+  assert.equal(hasLocalLifeScene(gs), false);
+  gs.flags['event_done:langchao_start'] = true;
+  assert.equal(hasLocalLifeScene(gs), true);
+
+  gs.location = 'kezhan';
+  gs.flags['event_done:life_inn'] = true;
+  gs.player.rank = 2;
+  gs.story.quests.caravan = { stage: 'verify', clues: ['ledger'] };
+  assert.equal(hasLocalLifeScene(gs), false);
+  changeStoryRelation(gs, 'jiafu', 10, 0);
+  assert.equal(hasLocalLifeScene(gs), true);
+});
+
+test('行纪人物资料按相遇、交往及个人线结局解锁，旧档和读档都可还原', () => {
+  const gs = localStoryGame();
+  const profiles = (game = gs) => renderBagView(game, 'journal').match(/<h3>人物关系<\/h3>(.*?)<\/section>/s)[1];
+  assert.equal(profiles(gs).match(/未知人物/g).length, 6);
+  changeStoryRelation(gs, 'tieruonan', 30, 40, '收到卷宗');
+  gs.flags.jia_iron_review = true;
+  assert.doesNotMatch(profiles(), /铁若男|铁血冷|收到卷宗/);
+
+  gs.flags['event_done:classmates'] = true;
+  assert.match(profiles(), /古月漠北.*古月赤城/s);
+  assert.doesNotMatch(profiles(), /带同窗练出|公开竞争可换来/);
+  gs.flags['event_done:mobei_watch'] = true;
+  assert.match(profiles(), /带同窗练出/);
+  assert.doesNotMatch(profiles(), /公开竞争可换来/);
+  gs.flags['event_done:mobei_wall'] = true;
+  assert.match(profiles(importProgress(JSON.stringify(gs))), /公开竞争可换来/);
+
+  gs.flags['event_done:jia_questions'] = true;
+  assert.match(profiles(), /贾家行商/);
+  assert.doesNotMatch(profiles(), /护住同行伙计/);
+  gs.flags['event_done:jia_private_ledger'] = true;
+  assert.match(profiles(), /找出贾金生的去向/);
+  gs.flags['event_done:tie_inquiry'] = true;
+  assert.match(profiles(), /铁若男.*铁血冷/s);
+  assert.doesNotMatch(profiles(), /铁家办案公信/);
+  gs.flags.tie_cleared = true;
+  assert.match(profiles(importProgress(JSON.stringify(gs))), /铁家办案公信/);
 });
 
 test('商队封帖保留至读档，依然可以使用寨中蛊铺，补录证人可参与听证', () => {

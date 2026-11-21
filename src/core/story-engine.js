@@ -105,17 +105,26 @@ function storyBlocked(gs) {
   return !gs || gs.player.dead || gs.pendingEventId || gs.battle || gs.refining || gs.breakthrough;
 }
 
+function localLifeScenes(gs) {
+  return STORY_EVENTS.filter((ev) => ev.ambient
+    && !gs.flags[`event_done:${ev.id}`] && evalCond(gs, ev.cond));
+}
+
+function lifeSceneCoolingDown(gs) {
+  return gs.minutes < (gs.story.lifeReadyAt ?? 0);
+}
+
 export function hasLocalLifeScene(gs) {
-  return !gs.player.escapedMountain && STORY_EVENTS.some((ev) => ev.ambient
-    && !gs.flags[`event_done:${ev.id}`]
-    && ev.cond.split('&').includes(`at:${gs.location}`));
+  return !storyBlocked(gs) && !gs.player.escapedMountain
+    && !lifeSceneCoolingDown(gs) && localLifeScenes(gs).length > 0;
 }
 
 export function lookForLifeScene(gs, rng = Math.random) {
   if (storyBlocked(gs) || gs.player.escapedMountain) return { message: '眼下不便打听。' };
-  if (gs.minutes < (gs.story.lifeReadyAt ?? 0)) return { message: '方才已留意过四周，过些时辰再来。' };
-  const scenes = STORY_EVENTS.filter((ev) => ev.ambient && !gs.flags[`event_done:${ev.id}`] && evalCond(gs, ev.cond));
-  if (!scenes.length || rng() >= 0.7) {
+  if (lifeSceneCoolingDown(gs)) return { message: '方才已留意过四周，过些时辰再来。' };
+  const scenes = localLifeScenes(gs);
+  if (!scenes.length) return { message: '暂时没有新见闻。' };
+  if (rng() >= 0.7) {
     gs.story.lifeReadyAt = gs.minutes + MIN_PER_SHICHEN;
     return { message: '暂时没有新见闻。' };
   }
