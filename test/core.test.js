@@ -1749,3 +1749,30 @@ test('催动白豕蛊后弹窗显示实得气血与力量', () => {
   assert.deepEqual(ui.modal.data.lines, [`气血上限 ${hp} → ${hp + 35}`, '力量 0 → 12']);
   assert.equal(gs.player.gu.some(({ id }) => id === 'baishi'), false);
 });
+
+test('主舞台直呈当前场景，舆图收为弹窗且主舞台访客关闭后回到主舞台', () => {
+  const gs = createNewGame();
+  applyEventChoice(gs, 'kaike', 0);
+  const ui = { game: gs, tab: 'place', modal: { kind: 'map' } };
+  const hooks = { render() {}, showToast() {} };
+
+  handleAction(ui, { dataset: { action: 'walkTo', id: 'yanwu' } }, hooks);
+  assert.equal(gs.location, 'yanwu');
+  assert.equal(ui.tab, 'place');
+  assert.equal(ui.modal, null);
+
+  handleAction(ui, { dataset: { action: 'openMap' } }, hooks);
+  assert.equal(ui.modal.kind, 'map');
+  handleAction(ui, { dataset: { action: 'closeModal' } }, hooks);
+  assert.equal(ui.modal, null);
+
+  handleAction(ui, { dataset: { action: 'visitPerson', id: 'mobei' } }, hooks);
+  assert.equal(ui.modal.kind, 'person');
+  assert.equal(ui.modal.data.returnToPlace, false);
+  handleAction(ui, { dataset: { action: 'closeModal' } }, hooks);
+  assert.equal(ui.modal, null);
+
+  assert.ok(performPlaceAction(gs, 'caoren').ok);
+  handleAction(ui, { dataset: { action: 'battleAct', kind: 'attack' } }, hooks);
+  assert.ok(ui.battleFx.foeDmg > 0);
+});

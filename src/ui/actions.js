@@ -1,9 +1,8 @@
 import { visitPerson } from '../core/social.js';
 import { STORY_EVENTS } from '../data/story.js';
 import { GU_DEFS, ITEMS, REFINE_RECIPES } from '../data/gu.js';
-import { hasPlaceActions } from '../data/places.js';
 import { formatDateTime, MIN_PER_DAY, MIN_PER_MONTH, MIN_PER_SHICHEN } from '../core/calendar.js';
-import { addGu, addItem, addLog, createAptitude, createNewGame, feedGu, handleQuest, loadGame, purchaseShopEntry, RANK_NAMES, realmText, recalcStats, refineBenming, saveGame, useHealItem, useHealingGu, useBoarGu, XIAO_NAMES } from '../core/state.js';
+import { addGu, addItem, addLog, createAptitude, createNewGame, feedGu, handleQuest, loadGame, purchaseShopEntry, RANK_NAMES, realmText, recalcStats, refineBenming, saveGame, SHOP_BATCH_LIMIT, useHealItem, useHealingGu, useBoarGu, XIAO_NAMES } from '../core/state.js';
 import { createKillerMove, discoveredKillerPatterns, forgetKillerMove, recordGuUsage } from '../core/killer.js';
 import { battleAct } from '../core/combat.js';
 import { applyEventChoice, checkStoryTriggers, finishStoryBattle, lookForLifeScene } from '../core/story-engine.js';
@@ -13,6 +12,7 @@ import { createBreakSession, stepBreakSession, useSheli, washMinorWall } from '.
 import { performPlaceAction } from '../core/place-actions.js';
 import { dismissModal, setModal } from './modal-controller.js';
 import { importProgress, resetProgress, restoreSessions } from './persistence.js';
+import { playSfx, toggleSfxMuted } from './visuals.js';
 
 export function createStartState() {
   return { phase: 'intro', name: '方源', apt: null, step: 0, target: 25, done: false, hasSave: false };
@@ -25,9 +25,13 @@ function showReceipt(ui, receipt) {
 function handlePlaceAction(ui, id, { render, showToast }) {
   const result = performPlaceAction(ui.game, id);
   if (!result?.ok) {
-    if (result?.reason) showToast(result.reason);
+    if (result?.reason) {
+      playSfx('alert');
+      showToast(result.reason);
+    }
     return;
   }
+  playSfx(result.won || ui.game.battle ? 'alert' : 'tap');
   if (result.won) setModal(ui, 'win', {});
   if (result.receipt) showReceipt(ui, result.receipt);
   else if (result.message) showToast(result.message);
@@ -92,8 +96,8 @@ function handleDeveloperAction(ui, action, { render, showToast }) {
 export function handleAction(ui, el, { render, showToast }) {
   const act = el.dataset.action;
   if (!act) return;
-  if (ui.game?.pendingEventId && (!ui.modal || ui.modal.kind === 'place') && !ui.game.battle
-    && act !== 'chooseEvent' && act !== 'togglePause') return;
+  if (ui.game?.pendingEventId && (!ui.modal || ui.modal.kind === 'place' || ui.modal.kind === 'map') && !ui.game.battle
+    && act !== 'chooseEvent' && act !== 'togglePause' && act !== 'toggleSfx') return;
   if (ui.game?.breakthrough && act !== 'breakAct') return;
   if (ui.modal?.kind === 'refine' && act !== 'refineAct' && act !== 'closeModal') return;
   const id = el.dataset.id || '';
@@ -108,33 +112,52 @@ export function handleAction(ui, el, { render, showToast }) {
     ui.start.target = Math.max(10, Math.min(48, Math.round(ui.start.apt.hai * 5)));
     ui.start.done = false;
     ui.start.phase = 'kaiqiao';
+    playSfx('tap');
     render();
   } else if (act === 'kaiqiaoStep') {
     ui.start.step = Math.min(ui.start.target, ui.start.step + 5);
-    if (ui.start.step >= ui.start.target) ui.start.done = true;
+    if (ui.start.step >= ui.start.target) {
+      ui.start.done = true;
+      playSfx('win');
+    } else {
+      playSfx('walk');
+    }
     render();
   } else if (act === 'kaiqiaoSkip') {
     ui.start.step = ui.start.target;
     ui.start.done = true;
+    playSfx('win');
     render();
   } else if (act === 'kaiqiaoFinish') {
     ui.game = createNewGame(ui.start.name, ui.start.apt);
     ui.start.phase = 'intro';
     ui.tab = 'cultivation';
     saveGame(ui.game);
+    playSfx('tap');
     render();
   } else if (act === 'continueSave') {
     ui.game = loadGame();
     if (!ui.game) { showToast('未找到可用存档'); return; }
     ui.tab = 'place';
     restoreSessions(ui, showToast);
+    playSfx('tap');
     render();
   } else if (act === 'navTab') {
-    if (ui.modal?.kind === 'place') ui.modal = null;
+    if (ui.modal?.kind === 'place' || ui.modal?.kind === 'map') ui.modal = null;
     ui.tab = el.dataset.tab || 'place';
+    playSfx('tap');
     render();
   } else if (act === 'togglePause') {
     ui.game.paused = !ui.game.paused;
+    playSfx('tap');
+    render();
+  } else if (act === 'toggleSfx') {
+    const muted = toggleSfxMuted();
+    if (!muted) playSfx('tap');
+    render();
+  } else if (act === 'toggleGoal') {
+    ui.goalCollapsed = !ui.goalCollapsed;
+    playSfx('tap');
     render();
   } else if (act === 'toggleDeveloper') {
     if (!ui.game) return;
@@ -146,62 +169,88 @@ export function handleAction(ui, el, { render, showToast }) {
     if (ui.game?.developerMode && !ui.modal) openModal('developer');
   } else if (act === 'devAction') {
     handleDeveloperAction(ui, id, { render, showToast });
+  } else if (act === 'openMap') {
+    if (ui.game && !ui.game.battle && !ui.game.player.dead) {
+      playSfx('tap');
+      openModal('map');
+    }
   } else if (act === 'walkTo') {
     const res = moveToPlace(ui.game, id);
-    if (!res.ok) showToast(res.reason);
-    else if (ui.game.location === id) {
+    if (!res.ok) {
+      playSfx('alert');
+      showToast(res.reason);
+    } else if (ui.game.location === id) {
       ui.tab = 'place';
-      ui.modal = hasPlaceActions(ui.game) ? { kind: 'place' } : null;
-      const sheet = document.getElementById('sheet');
-      if (sheet) sheet.scrollTop = 0;
+      ui.modal = null;
+      playSfx('walk');
+      if (typeof window !== 'undefined') window.scrollTo?.({ top: 0, behavior: 'smooth' });
     }
     saveGame(ui.game);
     render();
   } else if (act === 'openPlace') {
-    if (ui.game && !ui.game.battle && !ui.game.player.dead && hasPlaceActions(ui.game)) {
+    if (ui.game && !ui.game.battle && !ui.game.player.dead) {
       ui.tab = 'place';
-      openModal('place');
+      ui.modal = null;
+      playSfx('tap');
+      render();
     }
-  } else if ((act === 'visitPerson' && ['place', 'person'].includes(ui.modal?.kind))
+  } else if ((act === 'visitPerson' && (ui.modal?.kind === 'place' || ui.modal?.kind === 'person' || (!ui.modal && ui.tab === 'place')))
     || (act === 'giftPerson' && ui.modal?.kind === 'person' && ui.modal.data.id === id)) {
+    const returnToPlace = ui.modal?.kind === 'place' || Boolean(ui.modal?.data?.returnToPlace);
     const person = visitPerson(ui.game, id, act === 'giftPerson');
     if (!person) return;
-    setModal(ui, 'person', person);
+    playSfx(act === 'giftPerson' ? 'heal' : 'tap');
+    setModal(ui, 'person', { ...person, returnToPlace });
     saveGame(ui.game);
     render();
   } else if (act === 'placeAct') {
     handlePlaceAction(ui, id, { render, showToast });
   } else if (act === 'quest') {
+    playSfx('tap');
     showReceipt(ui, handleQuest(ui.game, id));
     saveGame(ui.game);
     render();
   } else if (act === 'buyRecipe') {
     const message = purchaseRecipe(ui.game, id);
     if (!message) return;
+    playSfx('tap');
     saveGame(ui.game);
     render();
     showToast(message);
+  } else if (act === 'stepQty') {
+    const input = el.closest('.shop-purchase')?.querySelector('input[type="number"]');
+    if (!input || input.disabled) return;
+    const delta = Number(el.dataset.step) || 0;
+    const cur = Number.isFinite(input.valueAsNumber) ? input.valueAsNumber : 1;
+    input.value = String(Math.max(1, Math.min(SHOP_BATCH_LIMIT, cur + delta)));
+    playSfx('tap');
   } else if (act === 'buyItem') {
     const input = el.closest('.shop-purchase')?.querySelector('input[type="number"]');
     const result = purchaseShopEntry(ui.game, id, input?.valueAsNumber ?? 1);
-    if (!result.ok) { showToast(result.reason); return; }
+    if (!result.ok) { playSfx('alert'); showToast(result.reason); return; }
+    playSfx('tap');
     saveGame(ui.game);
     render();
     showToast(result.message);
-  } else if (act === 'lookForLifeScene' && ui.modal?.kind === 'place') {
+  } else if (act === 'lookForLifeScene' && (!ui.modal || ui.modal.kind === 'place')) {
     const { message } = lookForLifeScene(ui.game);
     saveGame(ui.game);
+    playSfx('tap');
     if (message) showToast(message);
     render();
   } else if (act === 'checkEvents') {
     if (!checkStoryTriggers(ui.game, id)) return;
-    if (ui.modal?.kind === 'person') setModal(ui, 'place');
+    if (ui.modal?.kind === 'person') {
+      ui.modal = ui.modal.data?.returnToPlace ? { kind: 'place' } : null;
+    }
+    playSfx('tap');
     saveGame(ui.game);
     render();
   } else if (act === 'refineBenming') {
     const res = refineBenming(ui.game);
-    if (!res.ok) { showToast(res.reason); return; }
+    if (!res.ok) { playSfx('alert'); showToast(res.reason); return; }
     ui.tab = 'cultivation';
+    playSfx('win');
     showReceipt(ui, { title: '本命蛊炼化成功', lines: ['月光蛊已成为你的本命蛊。'] });
     saveGame(ui.game);
     render();
@@ -219,6 +268,7 @@ export function handleAction(ui, el, { render, showToast }) {
     if (p.yuanshi < before.stones) lines.push(`支出元石 ×${before.stones - p.yuanshi}`);
     lines.push(...feedback);
     ui.game.story.history[id].feedback = lines;
+    playSfx('tap');
     if (lines.length) {
       const event = STORY_EVENTS.find((entry) => entry.id === id);
       showReceipt(ui, { title: event.title, lines });
@@ -228,18 +278,21 @@ export function handleAction(ui, el, { render, showToast }) {
     render();
   } else if (act === 'washMinor') {
     const res = washMinorWall(ui.game);
+    playSfx(res.ok ? 'break' : 'alert');
     showToast(res.ok ? res.message : res.reason);
     saveGame(ui.game);
     render();
   } else if (act === 'openBreak') {
     if (ui.game.breakthrough || ui.game.refining || ui.game.battle || ui.game.player.dead) return;
     const sess = createBreakSession(ui.game);
-    if (sess.error) { showToast(sess.error); return; }
+    if (sess.error) { playSfx('alert'); showToast(sess.error); return; }
     ui.game.breakthrough = sess;
     if (!saveGame(ui.game)) showToast('破壁进度保存失败，请检查本地存储。');
+    playSfx('tap');
     openModal('break', sess);
   } else if (act === 'breakAct' && ui.modal?.kind === 'break' && ui.game.breakthrough) {
     stepBreakSession(ui.game, ui.game.breakthrough, id);
+    playSfx(ui.game.breakthrough?.state === 'win' ? 'win' : id === 'hard' ? 'hit' : 'break');
     if (!saveGame(ui.game)) showToast('破壁进度保存失败，请检查本地存储。');
     render();
   } else if (act === 'startRefine') {
@@ -250,6 +303,7 @@ export function handleAction(ui, el, { render, showToast }) {
     if (sess.error) { openModal('refineInfo', { recipe, reason: sess.error }); return; }
     ui.game.refining = sess;
     if (!saveGame(ui.game)) showToast('炼蛊进度保存失败，请检查本地存储。');
+    playSfx('tap');
     openModal('refine', sess);
   } else if (act === 'refineAct' && ui.modal?.kind === 'refine') {
     const sess = ui.modal.data;
@@ -265,20 +319,26 @@ export function handleAction(ui, el, { render, showToast }) {
     stepRefineSession(ui.game, sess, id, Math.random, timing);
     if (state === sess.state && turns === sess.turns && pending === sess.pending.length) return;
     ui.modal.effect = { action: id.split(':')[0], input: el.dataset.input };
+    playSfx(sess.state === 'done' ? (sess.success ? 'win' : 'alert') : 'refine');
     if (!saveGame(ui.game)) showToast('炼蛊进度保存失败，请检查本地存储。');
     render();
   } else if (act === 'openCustomKiller') {
-    if (!ui.game.battle && discoveredKillerPatterns(ui.game.player).length) openModal('killer');
+    if (!ui.game.battle && discoveredKillerPatterns(ui.game.player).length) {
+      playSfx('tap');
+      openModal('killer');
+    }
   } else if (act === 'kmCreate' && ui.modal?.kind === 'killer') {
     const nm = document.getElementById('kmName')?.value || '';
     const res = createKillerMove(ui.game, id, nm);
-    if (!res.ok) { showToast(res.reason); return; }
+    if (!res.ok) { playSfx('alert'); showToast(res.reason); return; }
+    playSfx('win');
     saveGame(ui.game);
     closeModal();
     showToast(`推演成功：「${res.move.name}」`);
   } else if (act === 'forgetKiller') {
     const move = forgetKillerMove(ui.game, id);
     if (!move) return;
+    playSfx('tap');
     saveGame(ui.game);
     render();
     showToast(`已删除「${move.name}」`);
@@ -287,6 +347,7 @@ export function handleAction(ui, el, { render, showToast }) {
     if (ui.game.player.autoFeed) {
       for (const gu of ui.game.player.gu) feedGu(ui.game, gu, 51);
     }
+    playSfx('tap');
     saveGame(ui.game);
     render();
   } else if (act === 'feedGu' || act === 'feedAll') {
@@ -296,6 +357,7 @@ export function handleAction(ui, el, { render, showToast }) {
       const fed = ui.game.player.gu.filter((g) => feedGu(ui.game, g, 85)).length;
       showToast(fed ? `已喂养 ${fed} 只蛊虫` : '无需喂养或口粮不足');
     }
+    playSfx('heal');
     saveGame(ui.game);
     render();
   } else if (act === 'toggleEquip') {
@@ -303,15 +365,18 @@ export function handleAction(ui, el, { render, showToast }) {
     const i = ui.game.player.equipped.indexOf(uid);
     if (i >= 0) ui.game.player.equipped.splice(i, 1);
     else if (ui.game.player.equipped.length < 6) ui.game.player.equipped.push(uid);
-    else showToast('至多同时出战 6 只蛊');
+    else { playSfx('alert'); showToast('至多同时出战 6 只蛊'); }
+    playSfx('tap');
     saveGame(ui.game);
     render();
   } else if (act === 'useHealingGu') {
     const uid = Number(id);
     if (!useHealingGu(ui.game, uid)) {
+      playSfx('alert');
       showToast(ui.game.player.hp >= ui.game.player.hpMax ? '气血已满' : '无法催动治疗蛊，请检查真元');
       return;
     }
+    playSfx('heal');
     recordGuUsage(ui.game, [ui.game.player.gu.find((gu) => gu.uid === uid).id]);
     saveGame(ui.game);
     render();
@@ -320,6 +385,7 @@ export function handleAction(ui, el, { render, showToast }) {
     const gu = p.gu.find(({ uid }) => uid === Number(id));
     const { hpMax, powerBonus } = p;
     if (!useBoarGu(ui.game, Number(id))) return;
+    playSfx('win');
     showReceipt(ui, {
       title: `已催动${GU_DEFS[gu.id].name}`,
       lines: [`气血上限 ${hpMax} → ${p.hpMax}`, `力量 ${powerBonus} → ${p.powerBonus}`],
@@ -330,33 +396,59 @@ export function handleAction(ui, el, { render, showToast }) {
   } else if (act === 'useSheli') {
     const result = useSheli(ui.game, Number(id));
     if (result.message || result.reason) showToast(result.message || result.reason);
-    if (!result.ok) return;
+    if (!result.ok) { playSfx('alert'); return; }
+    playSfx('win');
     saveGame(ui.game);
     render();
   } else if (act === 'useHealItem') {
     const result = useHealItem(ui.game, id);
     if (!result.ok) {
       if (result.reason) showToast(result.reason);
+      playSfx('alert');
       return;
     }
+    playSfx('heal');
     saveGame(ui.game);
     render();
   } else if (act === 'battleAct') {
-    battleAct(ui.game, el.dataset.kind, id);
+    const b = ui.game.battle;
+    const kind = el.dataset.kind;
+    const before = b ? {
+      foeHp: b.foe.hp,
+      foeShield: b.foe.shield,
+      foeStunned: b.foe.stunned,
+      meHp: ui.game.player.hp,
+      meShield: b.meShield
+    } : null;
+    battleAct(ui.game, kind, id);
+    if (b && before && kind !== 'gu') {
+      const foeDmg = Math.max(0, (before.foeHp + before.foeShield) - (b.foe.hp + b.foe.shield));
+      const foeShieldGain = Math.max(0, b.foe.shield - before.foeShield);
+      const foeStunned = !before.foeStunned && b.foe.stunned;
+      ui.battleFx = { ts: Date.now(), foeDmg, foeShieldGain, foeStunned };
+      if (b.state === 'win') playSfx('win');
+      else if (foeDmg > 0) playSfx('hit');
+      else if (b.meShield > before.meShield) playSfx('shield');
+      else if (ui.game.player.hp > before.meHp) playSfx('heal');
+      else playSfx('tap');
+    } else {
+      playSfx('tap');
+    }
     saveGame(ui.game);
     render();
   } else if (act === 'finishBattle') {
-    const foe = ui.game.battle?.foe.id;
+    ui.battleFx = null;
     if (!finishStoryBattle(ui.game)) return;
     if (ui.game.player.dead) setModal(ui, 'dead', {});
-    else if (!ui.game.pendingEventId && ui.game.location === 'zhulin' && ['yezhu', 'zhuwang'].includes(foe)) {
+    else if (!ui.game.pendingEventId) {
       ui.tab = 'place';
-      setModal(ui, 'place');
+      ui.modal = null;
     }
     saveGame(ui.game);
     render();
   } else if (act === 'saveCicada') {
     const res = saveSpringSnapshot(ui.game);
+    playSfx(res.ok ? 'win' : 'alert');
     showToast(res.ok ? '已留下春秋蝉旧影' : res.reason);
     saveGame(ui.game);
     render();
@@ -365,8 +457,10 @@ export function handleAction(ui, el, { render, showToast }) {
     if (!res.ok) { showToast(res.reason); return; }
     ui.game = res.state;
     restoreSessions(ui, showToast, true);
+    playSfx('break');
     render();
   } else if (act === 'manualSave') {
+    playSfx('tap');
     showToast(saveGame(ui.game) ? '进度已保存' : '保存失败，请检查本地存储。');
   } else if (act === 'exportSave') {
     const text = JSON.stringify(ui.game, null, 2);
@@ -389,9 +483,11 @@ export function handleAction(ui, el, { render, showToast }) {
     resetProgress();
     ui.game = null;
     ui.modal = null;
+    ui.battleFx = null;
     ui.start = createStartState();
     render();
   } else if (act === 'closeModal') {
+    playSfx('tap');
     closeModal();
   }
 }

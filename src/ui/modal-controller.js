@@ -3,6 +3,7 @@ import { esc, realmText } from '../core/state.js';
 import { clearRefineProgress } from './persistence.js';
 import { renderBreakModal, renderCustomKillerModal, renderEventModal, renderRefineModal } from './rituals.js';
 import { renderPlaceView } from './place-view.js';
+import { renderMapPanel } from './map-view.js';
 import { renderRefineDetails } from './refine-view.js';
 import { renderDeveloperView } from './bag-view.js';
 
@@ -11,20 +12,21 @@ export function renderModal(ui) {
   const sheetEl = document.getElementById('sheet');
   if (!modalEl || !sheetEl) return;
 
-  if (ui.modal?.kind === 'place' && (ui.game.battle || ui.game.player.dead)) ui.modal = null;
+  if ((ui.modal?.kind === 'place' || ui.modal?.kind === 'map') && (ui.game.battle || ui.game.player.dead)) ui.modal = null;
   const placeShown = ui.modal?.kind === 'place' && !ui.game.pendingEventId;
+  const mapShown = ui.modal?.kind === 'map' && !ui.game.pendingEventId;
   const refineShown = ui.modal?.kind === 'refine';
   const activeRefineButton = refineShown && sheetEl.contains(document.activeElement) ? document.activeElement : null;
   const samePlaceSheet = sheetEl.classList.contains('place-sheet');
   const keepScroll = (placeShown && samePlaceSheet) || (refineShown
     && sheetEl.classList.contains('refine-sheet') && ui.modal.data.state === 'ongoing' && ui.modal.effect?.action !== 'ignite');
   const scrollTop = keepScroll ? sheetEl.scrollTop : 0;
-  sheetEl.classList.toggle('place-sheet', placeShown);
+  sheetEl.classList.toggle('place-sheet', placeShown || mapShown);
   sheetEl.classList.toggle('refine-sheet', refineShown);
   if (placeShown || refineShown) sheetEl.setAttribute('aria-labelledby', placeShown ? 'place-title' : 'refine-title');
   else if (sheetEl.getAttribute('aria-labelledby') !== 'receipt-title') sheetEl.removeAttribute('aria-labelledby');
 
-  if (ui.game && ui.game.pendingEventId && !ui.game.battle && (!ui.modal || ui.modal.kind === 'place')) {
+  if (ui.game && ui.game.pendingEventId && !ui.game.battle && (!ui.modal || ui.modal.kind === 'place' || ui.modal.kind === 'map')) {
     const id = ui.game.pendingEventId;
     const changed = sheetEl.dataset.storyEvent !== id;
     sheetEl.dataset.storyEvent = id;
@@ -47,9 +49,9 @@ export function renderModal(ui) {
     const changed = sheetEl.getAttribute('aria-labelledby') !== 'receipt-title' || sheetEl.querySelector('#receipt-title')?.textContent !== receipt.title;
     sheetEl.setAttribute('aria-labelledby', 'receipt-title');
     sheetEl.innerHTML = `<h2 id="receipt-title" tabindex="-1">${esc(receipt.title)}</h2>
-      <ul>${receipt.lines.map((line) => `<li>${esc(line)}</li>`).join('')}</ul>
-      ${receipt.detail ? `<p>${esc(receipt.detail)}</p>` : ''}
-      <div class="row"><button class="primary" data-action="${victory ? 'finishBattle' : 'closeModal'}">${victory ? '离开战场' : '继续'}</button></div>`;
+      <div class="receipt-list">${receipt.lines.map((line) => `<div class="receipt-row">· ${esc(line)}</div>`).join('')}</div>
+      ${receipt.detail ? `<p class="muted">${esc(receipt.detail)}</p>` : ''}
+      <div class="row"><button class="primary" data-action="${victory ? 'finishBattle' : 'closeModal'}">${victory ? '离开战场' : '收悉'}</button></div>`;
     modalEl.hidden = false;
     sheetEl.scrollTop = 0;
     if (changed) sheetEl.querySelector('#receipt-title').focus({ preventScroll: true });
@@ -62,18 +64,21 @@ export function renderModal(ui) {
     return;
   }
   let html = '';
-  if (ui.modal.kind === 'place') {
-    html = `<div class="place-sheet-controls"><button class="sm" data-action="closeModal">返回地图</button></div>${renderPlaceView(ui.game)}`;
+  if (ui.modal.kind === 'map') {
+    html = `<div class="place-sheet-controls"><button class="sm ghost" data-action="closeModal">收起舆图</button></div>${renderMapPanel(ui.game)}`;
+  } else if (ui.modal.kind === 'place') {
+    html = `<div class="place-sheet-controls"><button class="sm" data-action="closeModal">返回</button></div>${renderPlaceView(ui.game)}`;
   } else if (ui.modal.kind === 'person') {
-    const { id, name, response, favor, trust, progress, giftName, giftReason } = ui.modal.data;
+    const { id, name, response, favor, trust, progress, giftName, giftReason, returnToPlace } = ui.modal.data;
     const scenes = availableLocalScenes(ui.game).filter((event) => event.person === id).map(({ id, title }) =>
       `<button class="gold" data-action="checkEvents" data-id="${esc(id)}">${esc(title)}</button>`).join('');
     sheetEl.setAttribute('aria-labelledby', 'person-title');
-    html = `<h2 id="person-title">${esc(name)}</h2><p>${esc(response)}</p>
-      <p class="muted">好感 ${favor} · 信任 ${trust}${progress ? ` · ${esc(progress)}` : ''}</p>
-      <div class="row"><button data-action="visitPerson" data-id="${esc(id)}">聊天</button>
-      <button class="gold" data-action="giftPerson" data-id="${esc(id)}" ${giftReason ? 'disabled' : ''}>送${esc(giftName)} ×1</button>
-      ${scenes}<button data-action="closeModal">返回地点</button></div>
+    html = `<div class="person-dialog-head"><h2 id="person-title">${esc(name)}</h2><span class="badge">好感 ${favor} · 信任 ${trust}</span></div>
+      <div class="story-scroll person-quote">${esc(response)}</div>
+      ${progress ? `<p class="muted">${esc(progress)}</p>` : ''}
+      <div class="row"><button data-action="visitPerson" data-id="${esc(id)}">交谈</button>
+      <button class="gold" data-action="giftPerson" data-id="${esc(id)}" ${giftReason ? 'disabled' : ''}>赠${esc(giftName)} ×1</button>
+      ${scenes}<button class="ghost" data-action="closeModal">${returnToPlace ? '返回地点' : '辞别'}</button></div>
       ${giftReason ? `<p class="muted">${esc(giftReason)}</p>` : ''}`;
   } else if (ui.modal.kind === 'break') html = renderBreakModal(ui.modal.data);
   else if (refineShown) {
@@ -109,7 +114,7 @@ export function renderModal(ui) {
   sheetEl.innerHTML = html;
   modalEl.hidden = false;
   sheetEl.scrollTop = scrollTop;
-  if (placeShown && !samePlaceSheet) sheetEl.querySelector('[data-action="closeModal"]').focus();
+  if ((placeShown || mapShown) && !samePlaceSheet) sheetEl.querySelector('[data-action="closeModal"]')?.focus();
   if (refineShown) {
     const buttons = [...sheetEl.querySelectorAll('button:not(:disabled)')];
     const next = activeRefineButton && buttons.find(({ dataset }) =>
@@ -128,8 +133,10 @@ export function dismissModal(ui) {
     if (ui.game.refining?.state === 'ongoing') return false;
     clearRefineProgress(ui.game);
   }
-  ui.modal = !ui.game.battle && (ui.modal?.kind === 'person' || (ui.modal?.kind === 'receipt' && ui.modal.data.returnToPlace))
-    ? { kind: 'place' }
-    : null;
+  const returnToPlace = !ui.game.battle && (
+    (ui.modal?.kind === 'person' && ui.modal.data?.returnToPlace)
+    || (ui.modal?.kind === 'receipt' && ui.modal.data?.returnToPlace)
+  );
+  ui.modal = returnToPlace ? { kind: 'place' } : null;
   return true;
 }

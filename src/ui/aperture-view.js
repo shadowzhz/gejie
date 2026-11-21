@@ -1,8 +1,8 @@
 import { GU_DEFS, ITEMS, guEffectText } from '../data/gu.js';
 import { BENMING_ZY_COST, BOAR_BONUS, esc, isGuWeak, minorXpNeed, realmText } from '../core/state.js';
-
 import { realmGuRequirement } from '../core/breakthrough.js';
 import { discoveredKillerPatterns, killerEffectText, killerMoveBlock } from '../core/killer.js';
+import { renderApertureCanvasSvg } from './visuals.js';
 
 export function renderApertureView(gs) {
   const p = gs.player;
@@ -13,8 +13,10 @@ export function renderApertureView(gs) {
     const def = GU_DEFS[g.id];
     if (!def) return '';
     const isBm = p.benming === g.uid;
-    return `<span class="gu-chip ${g.satiety <= 20 || isGuWeak(g) ? 'weak' : ''}">${isBm ? '★' : ''}${esc(def.name)} <small>${isGuWeak(g) ? '虚弱' : `${g.satiety}%`}</small></span>`;
+    return `<span class="gu-chip ${g.satiety <= 20 || isGuWeak(g) ? 'weak' : ''}">${isBm ? '★ ' : ''}${esc(def.name)} <small>${isGuWeak(g) ? '虚弱' : `${g.satiety}%`}</small></span>`;
   }).join('');
+
+  const svgGuData = p.gu.map((g) => ({ uid: g.uid, weak: isGuWeak(g) || g.satiety <= 20 }));
 
   const order = (g) => (p.benming === g.uid ? 0 : 2) + (p.equipped.includes(g.uid) ? 0 : 1);
   const sortedGu = p.gu
@@ -23,7 +25,16 @@ export function renderApertureView(gs) {
       || (GU_DEFS[b.g.id]?.rank ?? 0) - (GU_DEFS[a.g.id]?.rank ?? 0)
       || a.i - b.i)
     .map(({ g }) => g);
-  const equippedCount = p.gu.filter((g) => p.equipped.includes(g.uid)).length;
+  const equippedGu = p.gu.filter((g) => p.equipped.includes(g.uid));
+  const equippedCount = equippedGu.length;
+
+  const slotHtml = Array.from({ length: 6 }, (_, idx) => {
+    const gu = equippedGu[idx];
+    if (!gu) return '<span class="slot-pill is-empty">空位</span>';
+    const def = GU_DEFS[gu.id];
+    const weak = isGuWeak(gu);
+    return `<span class="slot-pill${weak ? ' is-weak' : ''}">${p.benming === gu.uid ? '★ ' : ''}${esc(def?.name || '未知')}</span>`;
+  }).join('');
 
   const guRows = sortedGu.map((g) => {
     const def = GU_DEFS[g.id];
@@ -39,26 +50,26 @@ export function renderApertureView(gs) {
     const boarKey = g.id === 'heishi' ? 'blackBoarStrength' : 'whiteBoarStrength';
     const actions = [
       food ? `<button class="sm ghost" ${foodCount <= 0 || g.satiety >= 100 ? 'disabled' : ''} data-action="feedGu" data-id="${g.uid}">喂食</button>` : '',
-      EQUIP_KINDS.includes(def.kind) ? `<button class="sm ${eq ? 'primary' : 'ghost'}" aria-pressed="${eq}" title="${eq ? '点击撤下' : '战斗中可催动'}" data-action="toggleEquip" data-id="${g.uid}">${eq ? '出战中' : '出战'}</button>` : '',
+      EQUIP_KINDS.includes(def.kind) ? `<button class="sm ${eq ? 'primary' : 'ghost'}" aria-pressed="${eq}" data-action="toggleEquip" data-id="${g.uid}">${eq ? '出战中' : '出战'}</button>` : '',
       isSheli ? `<button class="sm gold" data-action="useSheli" data-id="${g.uid}">炼化破境</button>` : '',
       def.kind === '治疗' ? `<button class="sm gold" data-action="useHealingGu" data-id="${g.uid}">疗伤</button>` : '',
       ['heishi', 'baishi'].includes(g.id) ? (p[boarKey]
         ? '<span class="gu-note">已得一猪之力</span>'
-        : `<button class="sm gold" title="消耗此蛊，永久增加 ${BOAR_BONUS.hp} 气血上限与 ${BOAR_BONUS.power} 力量" data-action="useBoarGu" data-id="${g.uid}">催动 · 气血上限 +${BOAR_BONUS.hp} / 力量 +${BOAR_BONUS.power}</button>`) : ''
+        : `<button class="sm gold" data-action="useBoarGu" data-id="${g.uid}">催动 · 气血 +${BOAR_BONUS.hp} / 力 +${BOAR_BONUS.power}</button>`) : ''
     ].join('');
     return `<li class="gu-row${eq ? ' is-equipped' : ''}">
       <div class="gu-main">
         <div class="gu-title">
           <b>${esc(def.name)}</b>
-          <span class="gu-meta">${def.rank}转 · ${esc(def.kind)}</span>
-          ${isBm ? '<span class="gu-tag" title="合炼失败时保留，炼成后由成蛊继承本命绑定">本命</span>' : ''}
-          ${weak ? '<span class="gu-tag is-weak" title="饱食归零多日已虚弱，喂食后恢复">虚弱</span>' : ''}
+          <span class="gu-meta">${def.rank}转 · ${def.school ? `${esc(def.school)} · ` : ''}${esc(def.kind)}</span>
+          ${isBm ? '<span class="gu-tag">本命</span>' : ''}
+          ${weak ? '<span class="gu-tag is-weak">饥饿虚弱</span>' : ''}
         </div>
         <p class="gu-desc">${esc(def.desc)}</p>
-        ${stats.length ? `<div class="gu-stats" title="${esc(guEffectText(def))}">${stats.map((s) => `<span>${esc(s)}</span>`).join('')}</div>` : ''}
+        ${stats.length ? `<div class="gu-stats">${stats.map((s) => `<span>${esc(s)}</span>`).join('')}</div>` : ''}
       </div>
       <div class="gu-side">
-        <div class="gu-hunger${hungry || weak ? ' is-low' : ''}" title="${weak ? '饥饿虚弱，无法出战' : `饱食 ${g.satiety}%`}">
+        <div class="gu-hunger${hungry || weak ? ' is-low' : ''}">
           <span class="bar"><i style="width:${g.satiety}%"></i></span><span>${weak ? '虚弱' : `${g.satiety}%`}</span>
         </div>
         <div class="gu-food${food && foodCount <= 0 ? ' is-empty' : ''}">${food ? `${esc(food.name)} ×${foodCount}` : '无需喂食'}</div>
@@ -68,29 +79,34 @@ export function renderApertureView(gs) {
   }).join('');
 
   const movesHtml = p.moves.length
-    ? p.moves.map((m) => `<div class="card">
-        <div class="kv"><b>${esc(m.name)}</b><button class="sm ghost" data-action="forgetKiller" data-id="${esc(m.id)}">删除</button></div>
-        <span class="badge gold">${esc(m.kind)} · 耗${m.cost} 真元</span>
-        <div class="muted">${esc(killerMoveBlock(gs, m) || `${killerEffectText(m)} · 间隔 ${m.cd - 1} 回合`)}</div>
+    ? p.moves.map((m) => `<div class="killer-card">
+        <div class="kv"><b>${esc(m.name)}</b><button class="sm ghost" data-action="forgetKiller" data-id="${esc(m.id)}">散招</button></div>
+        <div class="badge gold">${esc(m.kind)} · ${m.cost} 真元</div>
+        <div class="muted" style="margin-top:6px">${esc(killerMoveBlock(gs, m) || `${killerEffectText(m)} · 间隔 ${m.cd - 1} 回合`)}</div>
       </div>`).join('')
-    : '<div class="muted">尚未创出杀招。</div>';
+    : '<div class="muted">尚未推演出杀招。</div>';
 
   return `<div class="aperture-canvas">
-      <div class="kv">
-        <b>${esc(realmText(p))} · ${esc(p.grade)}等资质（元海 ${p.hai} 成）</b>
-        <span ${p.xiao < 3 ? 'data-live="xp"' : ''}>${p.xiao < 3 ? `修为 ${Math.floor(p.xp)} / ${needXp}` : '本转巅峰 · 可破壁'}</span>
+      ${renderApertureCanvasSvg(p, svgGuData)}
+      <div class="aperture-hud">
+        <div class="kv">
+          <b>${esc(realmText(p))} · ${esc(p.grade)}等（元海 ${p.hai} 成）</b>
+          <span ${p.xiao < 3 ? 'data-live="xp"' : ''}>${p.xiao < 3 ? `修为 ${Math.floor(p.xp)} / ${needXp}` : '本转巅峰 · 可破壁'}</span>
+        </div>
+        <div class="aperture-gu-list">${chips || '<span class="muted">空窍尚空</span>'}</div>
+        <div class="bar"><i data-live="xp-bar" style="width:${xpPct}%"></i></div>
       </div>
-      <div class="aperture-gu-list">${chips || '<span class="muted">空窍尚空</span>'}</div>
-      <div class="bar"><i data-live="xp-bar" style="width:${xpPct}%"></i></div>
     </div>
     <div class="card">
-      <div class="muted">${p.rank >= 4 && p.xiao >= 3 ? '已达本卷境界上限' : esc(realmGuRequirement(p).text)}</div>
-      ${p.hai < 6 ? '<div class="muted">丙、丁等冲刷窍壁耗费更多真元。养好对应转数的酒虫可减轻压力，舍利蛊可直接提升一小阶。</div>' : ''}
+      <div class="list-head"><h3>出战蛊阵</h3><span class="muted">${equippedCount} / 6</span></div>
+      <div class="slot-strip">${slotHtml}</div>
+      <div class="muted" style="margin:8px 0">${p.rank >= 4 && p.xiao >= 3 ? '已达本卷境界上限' : esc(realmGuRequirement(p).text)}</div>
+      ${p.hai < 6 ? '<div class="muted" style="margin-bottom:8px">丙、丁等资质冲刷窍壁耗费更多真元，养好对应转数的酒虫可减轻真元压力。</div>' : ''}
       <div class="row">
         ${p.xiao < 3 ? '<button class="primary" data-action="washMinor">冲刷窍壁</button>' : '<button class="gold" data-action="openBreak">破壁冲关</button>'}
         <button data-action="feedAll">一键喂饱</button>
-        <button data-action="toggleAutoFeed" aria-pressed="${!!p.autoFeed}" title="饱食降至 50% 或以下时，使用行囊口粮">自动喂蛊：${p.autoFeed ? '开' : '关'}</button>
-        ${discoveredKillerPatterns(p).length ? '<button class="gold" data-action="openCustomKiller">自创杀招</button>' : ''}
+        <button data-action="toggleAutoFeed" aria-pressed="${!!p.autoFeed}">自动喂蛊：${p.autoFeed ? '开' : '关'}</button>
+        ${discoveredKillerPatterns(p).length ? '<button class="gold" data-action="openCustomKiller">推演杀招</button>' : ''}
       </div>
     </div>
     ${p.unrefinedBenming ? `<div class="card">
@@ -107,7 +123,6 @@ export function renderApertureView(gs) {
 
 const EQUIP_KINDS = ['攻击', '防御', '治疗', '增益', '控制', '探知', '隐匿'];
 
-// 卡片上只列关键数值，完整说明放在 title 中。
 function guStats(def) {
   const main = {
     攻击: `伤害 ${def.power}`,
@@ -115,15 +130,16 @@ function guStats(def) {
     防御: `护盾 ${def.power}`,
     隐匿: `护盾 ${Math.round(def.power * 0.6)}`,
     治疗: `回血 ${def.power}`,
-    增益: '月光蛊伤害 +35%',
+    增益: '月道攻伐 +35%',
     探知: '看破敌情'
   }[def.kind];
   if (!main) return [];
   const stats = [main];
-  if (def.kind === '控制' || def.id === 'dianlang_gu') stats.push('35% 打断');
+  if (def.kind === '控制' || def.id === 'dianlang_gu') stats.push('35% 震慑打断');
   if (def.id === 'xuefu_gu') stats.push('吸血 35%');
-  stats.push(`真元 ${def.cost}`);
+  if (def.id === 'yuehen') stats.push('穿半盾');
+  stats.push(`耗真元 ${def.cost}`);
   const wait = Math.max(0, def.cd - 1);
-  if (wait) stats.push(`冷却 ${wait}`);
+  if (wait) stats.push(`冷却 ${wait} 回合`);
   return stats;
 }

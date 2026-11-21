@@ -7,29 +7,54 @@
   <title>蛊界 · 青茅山篇</title>
   <style>
 :root {
-  --bg: #0c1715;
-  --bg2: #122320;
-  --card: #162b27;
-  --card2: #1c3530;
-  --line: #294942;
-  --ink: #ebe7dc;
-  --dim: #9ab0a8;
-  --jade: #72c4a3;
-  --gold: #d8bf87;
-  --blood: #e07a6b;
-  --warn: #e3a857;
-  --radius: 10px;
+  --bg: #0a0f0e;
+  --bg2: #111917;
+  --card: #131c1a;
+  --card2: #192522;
+  --line: #293c36;
+  --line-gold: rgba(207, 169, 104, 0.28);
+  --ink: #e5dfd2;
+  --dim: #8c9991;
+  --jade: #5ea68b;
+  --gold: #cfa968;
+  --blood: #c9594d;
+  --warn: #d4964c;
+  --zy: #5492a8;
+  --radius: 4px;
+  --serif: "Songti SC", "STSong", "Noto Serif SC", "Source Han Serif SC", Georgia, serif;
+  --sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
 }
 
 * { box-sizing: border-box; }
+
 html, body {
   margin: 0;
   padding: 0;
-  background: var(--bg);
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(45, 76, 65, 0.22), transparent 58%),
+    radial-gradient(circle at 88% 90%, rgba(207, 169, 104, 0.06), transparent 44%),
+    var(--bg);
   color: var(--ink);
-  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
-  line-height: 1.55;
+  font-family: var(--sans);
+  line-height: 1.6;
   min-height: 100%;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 宣纸与墨雾细微肌理 */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.035;
+  background-image: radial-gradient(#e5dfd2 0.6px, transparent 0.6px);
+  background-size: 14px 14px;
+}
+
+h1, h2, h3, .stage-loc, .title-main, .story-scroll, .foe-name b, .person-seal, .dossier-card summary {
+  font-family: var(--serif);
 }
 
 button {
@@ -37,27 +62,59 @@ button {
   color: inherit;
   cursor: pointer;
   border: 1px solid var(--line);
-  background: var(--card2);
-  border-radius: 8px;
-  padding: 8px 14px;
-  min-height: 40px;
-  transition: background .15s, border-color .15s, transform .1s;
+  background: linear-gradient(180deg, #1b2824, #141e1b);
+  border-radius: var(--radius);
+  padding: 7px 14px;
+  min-height: 38px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  transition: background .15s, border-color .15s, transform .1s, box-shadow .15s;
 }
-button:hover:not(:disabled) { background: #23433d; border-color: var(--jade); }
-button:disabled { opacity: .48; cursor: not-allowed; }
-button.primary { background: #1e4d3f; border-color: var(--jade); color: #f4f9f6; font-weight: 600; }
-button.gold { background: #3e341f; border-color: var(--gold); color: #f6e9c8; font-weight: 600; }
-button.blood { background: #4a2320; border-color: var(--blood); color: #fde4e0; font-weight: 600; }
-button.ghost { background: transparent; }
-button.sm { min-height: 32px; padding: 4px 10px; font-size: .85rem; }
+button:hover:not(:disabled) {
+  background: linear-gradient(180deg, #22332e, #182521);
+  border-color: var(--jade);
+}
+button:active:not(:disabled) { transform: translateY(1px); }
+button:disabled { opacity: .45; cursor: not-allowed; }
+button.primary {
+  background: linear-gradient(180deg, #1f4b3d, #16382d);
+  border-color: var(--jade);
+  color: #f0f7f4;
+  font-weight: 600;
+}
+button.primary:hover:not(:disabled) { background: linear-gradient(180deg, #265c4b, #1a4436); }
+button.gold {
+  background: linear-gradient(180deg, #3c301c, #2b2213);
+  border-color: var(--gold);
+  color: #f3e4c3;
+  font-weight: 600;
+}
+button.gold:hover:not(:disabled) { background: linear-gradient(180deg, #4b3c22, #352917); }
+button.blood {
+  background: linear-gradient(180deg, #49221f, #361816);
+  border-color: var(--blood);
+  color: #fae0dc;
+  font-weight: 600;
+}
+button.blood:hover:not(:disabled) { background: linear-gradient(180deg, #5b2a26, #431d1a); }
+button.ghost { background: transparent; box-shadow: none; }
+button.ghost:hover:not(:disabled) { background: rgba(255, 255, 255, 0.04); }
+button.sm { min-height: 30px; padding: 4px 10px; font-size: .84rem; }
 
 .shell {
-  max-width: 960px;
+  position: relative;
+  z-index: 1;
+  max-width: 920px;
   margin: 0 auto;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  padding-bottom: 74px;
+  padding-bottom: 72px;
+}
+
+.start-shell {
+  padding: 20px 14px;
+  justify-content: center;
+  gap: 14px;
 }
 
 /* 顶部在场状态栏 */
@@ -65,10 +122,11 @@ button.sm { min-height: 32px; padding: 4px 10px; font-size: .85rem; }
   position: sticky;
   top: 0;
   z-index: 10;
-  background: rgba(12, 23, 21, .95);
-  backdrop-filter: blur(8px);
+  background: rgba(10, 15, 14, 0.94);
+  backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--line);
-  padding: 8px 14px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+  padding: 8px 14px 6px;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -77,146 +135,352 @@ button.sm { min-height: 32px; padding: 4px 10px; font-size: .85rem; }
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
 }
-.top-id { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.top-id strong { font-size: 1.05rem; color: var(--gold); }
+.top-id { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.top-id strong { font-size: 1.08rem; font-family: var(--serif); color: var(--gold); letter-spacing: .04em; }
+
 .badge {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 999px;
-  font-size: .78rem;
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 8px;
+  border-radius: 3px;
+  font-size: .76rem;
   border: 1px solid var(--line);
   background: var(--card);
   color: var(--dim);
 }
-.badge.jade { border-color: var(--jade); color: var(--jade); }
-.badge.gold { border-color: var(--gold); color: var(--gold); }
-.badge.blood { border-color: var(--blood); color: var(--blood); }
+.badge.jade { border-color: rgba(94, 166, 139, 0.55); color: var(--jade); }
+.badge.gold { border-color: rgba(207, 169, 104, 0.55); color: var(--gold); }
+.badge.blood { border-color: rgba(201, 89, 77, 0.55); color: var(--blood); }
+.place-pill {
+  min-height: 0;
+  padding: 2px 9px;
+  font-size: .78rem;
+  color: var(--ink);
+  border-color: var(--line-gold);
+  background: rgba(207, 169, 104, 0.08);
+}
 
-.clock-box { display: flex; align-items: center; gap: 8px; font-size: .86rem; color: var(--dim); }
-.goal-bar {
+.clock-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: .82rem;
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
+}
+.clock-box button.sm { min-height: 26px; padding: 2px 8px; font-size: .78rem; }
+
+.res-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 14px; align-items: center; }
+.res-item { min-width: 0; }
+.res-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: .75rem;
+  color: var(--dim);
+  margin-bottom: 3px;
+  font-variant-numeric: tabular-nums;
+}
+.res-meta .res-head { margin-bottom: 0; white-space: nowrap; }
+.res-meta b { color: var(--gold); font-weight: 600; }
+
+.bar { height: 5px; background: #070b0a; border-radius: 2px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.04); }
+.bar > i { display: block; height: 100%; background: var(--jade); transition: width .25s ease; }
+.bar.hp > i { background: linear-gradient(90deg, #9c3f37, #cf6255); }
+.bar.zy > i { background: linear-gradient(90deg, #356c80, #5da2ba); }
+
+/* 折叠式竹简流转要务条 */
+.goal-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-top: 4px;
+  border-top: 1px solid rgba(41, 60, 54, 0.55);
+  font-size: .8rem;
+}
+.goal-toggle {
+  min-height: 22px;
+  padding: 1px 7px;
+  font-size: .72rem;
+  font-family: var(--serif);
+  color: var(--gold);
+  border-color: var(--line-gold);
+  background: rgba(207, 169, 104, 0.09);
+}
+.goal-text { flex: 1 1 12rem; color: #cfc6b2; }
+.goal-strip.is-collapsed { opacity: 0.78; }
+
+/* 主内容区与卡片 */
+.main { flex: 1; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+
+.card {
+  position: relative;
+  background: linear-gradient(180deg, rgba(22, 32, 29, 0.96), rgba(16, 24, 22, 0.98));
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  box-shadow: inset 0 0 0 1px rgba(207, 169, 104, 0.06), 0 6px 20px rgba(0, 0, 0, 0.28);
+}
+.card h2, .card h3 { margin: 0 0 8px; font-size: 1.04rem; color: var(--gold); letter-spacing: .04em; }
+.muted { color: var(--dim); font-size: .87rem; }
+.kv { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; gap: 8px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+
+/* 场景主舞台 */
+.stage {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #101917;
+  box-shadow: inset 0 0 0 1px rgba(207, 169, 104, 0.1), 0 10px 28px rgba(0, 0, 0, 0.42);
+}
+.stage-art {
+  display: block;
+  width: 100%;
+  height: 112px;
+  border-bottom: 1px solid rgba(41, 60, 54, 0.7);
+}
+.stage-inner { padding: 14px 16px 16px; }
+.stage-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.stage-loc { font-size: .8rem; color: var(--gold); letter-spacing: .08em; margin-bottom: 2px; }
+.stage h1 { margin: 0; font-size: 1.68rem; font-weight: 700; letter-spacing: .06em; color: #f2ece0; }
+.stage-desc { margin: 0 0 10px; color: #d6cfc0; font-size: .95rem; line-height: 1.72; }
+.stage-gather { margin: 0 0 12px; font-size: .82rem; color: var(--jade); }
+.stage-actions { margin-bottom: 4px; }
+.stage-paths {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(41, 60, 54, 0.8);
+}
+.stage-paths-label {
+  font-size: .76rem;
+  font-family: var(--serif);
+  color: var(--dim);
+  margin-right: 2px;
+}
+.path-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  min-height: 28px;
+  padding: 2px 10px;
   font-size: .82rem;
-  color: #dfd3b4;
-  padding: 2px 0 2px 8px;
-  border-left: 2px solid var(--gold);
+  background: rgba(12, 18, 17, 0.7);
 }
-.goal-bar > div { flex: 1 1 12rem; }
-.goal-bar > span { font-size: .74rem; color: var(--gold); flex-shrink: 0; }
-.res-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 14px; align-items: center; }
-.res-item { min-width: 0; }
-.res-head { display: flex; justify-content: space-between; gap: 10px; font-size: .76rem; color: var(--dim); margin-bottom: 2px; font-variant-numeric: tabular-nums; }
-.res-meta .res-head { margin-bottom: 0; white-space: nowrap; }
-.res-meta b { color: var(--gold); font-weight: 600; }
-.bar { height: 6px; background: #0c1513; border-radius: 999px; overflow: hidden; }
-.bar > i { display: block; height: 100%; background: var(--jade); transition: width .2s; }
-.bar.hp > i { background: #d46b5e; }
-.bar.zy > i { background: #5da9c4; }
+.path-chip small { font-size: .72rem; color: var(--gold); }
+.path-chip.is-blocked small { color: var(--blood); }
 
-/* 主内容区 */
-.main { flex: 1; padding: 14px; display: flex; flex-direction: column; gap: 14px; }
-.card {
-  background: var(--card);
+.person-seal {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border-color: var(--line-gold);
+  background: rgba(207, 169, 104, 0.06);
+}
+.seal-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 0 0 6px rgba(207, 169, 104, 0.7);
+}
+
+/* 开屏标题与开窍大典 */
+.title-hero .stage-art { height: 140px; }
+.title-seal {
+  display: inline-block;
+  font-size: .76rem;
+  letter-spacing: .16em;
+  color: var(--gold);
+  border: 1px solid var(--line-gold);
+  padding: 2px 10px;
+  margin-bottom: 8px;
+}
+.title-main { font-size: 2.3rem !important; letter-spacing: .18em !important; margin-bottom: 10px !important; }
+.title-box { margin-top: 12px; background: rgba(10, 15, 14, 0.7); }
+.hope-svg { display: block; width: 100%; max-height: 155px; margin: 10px 0 4px; border: 1px solid rgba(84, 146, 168, 0.3); border-radius: var(--radius); }
+.ritual-result { border-color: var(--line-gold); }
+
+/* 修行命盘 */
+.realm-ladder {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 6px;
+}
+.realm-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 8px 4px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 14px;
+  background: rgba(10, 15, 14, 0.55);
+  color: var(--dim);
+  font-size: .78rem;
 }
-.card h2, .card h3 { margin: 0 0 8px; font-size: 1.05rem; color: var(--gold); }
-.muted { color: var(--dim); font-size: .88rem; }
-.kv { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; gap: 8px; }
-.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.story-choices button { max-width: 100%; text-align: left; }
-@media (max-width: 540px) {
-  .story-choices button { flex: 1 0 100%; }
-}
-
-.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
-
-/* 场景舞台 + 昼夜氛围 */
-.stage {
-  background: linear-gradient(155deg, #18322c, #10201d);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 16px;
-}
-.stage.is-night {
-  background: linear-gradient(155deg, #101b24, #0b1318);
-  border-color: #263847;
-}
-.stage-loc { font-size: .84rem; color: var(--gold); margin-bottom: 4px; }
-.stage h1 { margin: 0 0 8px; font-size: 1.65rem; font-family: Georgia, "Songti SC", serif; }
-.stage-desc { margin: 0 0 14px; color: #ddd8ca; }
+.realm-step b { font-family: var(--serif); font-size: .92rem; color: var(--ink); }
+.realm-step small { font-size: .72rem; margin-top: 2px; }
+.realm-step.is-now { border-color: var(--gold); background: rgba(207, 169, 104, 0.1); color: var(--gold); }
+.realm-step.is-now b { color: var(--gold); }
+.realm-step.is-done { border-color: rgba(94, 166, 139, 0.55); color: var(--jade); }
 
 /* 山野舆图 */
-.map-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: #101d1a; }
+.map-sheet-wrap { display: flex; flex-direction: column; gap: 10px; }
+.map-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--line-gold);
+  border-radius: var(--radius);
+  background: #0b1110;
+}
 .map-canvas {
   position: relative;
-  min-width: 600px;
-  height: 340px;
-  background:
-    radial-gradient(circle at 28% 45%, rgba(114, 196, 163, .10), transparent 50%),
-    radial-gradient(circle at 80% 72%, rgba(216, 191, 135, .08), transparent 40%);
+  min-width: 640px;
+  height: 360px;
+  background: radial-gradient(circle at 30% 48%, rgba(62, 107, 89, 0.14), transparent 55%), #0c1211;
 }
 .map-canvas.is-night {
-  background:
-    radial-gradient(circle at 28% 45%, rgba(90, 140, 160, .10), transparent 50%),
-    radial-gradient(circle at 80% 72%, rgba(150, 130, 90, .06), transparent 40%);
+  background: radial-gradient(circle at 30% 48%, rgba(56, 92, 112, 0.14), transparent 55%), #080d10;
 }
-.map-lines { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-.map-edge { stroke: #31524a; stroke-width: .6; stroke-dasharray: 1.4 1.2; opacity: .65; }
-.map-edge.is-active { stroke: var(--jade); stroke-width: .95; stroke-dasharray: none; opacity: .95; }
-.map-edge.is-blocked { stroke: var(--warn); stroke-width: .75; stroke-dasharray: 1.2 1.2; opacity: .8; }
+.map-terrain { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.map-edge { stroke: #314740; stroke-width: .45; stroke-dasharray: 1.2 1.2; opacity: .7; }
+.map-edge.is-active { stroke: var(--jade); stroke-width: .9; stroke-dasharray: none; opacity: .95; }
+.map-edge.is-blocked { stroke: var(--blood); stroke-width: .65; stroke-dasharray: 1 1; opacity: .75; }
 .map-node {
   position: absolute;
   transform: translate(-50%, -50%);
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-width: 70px;
+  min-width: 68px;
   min-height: 0;
-  padding: 5px 9px;
-  border-radius: 8px;
+  padding: 4px 8px;
+  border-radius: 3px;
   border: 1px solid var(--line);
-  background: var(--bg2);
-  font-size: .8rem;
-  line-height: 1.2;
+  background: rgba(14, 21, 19, 0.94);
+  font-size: .78rem;
+  line-height: 1.25;
   white-space: nowrap;
   z-index: 1;
 }
-.map-node small { font-size: .7rem; color: var(--dim); margin-top: 2px; }
-.map-node.is-here { border-color: var(--jade); background: #1d4238; box-shadow: 0 0 0 2px rgba(114, 196, 163, .25); z-index: 2; }
+.map-node b { font-family: var(--serif); font-weight: 600; }
+.map-node small { font-size: .68rem; color: var(--dim); margin-top: 1px; }
+.map-node.is-here {
+  border-color: var(--jade);
+  background: #17352c;
+  box-shadow: 0 0 0 2px rgba(94, 166, 139, 0.28);
+  z-index: 3;
+}
 .map-node.is-here small { color: var(--jade); font-weight: 600; }
 .map-node.is-move { border-color: var(--gold); z-index: 2; }
-.map-node.is-move:hover:not(:disabled) { background: #26483e; transform: translate(-50%, -53%); }
-.map-node.is-far { opacity: .52; }
+.map-node.is-move small { color: var(--gold); }
+.map-node.is-move:hover:not(:disabled) { background: #26362d; transform: translate(-50%, -54%); }
+.map-node.is-far { opacity: .48; }
+.map-legend { display: flex; gap: 14px; font-size: .78rem; color: var(--dim); }
+.map-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.map-legend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; border: 1px solid var(--line); }
+.dot-here { background: #17352c; border-color: var(--jade) !important; }
+.dot-move { background: #1c241e; border-color: var(--gold) !important; }
+.dot-lock { background: #141918; border-color: var(--blood) !important; }
+.map-blocked { font-size: .8rem; color: var(--dim); display: flex; flex-direction: column; gap: 2px; }
 
-/* 空窍画布 */
+/* 空窍画布与真元海 SVG */
 .aperture-canvas {
   position: relative;
-  height: 150px;
-  border-radius: 10px;
-  border: 1px solid #2b5452;
-  background: radial-gradient(circle at 50% 65%, rgba(93, 169, 196, .28), rgba(16, 40, 44, .95) 70%);
+  min-height: 172px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line-gold);
+  background: #0a1010;
   overflow: hidden;
-  padding: 10px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
 }
-.aperture-gu-list { display: flex; flex-wrap: wrap; gap: 6px; z-index: 1; }
+.aperture-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.ap-wave { animation: sea-sway 7s ease-in-out infinite alternate; }
+.ap-wave2 { animation: sea-sway 5.5s ease-in-out infinite alternate-reverse; }
+@keyframes sea-sway {
+  from { transform: translateX(-14px); }
+  to { transform: translateX(14px); }
+}
+.aperture-hud {
+  position: relative;
+  z-index: 1;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 172px;
+  justify-content: space-between;
+  background: linear-gradient(180deg, rgba(10, 15, 14, 0.55) 0%, rgba(10, 15, 14, 0.1) 50%, rgba(10, 15, 14, 0.6) 100%);
+}
+.aperture-gu-list { display: flex; flex-wrap: wrap; gap: 6px; }
 .gu-chip {
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: .82rem;
-  background: rgba(12, 23, 21, .8);
-  border: 1px solid var(--jade);
+  padding: 3px 9px;
+  border-radius: 3px;
+  font-size: .8rem;
+  font-family: var(--serif);
+  background: rgba(12, 18, 17, 0.85);
+  border: 1px solid rgba(94, 166, 139, 0.65);
 }
 .gu-chip.weak { border-color: var(--blood); color: var(--blood); }
+
+.slot-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+  gap: 6px;
+}
+.slot-pill {
+  text-align: center;
+  padding: 5px 6px;
+  font-size: .8rem;
+  font-family: var(--serif);
+  border-radius: 3px;
+  border: 1px solid rgba(94, 166, 139, 0.5);
+  background: rgba(24, 42, 36, 0.55);
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.slot-pill.is-empty {
+  border-style: dashed;
+  border-color: var(--line);
+  background: transparent;
+  color: var(--dim);
+  font-family: var(--sans);
+}
+.slot-pill.is-weak { border-color: var(--blood); color: var(--blood); }
+
+.killer-card {
+  padding: 10px 12px;
+  border: 1px solid var(--line-gold);
+  border-radius: var(--radius);
+  background: rgba(12, 17, 16, 0.72);
+}
 
 /* 蛊囊列表 */
 .gu-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 4px; }
@@ -225,30 +489,31 @@ button.sm { min-height: 32px; padding: 4px 10px; font-size: .85rem; }
 .gu-row {
   display: grid;
   grid-template-columns: 1fr auto;
-  gap: 16px;
-  padding: 12px 0 12px 12px;
-  border-top: 1px solid rgba(41, 73, 66, .6);
+  gap: 14px;
+  padding: 11px 0 11px 12px;
+  border-top: 1px solid rgba(41, 60, 54, 0.55);
   border-left: 2px solid transparent;
 }
 .gu-row:first-child { border-top: 0; }
-.gu-row.is-equipped { border-left-color: var(--jade); }
+.gu-row.is-equipped { border-left-color: var(--jade); background: linear-gradient(90deg, rgba(94, 166, 139, 0.05), transparent 40%); }
 .gu-main { min-width: 0; }
 .gu-title { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
-.gu-title b { font-size: 1rem; }
-.gu-meta { font-size: .8rem; color: var(--dim); }
-.gu-tag { font-size: .75rem; color: var(--gold); }
+.gu-title b { font-size: 1rem; font-family: var(--serif); }
+.gu-meta { font-size: .78rem; color: var(--dim); }
+.gu-tag { font-size: .74rem; color: var(--gold); }
 .gu-tag.is-weak { color: var(--blood); }
 .gu-tag::before { content: "· "; color: var(--dim); }
-.gu-desc { margin: 2px 0 4px; font-size: .86rem; color: var(--dim); }
-.gu-stats { display: flex; flex-wrap: wrap; gap: 0 12px; font-size: .82rem; color: #cfd9d3; cursor: help; }
-.gu-side { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; min-width: 128px; }
+.gu-desc { margin: 3px 0 5px; font-size: .85rem; color: var(--dim); }
+.gu-stats { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: .8rem; color: #cdd6cf; }
+.gu-stats span { padding: 1px 6px; border-radius: 2px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.05); }
+.gu-side { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; min-width: 132px; }
 .gu-hunger { display: flex; align-items: center; gap: 6px; font-size: .78rem; color: var(--dim); font-variant-numeric: tabular-nums; }
 .gu-hunger .bar { width: 64px; height: 4px; }
 .gu-hunger.is-low { color: var(--blood); }
 .gu-hunger.is-low .bar > i { background: var(--blood); }
 .gu-food { font-size: .76rem; color: var(--dim); }
 .gu-food.is-empty { color: var(--warn); }
-.gu-actions { display: flex; gap: 6px; margin-top: 2px; }
+.gu-actions { display: flex; gap: 6px; margin-top: 2px; flex-wrap: wrap; justify-content: flex-end; }
 .gu-actions button.sm { min-height: 28px; padding: 2px 10px; }
 .gu-note { font-size: .78rem; color: var(--dim); }
 @media (max-width: 520px) {
@@ -264,340 +529,302 @@ button.sm { min-height: 32px; padding: 4px 10px; font-size: .85rem; }
   right: 0;
   bottom: 0;
   z-index: 20;
-  background: rgba(12, 23, 21, .97);
+  background: rgba(10, 15, 14, 0.97);
   border-top: 1px solid var(--line);
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.4);
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 4px;
-  padding: 6px 8px;
+  gap: 2px;
+  padding: 5px 8px;
 }
 .nav button {
-  min-height: 46px;
+  position: relative;
+  min-height: 44px;
   padding: 4px 2px;
-  font-size: .82rem;
-  border-radius: 8px;
+  font-size: .84rem;
+  font-family: var(--serif);
   background: transparent;
   border-color: transparent;
+  box-shadow: none;
+  color: var(--dim);
 }
-.nav button.on { background: var(--card2); border-color: var(--jade); color: var(--jade); font-weight: 600; }
+.nav button.on {
+  color: var(--gold);
+  background: rgba(207, 169, 104, 0.08);
+  border-color: var(--line-gold);
+  font-weight: 600;
+}
 
-/* 弹窗 & Toast */
+/* 弹窗与古卷阅读 */
 .modal {
   position: fixed;
   inset: 0;
   z-index: 50;
-  background: rgba(5, 10, 9, .78);
+  background: rgba(4, 7, 7, 0.82);
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 16px;
+  padding: 14px;
 }
 .modal[hidden] { display: none; }
 .sheet {
-  width: min(560px, 100%);
+  width: min(580px, 100%);
   max-height: 88vh;
   overflow-y: auto;
-  background: var(--bg2);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 18px;
+  background: linear-gradient(180deg, #131c1a, #0e1514);
+  border: 1px solid var(--line-gold);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.7);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
-.place-sheet {
-  width: min(860px, 100%);
-}
+.sheet h2 { margin: 0; color: var(--gold); font-size: 1.25rem; letter-spacing: .05em; }
+.place-sheet { width: min(860px, 100%); }
 .refine-sheet { width: min(640px, 100%); }
+.place-sheet-controls {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.story-header { border-bottom: 1px solid rgba(207, 169, 104, 0.22); padding-bottom: 8px; }
+.story-kicker { display: block; font-size: .74rem; color: var(--gold); letter-spacing: .16em; margin-bottom: 2px; }
+.story-scroll {
+  white-space: pre-line;
+  font-size: .98rem;
+  line-height: 1.85;
+  color: #e4ddd0;
+  padding: 12px 14px;
+  background: rgba(8, 12, 11, 0.55);
+  border-left: 2px solid var(--line-gold);
+  border-radius: 2px;
+}
+.person-quote { font-size: .95rem; }
+.person-dialog-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+
+.story-choices-col { display: flex; flex-direction: column; gap: 8px; }
+.story-choice-btn {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  text-align: left;
+  padding: 10px 14px;
+  border-color: var(--line);
+  background: rgba(20, 30, 27, 0.9);
+}
+.story-choice-btn:hover:not(:disabled) {
+  border-color: var(--gold);
+  background: rgba(45, 38, 22, 0.55);
+}
+.choice-idx {
+  flex: 0 0 auto;
+  display: inline-block;
+  min-width: 22px;
+  text-align: center;
+  font-family: var(--serif);
+  font-size: .8rem;
+  color: var(--gold);
+  border: 1px solid var(--line-gold);
+  padding: 0 4px;
+  margin-top: 2px;
+}
+
+/* 破壁冲关 */
+.break-hero {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 14px;
+  align-items: center;
+}
+.break-svg { width: 100%; height: auto; display: block; }
+.break-metrics { display: flex; flex-direction: column; gap: 4px; }
+@media (max-width: 500px) {
+  .break-hero { grid-template-columns: 1fr; }
+  .break-svg { max-width: 160px; margin: auto; }
+}
+
+/* 炼蛊炉鼎 */
 .refine-ritual { display: grid; gap: 12px; }
 .refine-stage {
-  --ember: #e69b51;
+  --ember: #e09c4d;
   position: relative;
   overflow: hidden;
   border: 1px solid var(--line);
-  border-radius: 10px;
-  background: radial-gradient(ellipse at 50% 70%, #253b31, #0b1514 72%);
+  border-radius: var(--radius);
+  background: radial-gradient(ellipse at 50% 65%, #1c2c25, #0a100f 75%);
   text-align: center;
+  padding: 8px 12px 12px;
 }
-.refine-scene { position: relative; width: 200px; height: 178px; margin: auto; scale: 1.22; transform-origin: 50% 100%; }
-.refine-halo, .refine-vapor, .refine-flame, .refine-pot, .refine-lid, .refine-result, .refine-shape {
-  position: absolute;
-  left: 50%;
-  translate: -50% 0;
+.refine-scene { position: relative; width: 220px; height: 156px; margin: auto; }
+.furnace-svg { width: 100%; height: 100%; display: block; }
+.refine-stage[data-state="ongoing"] .furnace-flame-group {
+  transform-origin: 110px 124px;
+  animation: furnace-breathe 1.2s infinite alternate ease-in-out;
 }
-.refine-halo {
-  bottom: 7px;
-  width: 174px;
-  height: 38px;
-  border: 1px solid #5d8074;
-  border-radius: 50%;
-  box-shadow: 0 0 20px #7fb69d44, inset 0 0 16px #7fb69d44;
+.refine-stage[data-state="ongoing"][data-hot="true"] .furnace-body {
+  animation: furnace-shake .55s infinite;
 }
-.refine-pot {
-  bottom: 35px;
-  width: 96px;
-  height: 50px;
-  border: 1px solid #a89566;
-  border-radius: 10px 10px 42px 42px;
-  background: linear-gradient(100deg, #26352c, #5d6045 48%, #252c23);
-  box-shadow: -26px -13px 0 -21px #b6a275, 26px -13px 0 -21px #b6a275;
-}
-.refine-mouth {
-  height: 16px;
-  margin: -7px -6px 0;
-  border: 2px solid #aa956c;
-  border-radius: 50%;
-  background: #121d18;
-}
-.refine-sigil {
-  width: 13px;
-  height: 13px;
-  margin: 10px auto;
-  border: 1px solid #d9bf79;
-  rotate: 45deg;
-}
-.refine-flame {
-  bottom: 13px;
-  width: 85px;
-  height: calc(30px + var(--heat) * 28px);
-  opacity: 0;
-  border-radius: 50%;
-  background: radial-gradient(ellipse, #fff0ae, var(--ember) 38%, transparent 72%);
-}
-.refine-vapor {
-  bottom: 85px;
-  width: 70px;
-  height: 35px;
-  border-radius: 50%;
-  background: radial-gradient(ellipse, var(--ember), transparent 72%);
-  opacity: 0;
-}
-.refine-lid {
-  bottom: 77px;
-  width: 104px;
-  height: 16px;
-  border: 1px solid #bdab78;
-  border-radius: 50%;
-  background: linear-gradient(#b6a474, #373c30);
-  opacity: 0;
-}
-.refine-lid::before {
-  content: "";
-  display: block;
-  width: 18px;
-  height: 8px;
-  margin: -5px auto 0;
-  border-radius: 8px 8px 0 0;
-  background: #b6a474;
-}
-.refine-result {
-  bottom: 95px;
-  width: 16px;
-  height: 16px;
-  border: 1px solid #fff4c4;
-  border-radius: 50% 25%;
-  background: #e5ba63;
-  box-shadow: 0 0 15px 5px #ffd67a88;
-  rotate: 45deg;
-  opacity: 0;
-}
-.refine-status { padding: 4px 12px 10px; color: var(--gold); font-weight: 600; }
-.refine-feedback { padding: 0 12px 12px; color: var(--ink); font-size: .9rem; }
-.refine-shape {
-  bottom: 91px;
-  width: 28px;
-  height: 28px;
-  border: 2px solid #d7f4d4;
-  border-radius: 45% 20%;
-  background: #c3f4bb55;
-  box-shadow: 0 0 20px #acf2a7aa;
-  opacity: 0;
-  rotate: 45deg;
-  scale: calc(.45 + .55 * var(--shape));
-}
-.refine-stage[data-state="ongoing"] .refine-shape { opacity: var(--shape); }
-.refine-stage[data-state="ongoing"][data-hot="true"] { --ember: #ff7459; }
-.refine-stage[data-state="ongoing"][data-hot="true"] .refine-pot { animation: furnace-shake .65s infinite; }
-.refine-stage[data-state="ongoing"] .refine-flame {
-  opacity: .85;
-  animation: furnace-breathe 1.3s infinite alternate ease-in-out;
-}
-.refine-stage[data-effect="ignite"] .refine-flame,
-.refine-stage[data-effect="pulse"] .refine-flame,
-.refine-stage[data-effect="force"] .refine-flame {
-  animation: furnace-flare .5s ease-out, furnace-breathe 1.3s .5s infinite alternate ease-in-out;
-}
-.refine-stage[data-effect="vent"] { --ember: #9ccbd7; }
-.refine-stage[data-effect="gentle"] { --ember: #e5c980; }
-.refine-stage[data-effect="signature"],
-.refine-stage[data-effect="protect"] { --ember: #8de9cb; }
-.refine-stage[data-state="success"] { --ember: #ffe192; }
-.refine-stage[data-state="failure"] { --ember: #ef7763; }
-.refine-stage[data-state="success"] .refine-vapor { opacity: .85; }
-.refine-stage[data-state="failure"] .refine-vapor { opacity: .35; }
 .refine-stage[data-state="failure"] .refine-status { color: var(--blood); }
-.refine-stage[data-effect]:not([data-effect=""]) .refine-vapor { animation: furnace-release .65s ease-out; }
-.refine-stage[data-effect="vent"] .refine-vapor { animation: furnace-vent .75s ease-out; }
-.refine-stage[data-effect="gentle"] .refine-halo { animation: furnace-ring .9s ease-out; }
-.refine-stage[data-effect="signature"] .refine-halo,
-.refine-stage[data-effect="protect"] .refine-sigil { animation: furnace-ring .75s ease-out 2; }
-.refine-stage[data-effect="seal"] .refine-lid {
-  opacity: 1;
-  animation: furnace-seal .55s ease-in both;
-}
-.refine-stage[data-effect="seal"] .refine-vapor { animation-delay: .55s; }
-.refine-stage[data-state="success"] .refine-result { opacity: 1; }
-.refine-stage[data-state="success"][data-effect="seal"] .refine-result { animation: furnace-reveal .65s .55s ease-out both; }
-.refine-stage[data-state="failure"]:is([data-effect="force"], [data-effect="pulse"]) .refine-pot { animation: furnace-shake .4s ease-out; }
-.refine-stage[data-state="failure"]:is([data-effect="force"], [data-effect="pulse"]) .refine-vapor { animation: furnace-burst .65s ease-out; }
-.refine-stage[data-state="failure"][data-effect="seal"] .refine-lid {
-  animation: furnace-seal .55s ease-in both, furnace-shake .4s .55s ease-out;
-}
-.refine-stage[data-effect="abort"] .refine-flame { animation: furnace-extinguish .65s ease-out; }
+.refine-status { padding: 4px 8px; color: var(--gold); font-family: var(--serif); font-weight: 600; }
+.refine-feedback { padding: 2px 8px 0; color: var(--ink); font-size: .88rem; }
 .refine-timing {
   position: relative;
-  height: 14px;
-  width: min(260px, 78%);
-  margin: 14px auto 8px;
-  border-radius: 7px;
-  background: linear-gradient(90deg, #452b2a 25%, #285649 25% 40%, #b39252 40% 60%, #285649 60% 75%, #452b2a 75%);
+  height: 12px;
+  width: min(260px, 80%);
+  margin: 10px auto 6px;
+  border-radius: 3px;
+  border: 1px solid var(--line);
+  background: linear-gradient(90deg, #3c2220 25%, #23473d 25% 40%, #b5924c 40% 60%, #23473d 60% 75%, #3c2220 75%);
 }
 .refine-timing > i {
   position: absolute;
   top: -3px;
   bottom: -3px;
   width: 4px;
-  border-radius: 2px;
+  border-radius: 1px;
   translate: -50% 0;
-  background: #fff4d4;
-  box-shadow: 0 0 8px 3px #ffbe6d;
+  background: #fff3d1;
+  box-shadow: 0 0 8px 2px #ffbe6d;
   animation: furnace-timing 1.5s infinite alternate linear;
 }
 .refine-drop {
   position: absolute;
-  bottom: 112px;
+  top: 22px;
   left: 50%;
   translate: -50% 0;
-  padding: 2px 8px;
+  padding: 2px 9px;
   border: 1px solid var(--gold);
-  border-radius: 12px;
+  border-radius: 3px;
   background: var(--bg2);
+  font-size: .82rem;
   white-space: nowrap;
   animation: furnace-drop .5s ease-in both;
 }
 @keyframes furnace-timing { from { left: 0; } to { left: 100%; } }
-@keyframes furnace-drop { 70% { opacity: 1; } to { transform: translateY(43px) scale(.35); opacity: 0; } }
-@keyframes furnace-breathe { from { scale: .92 .85; } to { scale: 1.07 1.12; } }
-@keyframes furnace-flare { 0% { scale: .65 .4; } 45% { scale: 1.35 1.55; } }
-@keyframes furnace-release { from { opacity: .95; transform: translateY(10px) scale(.55); } to { transform: translateY(-16px) scale(1.5); } }
-@keyframes furnace-vent {
-  from { opacity: 1; transform: translateY(10px) scale(.5); }
-  to { opacity: 0; transform: translate(35px, -23px) scale(2, .6); }
-}
-@keyframes furnace-burst {
-  15% { opacity: 1; transform: translateY(10px) scale(1.6); }
-  to { transform: translateY(-20px) scale(2.6); }
-}
-@keyframes furnace-ring { 45% { box-shadow: 0 0 24px 6px var(--ember), inset 0 0 12px var(--ember); scale: 1.06; } }
-@keyframes furnace-seal { from { transform: translateY(-35px); opacity: 0; } 50% { opacity: 1; } }
-@keyframes furnace-reveal { from { transform: translate(16px, 15px) scale(.3); opacity: 0; } }
-@keyframes furnace-extinguish { from { opacity: .85; } to { opacity: 0; scale: .6 .15; } }
-@keyframes furnace-shake { 20%, 60% { transform: translateX(-5px); } 40%, 80% { transform: translateX(5px); } }
-@media (prefers-reduced-motion: reduce) {
-  .refine-scene * { animation: none !important; }
-  .refine-drop { display: none; }
-  .refine-timing > i { animation-timing-function: steps(10); }
-}
-.place-sheet-controls {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  display: flex;
-  justify-content: flex-end;
-}
+@keyframes furnace-drop { 70% { opacity: 1; } to { transform: translateY(38px) scale(.4); opacity: 0; } }
+@keyframes furnace-breathe { from { transform: scale(.93, .88); } to { transform: scale(1.06, 1.12); } }
+@keyframes furnace-shake { 20%, 60% { transform: translateX(-3px); } 40%, 80% { transform: translateX(3px); } }
+
+/* Toast */
 .toast {
   position: fixed;
   left: 50%;
-  bottom: 76px;
+  bottom: 72px;
   transform: translateX(-50%);
   z-index: 60;
-  background: #203d36;
-  border: 1px solid var(--jade);
+  background: #172722;
+  border: 1px solid var(--gold);
   color: var(--ink);
-  padding: 8px 16px;
-  border-radius: 999px;
-  font-size: .88rem;
+  padding: 7px 16px;
+  border-radius: 3px;
+  font-size: .86rem;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
   opacity: 0;
   pointer-events: none;
   transition: opacity .2s;
 }
 .toast.show { opacity: 1; }
 
-.loglist { display: flex; flex-direction: column; gap: 4px; max-height: 260px; overflow-y: auto; font-size: .86rem; }
+.loglist { display: flex; flex-direction: column; gap: 5px; max-height: 250px; overflow-y: auto; font-size: .85rem; }
 .log-good { color: var(--jade); }
 .log-bad { color: var(--blood); }
 .log-warn { color: var(--warn); }
 .log-gold { color: var(--gold); font-weight: 600; }
-.intent-box {
-  background: rgba(224, 122, 107, .1);
-  border: 1px solid rgba(224, 122, 107, .35);
-  border-radius: 8px;
-  padding: 8px 10px;
-  font-size: .86rem;
+
+/* 战斗演武台 */
+.battle-foe { display: flex; flex-direction: column; gap: 10px; }
+.battle-foe.is-struck { animation: foe-struck .32s ease-out; }
+@keyframes foe-struck {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); border-color: var(--blood); }
+  75% { transform: translateX(5px); }
 }
-/* 战斗 */
-.battle-foe { display: flex; flex-direction: column; gap: 8px; }
-.foe-top { display: flex; justify-content: space-between; align-items: baseline; }
-.foe-name { display: flex; align-items: baseline; gap: 8px; }
-.foe-name b { font-size: 1.25rem; font-family: Georgia, "Songti SC", serif; }
-.foe-name span { font-size: .8rem; color: var(--dim); }
-.battle-round { font-size: .82rem; color: var(--gold); }
-.foe-status { display: flex; align-items: center; gap: 12px; font-size: .88rem; }
+.foe-arena { display: grid; grid-template-columns: 58px 1fr; gap: 12px; align-items: center; }
+.foe-emblem { width: 58px; height: 58px; display: block; }
+.foe-core { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.foe-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.foe-name { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.foe-name b { font-size: 1.22rem; color: #f2ece0; }
+.battle-round { font-size: .8rem; color: var(--gold); font-family: var(--serif); }
+.foe-status { display: flex; align-items: center; gap: 10px; font-size: .86rem; }
 .foe-hp { display: flex; align-items: center; gap: 8px; flex: 1; font-variant-numeric: tabular-nums; color: var(--dim); }
-.foe-hp .bar { flex: 1; max-width: 320px; }
-.foe-zy { font-size: .8rem; color: #5da9c4; margin-left: 4px; }
+.foe-hp .bar { flex: 1; max-width: 300px; }
+.foe-zy { font-size: .78rem; color: var(--zy); }
 .foe-hp.is-high { color: var(--ink); }
 .foe-hp.is-mid { color: var(--warn); }
 .foe-hp.is-low { color: var(--blood); }
-.foe-shield { color: #9ccbd7; font-size: .82rem; }
-.foe-intent { font-size: .86rem; color: var(--ink); display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
-.foe-intent > span { font-size: .76rem; color: var(--blood); letter-spacing: .1em; }
-.foe-intent small { color: var(--dim); font-size: .76rem; }
-.foe-intent.is-stunned { color: var(--jade); }
+.foe-shield { color: #95c9d6; font-size: .8rem; }
+.foe-intent { font-size: .85rem; color: var(--ink); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.intent-pill {
+  font-size: .74rem;
+  font-family: var(--serif);
+  padding: 1px 7px;
+  border-radius: 2px;
+  border: 1px solid rgba(201, 89, 77, 0.5);
+  background: rgba(201, 89, 77, 0.14);
+  color: #f0a89f;
+}
+.foe-intent.is-stunned .intent-pill {
+  border-color: rgba(94, 166, 139, 0.55);
+  background: rgba(94, 166, 139, 0.14);
+  color: var(--jade);
+}
+.fx-pop {
+  font-size: .82rem;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 2px;
+  animation: pop-up .9s ease-out forwards;
+}
+.fx-pop.is-dmg { color: #ff9c8e; background: rgba(201, 89, 77, 0.25); }
+.fx-pop.is-shield { color: #9ed7e6; background: rgba(84, 146, 168, 0.25); }
+.fx-pop.is-stun { color: var(--gold); background: rgba(207, 169, 104, 0.22); }
+@keyframes pop-up {
+  0% { opacity: 0; transform: translateY(5px) scale(.92); }
+  20% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: .88; transform: translateY(-2px); }
+}
+
 .battle-log {
-  margin-top: 4px;
+  margin-top: 2px;
   padding-top: 8px;
-  border-top: 1px solid rgba(41, 73, 66, .6);
+  border-top: 1px solid rgba(41, 60, 54, 0.65);
   display: flex;
   flex-direction: column-reverse;
   gap: 2px;
   font-size: .84rem;
-  line-height: 1.6;
+  line-height: 1.62;
   color: var(--dim);
-  height: calc(5 * 1.6em + 4 * 2px + 8px);
+  height: calc(5 * 1.62em + 4 * 2px + 8px);
   overflow-y: auto;
   overscroll-behavior: contain;
 }
-.battle-log .is-latest { color: var(--ink); }
+.battle-log .is-latest { color: var(--gold); }
 
-.battle-actions { display: flex; flex-direction: column; gap: 14px; }
+.battle-actions { display: flex; flex-direction: column; gap: 12px; }
 .skill-group { display: grid; gap: 6px; }
-.skill-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: .8rem; color: var(--dim); }
-.skill-head em { font-style: normal; margin-left: 8px; opacity: .7; }
-.skill-plan { color: var(--gold); }
+.skill-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: .8rem; color: var(--dim); font-family: var(--serif); }
+.skill-plan { color: var(--gold); font-family: var(--sans); }
 .skill-list { display: flex; flex-wrap: wrap; gap: 6px; }
 .skill {
   display: inline-flex;
-  align-items: baseline;
+  align-items: center;
   gap: 6px;
-  min-height: 34px;
-  padding: 4px 12px;
-  font-size: .9rem;
+  min-height: 36px;
+  padding: 4px 10px;
+  font-size: .88rem;
   background: var(--bg2);
 }
-.skill small { font-size: .74rem; color: #5da9c4; font-variant-numeric: tabular-nums; }
+.skill-name { font-family: var(--serif); }
+.skill-stat { font-style: normal; font-size: .74rem; color: var(--dim); }
+.skill small { font-size: .74rem; color: var(--zy); font-variant-numeric: tabular-nums; }
 .skill:disabled small { color: var(--dim); }
-.skill.is-picked { border-color: var(--gold); background: #2e2a1b; }
+.skill.is-picked { border-color: var(--gold); background: rgba(207, 169, 104, 0.14); }
 .skill-order {
   font-style: normal;
   font-size: .72rem;
@@ -605,29 +832,31 @@ button.sm { min-height: 32px; padding: 4px 10px; font-size: .85rem; }
   height: 16px;
   line-height: 16px;
   text-align: center;
-  border-radius: 50%;
+  border-radius: 2px;
   background: var(--gold);
-  color: #1a1408;
-  align-self: center;
+  color: #161006;
+  font-weight: 700;
 }
-.skill.is-move { border-color: rgba(216, 191, 135, .45); color: #f2e3bd; }
-.battle-go { justify-self: start; min-width: 96px; min-height: 34px; padding: 4px 16px; }
+.skill.is-move { border-color: var(--line-gold); color: #f2e3bd; }
+.battle-go { justify-self: start; min-width: 108px; }
 .battle-basic {
   display: flex;
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
   padding-top: 10px;
-  border-top: 1px solid rgba(41, 73, 66, .6);
+  border-top: 1px solid rgba(41, 60, 54, 0.65);
 }
 .battle-spacer { flex: 1; }
 .battle-basic:first-child { border-top: 0; padding-top: 0; }
-.battle-lethal { font-size: .82rem; color: var(--blood); }
-.battle-finish { align-self: center; min-width: 160px; }
+.battle-lethal { font-size: .82rem; color: var(--blood); font-family: var(--serif); }
+.battle-finish { align-self: center; min-width: 170px; }
+
+/* 表单与商店步进器 */
 input[type="text"], input[type="number"], select, textarea {
   width: 100%;
-  padding: 8px 10px;
-  border-radius: 8px;
+  padding: 7px 10px;
+  border-radius: var(--radius);
   border: 1px solid var(--line);
   background: var(--bg);
   color: var(--ink);
@@ -637,19 +866,41 @@ input[type="text"], input[type="number"], select, textarea {
   display: flex;
   flex: 0 0 auto;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
 }
-.shop-purchase input[type="number"] {
-  width: 4em;
-  padding: 4px;
+.qty-stepper {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg);
+  overflow: hidden;
 }
-.dev-fields select {
-  width: auto;
-  max-width: 100%;
+.qty-stepper button.sm {
+  min-height: 28px;
+  min-width: 26px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 0;
 }
+.qty-stepper input[type="number"] {
+  width: 2.8em;
+  padding: 2px 0;
+  border: 0;
+  text-align: center;
+  background: transparent;
+  font-variant-numeric: tabular-nums;
+  -moz-appearance: textfield;
+}
+.qty-stepper input[type="number"]::-webkit-outer-spin-button,
+.qty-stepper input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.dev-fields select { width: auto; max-width: 100%; }
 
-/* 通用紧凑列表 */
-.list-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+/* 通用列表与行纪卷宗 */
+.list-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
 .list-head h3 { margin: 0; }
 .list-rows { list-style: none; margin: 0; padding: 0; }
 .list-row {
@@ -658,23 +909,116 @@ input[type="text"], input[type="number"], select, textarea {
   gap: 12px;
   align-items: center;
   padding: 10px 0 10px 10px;
-  border-top: 1px solid rgba(41, 73, 66, .6);
+  border-top: 1px solid rgba(41, 60, 54, 0.55);
   border-left: 2px solid transparent;
 }
 .list-row:first-child { border-top: 0; }
 .list-row.is-ready { border-left-color: var(--jade); }
 .list-main { min-width: 0; }
 .list-title { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
-.list-title b { font-size: .96rem; }
-.list-meta { font-size: .78rem; color: var(--dim); }
+.list-title b { font-size: .96rem; font-family: var(--serif); }
+.list-meta { font-size: .76rem; color: var(--dim); }
 .list-sub { font-size: .84rem; color: var(--dim); margin-top: 2px; }
 .list-hint { font-size: .78rem; color: var(--gold); margin-top: 2px; }
 .is-lack { color: var(--blood); }
 .list-side { display: flex; align-items: center; gap: 8px; }
 .list-note { font-size: .78rem; color: var(--dim); white-space: nowrap; }
+
+.trial-steps { display: flex; flex-direction: column; gap: 6px; margin: 8px 0 10px; }
+.trial-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 3px;
+  background: rgba(10, 15, 14, 0.5);
+  border: 1px solid rgba(41, 60, 54, 0.6);
+  font-size: .86rem;
+}
+.trial-step i { font-style: normal; color: var(--dim); width: 14px; text-align: center; }
+.trial-step span { flex: 1; }
+.trial-step em { font-style: normal; font-size: .76rem; color: var(--dim); }
+.trial-step.is-done { border-color: rgba(94, 166, 139, 0.45); }
+.trial-step.is-done i, .trial-step.is-done em { color: var(--jade); }
+
+.receipt-list { display: flex; flex-direction: column; gap: 6px; padding: 8px 12px; background: rgba(8, 12, 11, 0.55); border-left: 2px solid var(--gold); }
+.receipt-row { font-size: .92rem; color: var(--ink); }
+
+.dossier-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+.dossier-cell {
+  padding: 8px 10px;
+  border: 1px solid rgba(41, 60, 54, 0.7);
+  border-radius: 3px;
+  background: rgba(10, 15, 14, 0.55);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.dossier-cell span { font-size: .74rem; color: var(--dim); }
+.dossier-cell b { font-size: .9rem; color: var(--ink); }
+
+.dossier-list { display: flex; flex-direction: column; gap: 6px; }
+.dossier-locked {
+  padding: 7px 10px;
+  border: 1px dashed rgba(41, 60, 54, 0.7);
+  border-radius: 3px;
+  font-size: .82rem;
+  font-family: var(--serif);
+  color: var(--dim);
+  opacity: 0.65;
+}
+.dossier-card {
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: rgba(10, 15, 14, 0.55);
+}
+.dossier-card summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  font-size: .92rem;
+}
+.dossier-card summary::-webkit-details-marker { display: none; }
+.dossier-card summary span::before { content: "▸ "; color: var(--gold); font-size: .78rem; }
+.dossier-card[open] summary span::before { content: "▾ "; }
+.dossier-card summary small { color: var(--dim); font-family: var(--sans); font-size: .78rem; }
+.dossier-body {
+  padding: 6px 12px 10px;
+  border-top: 1px solid rgba(41, 60, 54, 0.55);
+  font-size: .86rem;
+}
+.dossier-body p { margin: 4px 0; }
+
+.ledger-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-left: 1px solid var(--line-gold);
+  padding-left: 12px;
+  margin-left: 4px;
+}
+.ledger-item { display: flex; flex-direction: column; gap: 2px; font-size: .86rem; }
+.ledger-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.ledger-head b { font-family: var(--serif); color: var(--ink); }
+.ledger-choice { color: var(--gold); font-size: .83rem; }
+.ledger-sub { display: flex; flex-direction: column; gap: 1px; color: var(--dim); font-size: .82rem; }
+
 @media (max-width: 520px) {
   .list-row { grid-template-columns: 1fr; gap: 6px; }
   .list-side, .shop-purchase { justify-content: flex-end; }
+  .realm-ladder { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ap-wave, .ap-wave2, .furnace-flame-group, .battle-foe.is-struck { animation: none !important; }
+  .refine-drop { display: none; }
+  .refine-timing > i { animation-timing-function: steps(10); }
 }
 
 </style>
@@ -2248,6 +2592,43 @@ function loadGame(storage) {
   } catch {
     return null;
   }
+}
+
+
+/* === src/core/social.js === */
+
+
+
+
+
+const visits = {
+  mobei: { place: 'yanwu', gift: 'shourou', chat: '“练的时候多吃点肉。手上有劲儿，上阵才不至于发抖。”' },
+  chicheng: { place: 'jucaifang', gift: 'yuelanhua', chat: '“买口粮先看存货。轮到出寨才来找，掌柜可不会替你留。”' }
+};
+function localPeople(gs) {
+  if (!gs.flags.kaike || gs.player.dead || gs.player.escapedMountain) return [];
+  return Object.keys(visits).filter((id) => visits[id].place === gs.location);
+}
+function visitPerson(gs, id, gift = false) {
+  if (gs.pendingEventId || gs.battle || !localPeople(gs).includes(id)) return null;
+  const { name } = STORY_CHARACTERS[id];
+  const { gift: item, chat } = visits[id];
+  const day = Math.floor(gs.minutes / MIN_PER_DAY);
+  const giftDays = (gs.story.giftDays ??= {});
+  let response = chat;
+  if (gift && giftDays[id] !== day && storyRelation(gs, id).favor < 100 && useItem(gs, item)) {
+    const before = storyRelation(gs, id).favor;
+    changeStoryRelation(gs, id, 5, 0);
+    giftDays[id] = day;
+    response = `送出 ${ITEMS[item].name} ×1。${name}收下了礼物，好感 +${storyRelation(gs, id).favor - before}。`;
+    addLog(gs, `【${name}】${response}`, 'log-good');
+  }
+  const { favor, trust, progress } = storyRelation(gs, id);
+  return {
+    id, name, response, favor, trust, progress,
+    giftName: ITEMS[item].name,
+    giftReason: giftDays[id] === day ? '今天已送过礼' : favor >= 100 ? '好感已满' : !gs.player.items[item] ? '行囊里没有礼物' : ''
+  };
 }
 
 
@@ -3942,13 +4323,311 @@ function mainGrowthGoal(gs) {
 }
 
 
+/* === src/ui/visuals.js === */
+// 视觉图腾、场景画卷与轻量化 WebAudio 音效（纯本地零依赖，离线单文件可用）
+
+const SFX_MUTE_KEY = 'gujie_sfx_muted';
+function isSfxMuted() {
+  try {
+    return globalThis.localStorage?.getItem(SFX_MUTE_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+function toggleSfxMuted() {
+  const next = !isSfxMuted();
+  try {
+    globalThis.localStorage?.setItem(SFX_MUTE_KEY, next ? '1' : '0');
+  } catch {
+    // 忽略隐私模式存储限制
+  }
+  return next;
+}
+
+let _audioCtx = null;
+function getAudioCtx() {
+  if (typeof window === 'undefined' || isSfxMuted()) return null;
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  if (!Ctx) return null;
+  if (!_audioCtx) _audioCtx = new Ctx();
+  if (_audioCtx.state === 'suspended') _audioCtx.resume().catch(() => {});
+  return _audioCtx;
+}
+
+function tone(freq, dur, type = 'sine', vol = 0.045, slideTo = null, delay = 0) {
+  try {
+    const ctx = getAudioCtx();
+    if (!ctx) return;
+    const now = ctx.currentTime + delay;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, now);
+    if (slideTo) osc.frequency.exponentialRampToValueAtTime(Math.max(30, slideTo), now + dur);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.linearRampToValueAtTime(vol, now + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + dur + 0.02);
+  } catch {
+    // 忽略音频上下文限制
+  }
+}
+function playSfx(kind) {
+  if (isSfxMuted() || typeof window === 'undefined') return;
+  if (kind === 'tap') {
+    tone(420, 0.055, 'triangle', 0.025, 240);
+  } else if (kind === 'walk') {
+    tone(190, 0.08, 'sine', 0.03, 130);
+    tone(220, 0.08, 'sine', 0.022, 150, 0.09);
+  } else if (kind === 'hit') {
+    tone(145, 0.14, 'sawtooth', 0.045, 52);
+    tone(95, 0.16, 'triangle', 0.05, 42, 0.02);
+  } else if (kind === 'shield') {
+    tone(330, 0.16, 'triangle', 0.035, 480);
+    tone(520, 0.22, 'sine', 0.025, 440, 0.04);
+  } else if (kind === 'heal') {
+    tone(440, 0.18, 'sine', 0.03, 554);
+    tone(660, 0.24, 'sine', 0.028, 880, 0.08);
+  } else if (kind === 'refine') {
+    tone(280, 0.15, 'triangle', 0.035, 360);
+    tone(540, 0.22, 'sine', 0.025, 680, 0.07);
+  } else if (kind === 'win' || kind === 'break') {
+    tone(392, 0.18, 'triangle', 0.04, 440);
+    tone(523, 0.22, 'triangle', 0.04, 587, 0.1);
+    tone(784, 0.36, 'sine', 0.04, 784, 0.2);
+  } else if (kind === 'alert') {
+    tone(240, 0.18, 'sawtooth', 0.03, 160);
+  }
+}
+function renderSceneBannerSvg(placeId, night) {
+  const skyTop = night ? '#081018' : '#11221e';
+  const skyBot = night ? '#101d28' : '#1b312a';
+  const ridgeFar = night ? '#13212c' : '#1b312b';
+  const ridgeNear = night ? '#0b141b' : '#11201c';
+  const moonColor = night ? '#dce6f2' : '#d8b774';
+  const moonOpacity = night ? '0.82' : '0.32';
+
+  let motif = '';
+  if (placeId === 'zhulin') {
+    motif = `
+      <g stroke="${night ? '#223b3c' : '#2f5748'}" stroke-width="2.4" stroke-linecap="round" opacity="0.72">
+        <line x1="64" y1="120" x2="58" y2="8"/><line x1="86" y1="120" x2="92" y2="12"/>
+        <line x1="510" y1="120" x2="518" y2="6"/><line x1="542" y1="120" x2="536" y2="16"/>
+        <line x1="566" y1="120" x2="574" y2="10"/>
+      </g>
+      <g fill="${night ? '#2e514f' : '#40755f'}" opacity="0.55">
+        <ellipse cx="62" cy="36" rx="14" ry="3" transform="rotate(-24 62 36)"/>
+        <ellipse cx="89" cy="48" rx="15" ry="3" transform="rotate(20 89 48)"/>
+        <ellipse cx="516" cy="32" rx="16" ry="3" transform="rotate(18 516 32)"/>
+        <ellipse cx="540" cy="54" rx="14" ry="3" transform="rotate(-22 540 54)"/>
+      </g>`;
+  } else if (placeId === 'xuefu' || placeId === 'huajiu') {
+    motif = `
+      <path d="M0 0 H600 V34 L540 16 L490 42 L430 14 L360 30 L280 12 L210 38 L140 16 L70 36 L0 20 Z" fill="#080c0d" opacity="0.75"/>
+      <path d="M220 120 Q300 45 380 120" fill="none" stroke="${placeId === 'huajiu' ? '#4d8a9c' : '#8a3c36'}" stroke-width="1.4" opacity="0.45"/>`;
+  } else if (placeId === 'langchao') {
+    motif = `
+      <polyline points="420,12 406,36 424,38 408,68" fill="none" stroke="#8ad4f5" stroke-width="1.6" opacity="0.58"/>
+      <polyline points="512,18 502,38 515,40 504,60" fill="none" stroke="#8ad4f5" stroke-width="1.2" opacity="0.42"/>`;
+  } else {
+    motif = `
+      <g fill="${ridgeNear}" stroke="#39574b" stroke-width="0.9" opacity="0.82">
+        <path d="M432 82 L478 56 L524 82 Z"/>
+        <rect x="444" y="82" width="68" height="38"/>
+        <path d="M416 62 L478 32 L540 62 Z"/>
+      </g>
+      <circle cx="478" cy="70" r="3" fill="#e5b869" opacity="${night ? '0.9' : '0.4'}"/>`;
+  }
+
+  return `<svg class="stage-art" viewBox="0 0 600 120" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <defs>
+      <linearGradient id="sky-${placeId}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="${skyTop}"/>
+        <stop offset="100%" stop-color="${skyBot}"/>
+      </linearGradient>
+    </defs>
+    <rect width="600" height="120" fill="url(#sky-${placeId})"/>
+    <circle cx="496" cy="34" r="18" fill="${moonColor}" opacity="${moonOpacity}"/>
+    <path d="M0 94 Q95 52 195 84 T390 76 T600 88 L600 120 L0 120 Z" fill="${ridgeFar}"/>
+    <path d="M0 106 Q130 74 260 98 T510 92 L600 102 L600 120 L0 120 Z" fill="${ridgeNear}"/>
+    ${motif}
+  </svg>`;
+}
+function renderHopeFlowerSvg(step, target) {
+  const ratio = Math.max(0, Math.min(1, step / Math.max(1, target)));
+  const count = Math.max(2, Math.round(ratio * 18) + 2);
+  let motes = '';
+  for (let i = 0; i < count; i++) {
+    const x = 36 + ((i * 73 + 19) % 328);
+    const y = 30 + ((i * 41 + 11) % 92);
+    const r = (i % 3) + 1.5;
+    motes += `<circle cx="${x}" cy="${y}" r="${r}" fill="#ffe99c" opacity="${(0.35 + (i % 5) * 0.13).toFixed(2)}"/>`;
+  }
+  const auraR = 14 + ratio * 34;
+  return `<svg class="hope-svg" viewBox="0 0 400 145" aria-hidden="true">
+    <defs>
+      <radialGradient id="hope-aura" cx="50%" cy="55%" r="50%">
+        <stop offset="0%" stop-color="#ffe794" stop-opacity="${(0.22 + ratio * 0.55).toFixed(2)}"/>
+        <stop offset="65%" stop-color="#5da9c4" stop-opacity="0.18"/>
+        <stop offset="100%" stop-color="#081116" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
+    <rect width="400" height="145" rx="6" fill="#091318"/>
+    <path d="M0 118 Q100 104 200 116 T400 110 L400 145 L0 145 Z" fill="#102530"/>
+    <path d="M0 126 Q130 115 260 128 T400 122" fill="none" stroke="#4c8ea8" stroke-width="1.2" opacity="0.5"/>
+    <circle cx="200" cy="74" r="${auraR.toFixed(1)}" fill="url(#hope-aura)"/>
+    <circle cx="200" cy="74" r="${(4 + ratio * 10).toFixed(1)}" fill="none" stroke="#e9c878" stroke-width="1.2" opacity="0.8"/>
+    ${motes}
+  </svg>`;
+}
+function renderApertureCanvasSvg(player, guList) {
+  const rankThemes = {
+    1: { wall: '#5e967d', sea: '#2b6f6a', seaHi: '#62b3a3', glow: 'rgba(98, 179, 163, 0.25)', label: '青铜真元海' },
+    2: { wall: '#c27959', sea: '#7a3f2d', seaHi: '#d48261', glow: 'rgba(212, 130, 97, 0.25)', label: '赤铁真元海' },
+    3: { wall: '#b8c7d1', sea: '#566d7a', seaHi: '#cbdbe6', glow: 'rgba(203, 219, 230, 0.26)', label: '白银真元海' },
+    4: { wall: '#dfb86c', sea: '#8a6827', seaHi: '#f0ce7c', glow: 'rgba(240, 206, 124, 0.28)', label: '黄金真元海' }
+  };
+  const theme = rankThemes[player.rank] || rankThemes[1];
+  const seaLevel = Math.max(0.22, Math.min(0.92, (player.hai || 4) / 10));
+  const zyFill = player.zyMax ? Math.max(0.08, player.zy / player.zyMax) : 0.5;
+  const waveY = Math.round(150 - (100 * seaLevel * (0.45 + 0.55 * zyFill)));
+
+  const orbs = guList.slice(0, 8).map((g, idx) => {
+    const angle = (idx / Math.max(1, Math.min(guList.length, 8))) * Math.PI * 1.4 - Math.PI * 0.7;
+    const cx = Math.round(200 + Math.sin(angle) * 118);
+    const cy = Math.round(74 - Math.cos(angle) * 32 + (idx % 2 ? 12 : -4));
+    const isBm = player.benming === g.uid;
+    const color = g.weak ? '#b85349' : isBm ? '#e6c173' : theme.seaHi;
+    return `<g class="ap-orb">
+      <circle cx="${cx}" cy="${cy}" r="${isBm ? 8 : 5.5}" fill="${color}" opacity="0.22"/>
+      <circle cx="${cx}" cy="${cy}" r="${isBm ? 4.2 : 3}" fill="${color}" stroke="#0d1413" stroke-width="0.8"/>
+    </g>`;
+  }).join('');
+
+  return `<svg class="aperture-svg" viewBox="0 0 400 156" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <defs>
+      <clipPath id="aperture-clip">
+        <ellipse cx="200" cy="78" rx="178" ry="66"/>
+      </clipPath>
+      <linearGradient id="sea-grad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="${theme.seaHi}" stop-opacity="0.65"/>
+        <stop offset="100%" stop-color="${theme.sea}" stop-opacity="0.92"/>
+      </linearGradient>
+    </defs>
+    <ellipse cx="200" cy="78" rx="184" ry="70" fill="${theme.glow}"/>
+    <g clip-path="url(#aperture-clip)">
+      <rect width="400" height="156" fill="#0b1111"/>
+      <path class="ap-wave" d="M-40 ${waveY} Q 40 ${waveY - 8}, 120 ${waveY} T 280 ${waveY} T 440 ${waveY} L440 165 L-40 165 Z" fill="url(#sea-grad)"/>
+      <path class="ap-wave2" d="M-40 ${waveY + 4} Q 50 ${waveY + 10}, 140 ${waveY + 3} T 320 ${waveY + 4} T 460 ${waveY + 2} L460 165 L-40 165 Z" fill="${theme.sea}" opacity="0.45"/>
+    </g>
+    <ellipse cx="200" cy="78" rx="178" ry="66" fill="none" stroke="${theme.wall}" stroke-width="1.6" opacity="0.85"/>
+    <ellipse cx="200" cy="78" rx="172" ry="60" fill="none" stroke="${theme.wall}" stroke-width="0.6" stroke-dasharray="4 6" opacity="0.45"/>
+    ${orbs}
+  </svg>`;
+}
+function renderBreakSealSvg(crack, hurt) {
+  const crackRatio = Math.max(0, Math.min(1, crack / 100));
+  const hurtRatio = Math.max(0, Math.min(1, hurt / 100));
+  const strokeColor = hurt >= 70 ? '#d45a4e' : '#cfa968';
+  const branches = [
+    'M100 22 L95 44 L106 58 L98 76',
+    'M100 58 L122 50 L138 62',
+    'M100 58 L76 66 L62 56',
+    'M98 76 L112 96 L104 114',
+    'M98 76 L82 94 L68 106'
+  ];
+  const visibleCount = Math.ceil(crackRatio * branches.length);
+  const paths = branches.slice(0, visibleCount).map((d, i) =>
+    `<path d="${d}" fill="none" stroke="#f0d58c" stroke-width="${(1.1 + crackRatio * 1.4).toFixed(1)}" stroke-linecap="round" opacity="${i === visibleCount - 1 ? crackRatio : 0.92}"/>`
+  ).join('');
+  return `<svg class="break-svg" viewBox="0 0 200 128" aria-hidden="true">
+    <circle cx="100" cy="64" r="52" fill="rgba(20, 32, 30, 0.9)" stroke="${strokeColor}" stroke-width="1.5"/>
+    <circle cx="100" cy="64" r="44" fill="none" stroke="${strokeColor}" stroke-width="0.7" stroke-dasharray="3 4" opacity="0.6"/>
+    <circle cx="100" cy="64" r="48" fill="none" stroke="#c9594d" stroke-width="3" opacity="${(hurtRatio * 0.75).toFixed(2)}"/>
+    ${paths}
+  </svg>`;
+}
+function renderFurnaceCauldronSvg(state, hot, shapeRatio, effectAction) {
+  const flameColor = state === 'failure' ? '#c9594d' : hot ? '#f06d4f' : '#e0a04e';
+  const glowColor = state === 'success' ? '#f2cf7e' : effectAction === 'vent' ? '#7ebcc9' : flameColor;
+  const lidY = effectAction === 'seal' || state === 'success' ? 30 : 12;
+  const lidOpacity = effectAction === 'seal' || state === 'success' ? 1 : 0.28;
+  return `<svg class="furnace-svg" viewBox="0 0 220 156" aria-hidden="true">
+    <defs>
+      <radialGradient id="furnace-glow" cx="50%" cy="62%" r="48%">
+        <stop offset="0%" stop-color="${glowColor}" stop-opacity="${state === 'ready' ? '0.12' : '0.45'}"/>
+        <stop offset="100%" stop-color="#0b1110" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
+    <rect width="220" height="156" fill="none"/>
+    <ellipse cx="110" cy="126" rx="76" ry="18" fill="none" stroke="#4d6e60" stroke-width="1" stroke-dasharray="4 5" opacity="0.75"/>
+    <circle cx="110" cy="86" r="70" fill="url(#furnace-glow)"/>
+    <g class="furnace-flame-group" opacity="${state === 'ready' || state === 'aborted' ? 0.15 : 0.9}">
+      <path d="M88 124 Q110 92 132 124 Q110 132 88 124 Z" fill="${flameColor}" opacity="0.8"/>
+      <path d="M98 124 Q110 102 122 124 Z" fill="#fff0bc" opacity="0.9"/>
+    </g>
+    <g class="furnace-body">
+      <!-- 鼎耳与鼎足 -->
+      <path d="M62 64 Q46 52 56 42 Q66 44 68 58" fill="none" stroke="#b89b63" stroke-width="3"/>
+      <path d="M158 64 Q174 52 164 42 Q154 44 152 58" fill="none" stroke="#b89b63" stroke-width="3"/>
+      <path d="M76 108 L68 132 L76 132 L85 110 Z" fill="#6f5c39" stroke="#a68a54" stroke-width="1"/>
+      <path d="M144 108 L152 132 L144 132 L135 110 Z" fill="#6f5c39" stroke="#a68a54" stroke-width="1"/>
+      <path d="M107 112 L110 135 L113 112 Z" fill="#59492d"/>
+      <!-- 鼎腹 -->
+      <path d="M64 56 H156 Q160 112 110 114 Q60 112 64 56 Z" fill="#232c28" stroke="#b5975d" stroke-width="1.6"/>
+      <ellipse cx="110" cy="56" rx="46" ry="9" fill="#101816" stroke="#b5975d" stroke-width="1.5"/>
+      <!-- 鼎身纹饰 -->
+      <path d="M84 74 L110 66 L136 74 L110 96 Z" fill="none" stroke="#cfa968" stroke-width="1" opacity="0.65"/>
+      <circle cx="110" cy="80" r="5" fill="none" stroke="#cfa968" stroke-width="1" opacity="0.75"/>
+    </g>
+    <!-- 蛊影 / 成蛊 -->
+    ${shapeRatio > 0.05 || state === 'success' ? `<g opacity="${state === 'success' ? 1 : Math.min(0.95, 0.25 + shapeRatio * 0.7)}">
+      <polygon points="110,${state === 'success' ? 24 : 34} 120,${state === 'success' ? 36 : 44} 110,${state === 'success' ? 48 : 54} 100,${state === 'success' ? 36 : 44}" fill="${state === 'success' ? '#f5d27a' : '#8fd4b2'}" stroke="#fff5cc" stroke-width="1"/>
+    </g>` : ''}
+    <!-- 炉盖 -->
+    <g transform="translate(0 ${lidY})" opacity="${lidOpacity}">
+      <ellipse cx="110" cy="24" rx="48" ry="8" fill="#3a3f34" stroke="#b5975d" stroke-width="1.3"/>
+      <path d="M102 18 Q110 8 118 18" fill="none" stroke="#cfa968" stroke-width="2"/>
+    </g>
+  </svg>`;
+}
+function renderEnemyEmblemSvg(enemyId, rank) {
+  const palette = rank >= 3 ? '#d8b36a' : rank === 2 ? '#c47a5b' : '#6ea88e';
+  let glyph = '<circle cx="32" cy="32" r="14" fill="none" stroke="currentColor" stroke-width="1.5"/>';
+  if (enemyId === 'caoren') {
+    glyph = '<line x1="32" y1="14" x2="32" y2="50" stroke="currentColor" stroke-width="2"/><line x1="16" y1="26" x2="48" y2="26" stroke="currentColor" stroke-width="2"/><circle cx="32" cy="18" r="5" fill="none" stroke="currentColor" stroke-width="1.6"/>';
+  } else if (enemyId === 'yezhu' || enemyId === 'zhuwang') {
+    glyph = '<path d="M18 38 Q32 22 46 38 M20 38 Q15 24 23 20 M44 38 Q49 24 41 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>';
+  } else if (enemyId === 'xuefu' || enemyId === 'xuefu_king') {
+    glyph = '<path d="M10 26 Q22 18 32 32 Q42 18 54 26 Q44 38 32 42 Q20 38 10 26 Z" fill="none" stroke="currentColor" stroke-width="1.8"/>';
+  } else if (enemyId === 'dianlang' || enemyId === 'langwang') {
+    glyph = '<polyline points="18,42 26,20 32,32 38,18 46,42" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/>';
+  } else if (enemyId === 'tianhe') {
+    glyph = '<path d="M10 34 Q24 16 32 28 Q40 16 54 34 M32 28 L32 48" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>';
+  } else if (enemyId === 'guyue_yidai') {
+    glyph = '<circle cx="32" cy="30" r="12" fill="none" stroke="#c9594d" stroke-width="1.8"/><path d="M24 42 L40 42 M26 28 L30 28 M34 28 L38 28" stroke="#c9594d" stroke-width="1.8"/>';
+  } else {
+    glyph = '<path d="M32 14 L46 28 L32 48 L18 28 Z" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="32" cy="30" r="4" fill="currentColor" opacity="0.6"/>';
+  }
+  return `<svg class="foe-emblem" viewBox="0 0 64 64" style="color:${palette}" aria-hidden="true">
+    <polygon points="32,3 58,18 58,46 32,61 6,46 6,18" fill="#0d1413" stroke="currentColor" stroke-width="1.2" opacity="0.88"/>
+    ${glyph}
+  </svg>`;
+}
+
+
 /* === src/ui/cultivation-view.js === */
 function renderGoalShortcut(gs, goal) {
   if (gs.battle || gs.player.dead || gs.pendingEventId || gs.refining || gs.breakthrough) return '';
   if (goal.tab) return '<button class="sm gold" data-action="navTab" data-tab="cultivation">前往修行</button>';
   if (!goal.place) return '';
   const name = PLACES[goal.place].name;
-  if (gs.location === goal.place) return `<button class="sm gold" data-action="openPlace">进入${esc(name)}</button>`;
+  if (gs.location === goal.place) {
+    return gs.modal?.kind === 'place' ? '' : `<button class="sm gold" data-action="openPlace">查看${esc(name)}</button>`;
+  }
   const route = placeMoveList(gs).find(({ id }) => id === goal.place);
   if (!route || route.blocked) return `<small>${esc(route?.blocked || '此处无路可通')}</small>`;
   return `<button class="sm gold" data-action="walkTo" data-id="${goal.place}">前往${esc(name)} · ${formatDuration(route.minutes)}</button>`;
@@ -3958,23 +4637,36 @@ function renderCultivationView(gs, goal) {
   const next = nextRealmRequirements(p);
   const requirements = next ? `
     <h3>下一境界 · ${esc(next.target)}</h3>
-    <div class="kv"><span>蛊虫</span><b>${esc(next.gu.text)}</b></div>
-    ${next.major ? '' : `<div class="kv"><span>修为</span><b data-live="cultivation-xp">${Math.floor(p.xp)} / ${next.xp}</b></div>`}
-    <div class="kv"><span>真元</span><b data-live="cultivation-zy">${Math.floor(p.zy)} / ${next.zy}</b></div>
-    <div class="row">
+    <div class="kv"><span>蛊虫要求</span><b>${esc(next.gu.text)}</b></div>
+    ${next.major ? '' : `<div class="kv"><span>修为积累</span><b data-live="cultivation-xp">${Math.floor(p.xp)} / ${next.xp}</b></div>`}
+    <div class="kv"><span>真元蓄势</span><b data-live="cultivation-zy">${Math.floor(p.zy)} / ${next.zy}</b></div>
+    <div class="row" style="margin-top:8px">
       <button class="primary" data-action="${next.major ? 'openBreak' : 'washMinor'}">${next.major ? '破壁冲关' : '冲刷窍壁'}</button>
       ${next.gu.count < next.gu.need ? `<button data-action="navTab" data-tab="refine">查看蛊方</button>${renderGoalShortcut(gs, { place: 'gupu' })}` : ''}
     </div>
-    <p class="muted">${next.major ? '真元会随时间恢复。回竹楼打坐可加快恢复。' : '随时间流逝积累修为、恢复真元。也可回竹楼打坐吐纳。'}</p>
+    <p class="muted" style="margin-top:8px">${next.major ? '真元随光阴缓缓流转恢复，回竹楼打坐吐纳可加快蓄元。' : '修为随光阴吐纳增长，回竹楼静室打坐更为迅捷。'}</p>
     ${renderGoalShortcut(gs, { place: 'zhulou' })}
-  ` : '<p>已达到本卷境界上限。</p>';
+  ` : '<p class="muted">已臻本卷修行尽头。</p>';
+
+  const seaNames = ['', '青铜真元', '赤铁真元', '白银真元', '黄金真元'];
+  const ladder = [1, 2, 3, 4].map((r) => {
+    const active = p.rank === r;
+    const passed = p.rank > r;
+    return `<div class="realm-step${active ? ' is-now' : passed ? ' is-done' : ''}">
+      <b>${RANK_NAMES[r]}</b>
+      <span>${seaNames[r]}</span>
+      <small>${active ? XIAO_NAMES[p.xiao] : passed ? '已越壁' : '未至'}</small>
+    </div>`;
+  }).join('');
+
   return `<section class="card">
-      <h2>修行</h2>
-      <p class="muted">当前境界 · ${esc(realmText(p))}</p>
+      <div class="list-head"><h2>修行命盘</h2><span class="badge gold">${esc(realmText(p))}</span></div>
+      <div class="realm-ladder">${ladder}</div>
+      <div class="kv" style="margin-top:8px"><span>先天资质 · 真元海</span><b>${esc(p.grade)}等 · ${p.hai} 成真元</b></div>
       <h3>成长引导</h3>
       <p>${esc(goal.text)}</p>
       ${goal.refineBenming ? `<button class="primary" data-action="refineBenming">炼化本命蛊 · ${BENMING_ZY_COST} 真元</button>` : goal.tab ? '' : renderGoalShortcut(gs, goal)}
-      ${gs.flags.toumin_won ? '<p class="muted">已夺得学堂头名。</p>' : gs.flags['event_done:toumin_lost'] ? '<p class="muted">学堂头名已旁落，仍可继续修行。</p>' : ''}
+      ${gs.flags.toumin_won ? '<p class="muted">已夺得学堂头名。</p>' : gs.flags['event_done:toumin_lost'] ? '<p class="muted">学堂头名已旁落，修行仍须自勉。</p>' : ''}
     </section>
     <section class="card">${requirements}</section>`;
 }
@@ -3984,7 +4676,6 @@ function renderCultivationView(gs, goal) {
 function renderStartScreen(startState) {
   if (startState.phase === 'kaiqiao') {
     const step = startState.step;
-    const pct = Math.min(100, Math.round(step / 50 * 100));
     let beat = '暗河幽蓝，花海深处便是元泉。';
     if (step >= 45) beat = '腹中光团愈发明亮，元泉近在眼前，岸上屏息以待。';
     else if (step >= 40) beat = '四十步！岸上鸦雀无声。';
@@ -3995,43 +4686,48 @@ function renderStartScreen(startState) {
 
     const apt = startState.apt;
     const body = startState.done
-      ? `<div class="card">
-          <h3>开窍落定 · ${esc(startState.name)}</h3>
-          <p><b class="log-gold">${esc(apt.grade)}等资质 · 元海 ${apt.hai} 成</b></p>
+      ? `<div class="card ritual-result">
+          <div class="list-head"><h3>开窍落定 · ${esc(startState.name)}</h3><span class="badge gold">${esc(apt.grade)}等资质 · 元海 ${apt.hai} 成</span></div>
           <p class="muted">${esc(apt.desc)}</p>
           <button class="primary" data-action="kaiqiaoFinish">踏入古月山寨</button>
         </div>`
       : `<div class="row">
-          <button class="gold" data-action="kaiqiaoStep">迈步向前（${step} 步）</button>
+          <button class="gold" data-action="kaiqiaoStep">迈步向前 · 第 ${step} 步</button>
           <button class="ghost" data-action="kaiqiaoSkip">跳过演出</button>
         </div>`;
 
-    return `<div class="shell" style="padding:20px;justify-content:center">
-      <div class="stage">
-        <div class="stage-loc">南疆 · 青茅山 · 古月山寨地下溶洞</div>
-        <h1>开窍大典</h1>
-        <p class="stage-desc">${esc(beat)}</p>
-        <div class="kv"><span>希望蛊共鸣</span><b>${step} / 50 步</b></div>
-        <div class="bar"><i style="width:${pct}%"></i></div>
+    return `<div class="shell start-shell">
+      <div class="stage is-night">
+        ${renderSceneBannerSvg('huajiu', true)}
+        <div class="stage-inner">
+          <div class="stage-loc">南疆 · 青茅山 · 地下溶洞</div>
+          <h1>开窍大典</h1>
+          ${renderHopeFlowerSvg(step, startState.target)}
+          <p class="stage-desc" style="margin-top:10px">${esc(beat)}</p>
+          <div class="kv"><span>希望蛊共鸣</span><b>${step} / 50 步</b></div>
+        </div>
       </div>
       ${body}
     </div>`;
   }
 
-  return `<div class="shell" style="padding:20px;justify-content:center">
-    <div class="stage">
-      <div class="stage-loc">南疆 · 青茅山篇</div>
-      <h1>蛊界</h1>
-      <p class="stage-desc">春雨初歇，青茅山的竹楼还滴着水。今天是古月山寨的开窍大典，也是你踏入蛊师之路的第一天——直至狼潮降临、血海与天鹤决战，走出青茅山。</p>
-      <div class="card">
-        <h3>立命开窍</h3>
-        <div style="margin-bottom:10px">
-          <label class="muted" for="startName">姓名</label>
-          <input id="startName" type="text" maxlength="8" placeholder="输入姓名" value="${esc(startState.name)}">
-        </div>
-        <div class="row">
-          <button class="gold" data-action="startKaiqiao">前往开窍大典</button>
-          ${startState.hasSave ? '<button class="primary" data-action="continueSave">继续上一世</button>' : ''}
+  return `<div class="shell start-shell">
+    <div class="stage title-hero">
+      ${renderSceneBannerSvg('zhulou', true)}
+      <div class="stage-inner">
+        <div class="title-seal">南疆 · 青茅山篇</div>
+        <h1 class="title-main">蛊界</h1>
+        <p class="stage-desc">春雨初歇，青茅山的竹楼还滴着水。今天是古月山寨的开窍大典，也是你踏入蛊师之路的第一天——直至狼潮降临、血海与天鹤决战，走出青茅山。</p>
+        <div class="card title-box">
+          <h3>立命开窍</h3>
+          <div style="margin-bottom:12px">
+            <label class="muted" for="startName">名讳</label>
+            <input id="startName" type="text" maxlength="8" placeholder="输入名讳" value="${esc(startState.name)}">
+          </div>
+          <div class="row">
+            <button class="gold" data-action="startKaiqiao">前往开窍大典</button>
+            ${startState.hasSave ? '<button class="primary" data-action="continueSave">继续上一世</button>' : ''}
+          </div>
         </div>
       </div>
     </div>
@@ -4046,21 +4742,26 @@ function renderBreakModal(sess) {
 
   const actions = sess.state === 'ongoing'
     ? `<div class="row">
-        <button class="blood" ${sess.zy < 1 ? 'disabled' : ''} data-action="breakAct" data-id="hard">强行冲关（-${hardNeed} 真元）</button>
-        <button class="gold" ${sess.zy < 1 ? 'disabled' : ''} data-action="breakAct" data-id="soft">稳步冲关（-${softNeed} 真元）</button>
-        <button ${sess.stones < stoneCost || sess.zy >= sess.zyMax ? 'disabled' : ''} data-action="breakAct" data-id="stone">元石回元（-${stoneCost} 元石）</button>
-        <button class="ghost" ${sess.zy < steadyNeed || sess.hurt <= 0 ? 'disabled' : ''} data-action="breakAct" data-id="steady">温养护窍（-${steadyNeed} 真元）</button>
+        <button class="blood" ${sess.zy < 1 ? 'disabled' : ''} data-action="breakAct" data-id="hard">强行冲关（−${hardNeed} 真元）</button>
+        <button class="gold" ${sess.zy < 1 ? 'disabled' : ''} data-action="breakAct" data-id="soft">稳步冲关（−${softNeed} 真元）</button>
+        <button ${sess.stones < stoneCost || sess.zy >= sess.zyMax ? 'disabled' : ''} data-action="breakAct" data-id="stone">元石回元（−${stoneCost} 石）</button>
+        <button class="ghost" ${sess.zy < steadyNeed || sess.hurt <= 0 ? 'disabled' : ''} data-action="breakAct" data-id="steady">温养护窍（−${steadyNeed} 真元）</button>
         <button class="ghost" data-action="breakAct" data-id="stop">散气退关</button>
       </div>`
-    : `<button class="primary" data-action="closeModal">收功</button>`;
+    : `<button class="primary" data-action="closeModal">收功出关</button>`;
 
   return `<h2>破壁冲关 · ${sess.turn}转 → ${sess.turn + 1}转</h2>
-    <div class="muted">第 ${sess.steps} 息 · 窍壁每息愈合 ${sess.wallHeal}%</div>
-    <div class="kv"><span>窍壁裂痕</span><b>${sess.crack.toFixed(1)}%</b></div>
-    <div class="bar"><i style="width:${Math.min(100, Math.round(sess.crack))}%"></i></div>
-    <div class="kv"><span>空窍真元</span><b>${Math.round(sess.zy)} / ${sess.zyMax}（${zyPct}%）</b></div>
-    <div class="kv"><span>空窍震伤</span><b style="color:${sess.hurt >= 70 ? 'var(--blood)' : 'var(--warn)'}">${sess.hurt} / 100</b></div>
-    <div class="kv"><span>元石余额</span><b>${sess.stones}</b></div>
+    <div class="break-hero">
+      ${renderBreakSealSvg(sess.crack, sess.hurt)}
+      <div class="break-metrics">
+        <div class="muted">第 ${sess.steps} 息 · 窍壁每息愈合 ${sess.wallHeal}%</div>
+        <div class="kv"><span>窍壁裂痕</span><b>${sess.crack.toFixed(1)}%</b></div>
+        <div class="bar"><i style="width:${Math.min(100, Math.round(sess.crack))}%"></i></div>
+        <div class="kv"><span>空窍真元</span><b>${Math.round(sess.zy)} / ${sess.zyMax}（${zyPct}%）</b></div>
+        <div class="kv"><span>空窍震伤</span><b style="color:${sess.hurt >= 70 ? 'var(--blood)' : 'var(--warn)'}">${sess.hurt} / 100</b></div>
+        <div class="kv"><span>元石余额</span><b>${sess.stones}</b></div>
+      </div>
+    </div>
     <div class="card loglist">${sess.lines.map((l) => `<div>${esc(l)}</div>`).join('')}</div>
     ${actions}`;
 }
@@ -4071,23 +4772,18 @@ function renderRefineFurnace(sess, effect) {
   const formed = progress >= flow.target;
   const hot = pressure > flow.safePressure;
   const status = state === 'ready' ? '炉火未点'
-    : state === 'ongoing' ? sess.pending.length ? '等火星经过炉心，再投入蛊虫或蛊材'
-      : formed && !hot ? '蛊影已经凝实，可以合盖'
-      : !sess.turns ? '炉火将尽，只能收炉或撤火'
-      : hot ? '炉火太旺，掀开炉盖可以放火' : '等火星经过炉心，按下风箱'
+    : state === 'ongoing' ? sess.pending.length ? '待火星落入炉心，依次投入蛊虫与蛊材'
+      : formed && !hot ? '蛊影已凝实，可合盖收炉'
+      : !sess.turns ? '炉火将尽，须决断收炉或撤火'
+      : hot ? '炉压过盛，可掀盖泄火' : '观炉心火候，适时鼓风或温养'
     : success ? `炼成 · ${sess.outName}`
-    : state === 'aborted' ? '已停炉'
-    : pressure >= OVERLOAD_PRESSURE ? '炸炉' : '炼蛊失败';
+    : state === 'aborted' ? '已撤火停炉'
+    : pressure >= OVERLOAD_PRESSURE ? '炉炸火散' : '合炼未成';
   const outcome = state === 'done' ? (success ? 'success' : 'failure') : state;
-  return `<div class="refine-stage" data-state="${outcome}" data-effect="${effect?.action ?? ''}" data-hot="${hot}" style="--heat:${Math.min(1, pressure / OVERLOAD_PRESSURE)};--shape:${Math.min(1, progress / flow.target)}">
+  const shapeRatio = Math.min(1, progress / flow.target);
+  return `<div class="refine-stage" data-state="${outcome}" data-effect="${effect?.action ?? ''}" data-hot="${hot}" style="--heat:${Math.min(1, pressure / OVERLOAD_PRESSURE)};--shape:${shapeRatio}">
       <div class="refine-scene" aria-hidden="true">
-        <div class="refine-halo"></div>
-        <div class="refine-vapor"></div>
-        <div class="refine-shape"></div>
-        <div class="refine-flame"></div>
-        <div class="refine-pot"><div class="refine-mouth"></div><div class="refine-sigil"></div></div>
-        <div class="refine-lid"></div>
-        <div class="refine-result"></div>
+        ${renderFurnaceCauldronSvg(outcome, hot, shapeRatio, effect?.action)}
         ${effect?.input ? `<div class="refine-drop">${esc(effect.input)}</div>` : ''}
       </div>
       ${canTime ? '<div class="refine-timing" aria-hidden="true"><i></i></div>' : ''}
@@ -4100,12 +4796,12 @@ function renderRefineModal(sess, effect) {
   if (sess.state === 'ready') return `${scene}
     ${renderRefineRequirements(sess.materials, sess.cost, sess.baseRate, sess.realmBonus ?? 0)}
     <div class="row">
-      <button class="primary" data-action="refineAct" data-id="ignite">开炉</button>
-      <button class="ghost" data-action="closeModal">取消</button>
+      <button class="primary" data-action="refineAct" data-id="ignite">点炉起火</button>
+      <button class="ghost" data-action="closeModal">罢手</button>
     </div>`;
   if (sess.state !== 'ongoing') return `${scene}
-    <div>${sess.lines.slice(-1).map((line) => esc(line)).join('')}</div>
-    <button class="primary" data-action="closeModal">返回炼蛊</button>`;
+    <div class="muted">${sess.lines.slice(-1).map((line) => esc(line)).join('')}</div>
+    <button class="primary" data-action="closeModal">收炉离开</button>`;
 
   if (sess.pending.length) return `<div class="refine-ritual">${scene}
       <div class="row">${sess.pending.map((input, index) =>
@@ -4129,41 +4825,66 @@ function renderRefineModal(sess, effect) {
       ${sess.turns && !ready ? '<button data-action="refineAct" data-id="gentle">温养</button>' : ''}
       ${techniques.some(({ id, enabled }) => id === 'vent' && enabled) && !ready ? '<button data-action="refineAct" data-id="vent">掀盖放火</button>' : ''}
       ${signature && !ready ? `<button data-action="refineAct" data-id="signature">${esc(signature.name)}</button>` : ''}
-      ${protectables.map((gu) => `<button class="sm" title="耗一次运炉，失败时保住此蛊" data-action="refineAct" data-id="protect:${gu.uid}">护蛊印 · ${esc(gu.name)}</button>`).join('')}
+      ${protectables.map((gu) => `<button class="sm" data-action="refineAct" data-id="protect:${gu.uid}">护蛊印 · ${esc(gu.name)}</button>`).join('')}
       ${chance ? `<button class="${ready ? 'primary' : 'blood'}" data-action="refineAct" data-id="seal">${ready ? '合盖收炉' : '冒险合盖'} · ${Math.round(chance * 100)}%</button>` : ''}
       <button class="ghost" data-action="refineAct" data-id="abort">撤火</button>
     </div>
     ${protectedGu ? `<div class="muted" style="font-size:.82rem">已施护蛊印：失败或炸炉时保住「${esc(protectedGu.name)}」</div>` : ''}
   </div>`;
 }
+
+const CHOICE_NUMS = ['一', '二', '三', '四', '五', '六'];
 function renderEventModal(gs, eventId) {
   const ev = STORY_EVENTS.find((e) => e.id === eventId);
   if (!ev) return '';
   const paragraphs = [ev.text, ...(ev.notes ?? []).filter(({ cond }) => evalCond(gs, cond)).map(({ text }) => text)];
-  return `<h2 id="story-title" tabindex="-1">${esc(ev.title)}</h2>
-    <div class="card" style="white-space:pre-line">${esc(paragraphs.join('\n\n'))}</div>
-    <div class="row story-choices">${ev.choices.map((c, idx) => evalCond(gs, c.cond) ? `<button class="primary" data-action="chooseEvent" data-id="${esc(ev.id)}" data-idx="${idx}">${esc(c.text)}</button>` : '').join('')}</div>`;
+  const visibleChoices = ev.choices
+    .map((c, idx) => ({ c, idx }))
+    .filter(({ c }) => evalCond(gs, c.cond));
+  return `<div class="story-header">
+      <span class="story-kicker">卷一 · 青茅往事</span>
+      <h2 id="story-title" tabindex="-1">${esc(ev.title)}</h2>
+    </div>
+    <div class="story-scroll">${esc(paragraphs.join('\n\n'))}</div>
+    <div class="story-choices-col">${visibleChoices.map(({ c, idx }, num) =>
+      `<button class="story-choice-btn" data-action="chooseEvent" data-id="${esc(ev.id)}" data-idx="${idx}"><span class="choice-idx">${CHOICE_NUMS[num] || num + 1}</span><span>${esc(c.text)}</span></button>`
+    ).join('')}</div>`;
 }
 function renderCustomKillerModal(gs) {
   const rows = discoveredKillerPatterns(gs.player).map((pattern) => {
     const blocked = killerCraftBlock(gs, pattern);
     return `<div class="card">
       <div class="kv"><b>${esc(pattern.name)}</b><span class="badge">${pattern.kind} · 耗 ${pattern.cost} 真元</span></div>
-      <div>${esc(killerPatternSequence(pattern))}</div>
+      <div style="margin:4px 0">${esc(killerPatternSequence(pattern))}</div>
       <div class="muted">${esc(pattern.desc)}</div>
-      <div class="muted">${esc(killerEffectText(pattern))}</div>
+      <div class="muted" style="margin-bottom:8px">${esc(killerEffectText(pattern))}</div>
       <button class="sm primary" ${blocked ? 'disabled' : ''} data-action="kmCreate" data-id="${pattern.id}">${esc(blocked || `推演 · ${pattern.fee} 元石`)}</button>
     </div>`;
   }).join('');
-  return `<h2>自创杀招</h2>
-    <input id="kmName" type="text" maxlength="10" aria-label="自定杀招名称" placeholder="自定杀招名称（可留空）">
+  return `<h2>推演杀招</h2>
+    <input id="kmName" type="text" maxlength="10" aria-label="自定杀招名称" placeholder="自定杀招名号（可留空）">
     ${rows}
     <div class="row"><button class="ghost" data-action="closeModal">返回空窍</button></div>`;
 }
 
 
 /* === src/ui/battle-view.js === */
-function renderBattleView(gs) {
+
+
+
+
+
+function guShortStat(def) {
+  if (def.kind === '攻击') return `伤 ${def.power}`;
+  if (def.kind === '控制') return `控 ${def.power}`;
+  if (def.kind === '防御') return `盾 ${def.power}`;
+  if (def.kind === '隐匿') return `盾 ${Math.round(def.power * 0.6)}`;
+  if (def.kind === '治疗') return `疗 ${def.power}`;
+  if (def.kind === '增益') return '月+35%';
+  if (def.kind === '探知') return '探情';
+  return '';
+}
+function renderBattleView(gs, battleFx) {
   const b = gs.battle;
   const p = gs.player;
   const foe = b.foe;
@@ -4172,12 +4893,27 @@ function renderBattleView(gs) {
   const hpLevel = hpRatio > 0.6 ? 'high' : hpRatio > 0.25 ? 'mid' : 'low';
   const foeHp = b.scouted
     ? `<div class="foe-hp"><span class="bar hp"><i style="width:${Math.round(hpRatio * 100)}%"></i></span><span>${foe.hp} / ${foe.hpMax}</span><span class="foe-zy">真元 ${foe.zy}/${foe.zyMax}</span></div>`
-    : `<div class="foe-hp is-${hpLevel}">${hpState}</div>`;
+    : `<div class="foe-hp is-${hpLevel}">气机 · ${hpState}</div>`;
+  const intentBadge = foe.stunned ? '受制' : !b.scouted ? '未知' : {
+    attack: '攻伐',
+    drain: '噬血',
+    stun: '震神',
+    shield: '结盾',
+    heal: '回气'
+  }[foe.intent?.kind] || '暂歇';
   const intentText = foe.stunned
     ? '本轮受制，无法出手'
     : b.scouted && foe.intent
-      ? `${foe.intent.name}（${foe.intent.kind === 'shield' ? '护盾' : foe.intent.kind === 'heal' ? '疗伤' : `威能约 ${foe.intent.power}`}）`
-      : b.scouted ? '暂歇' : '未明';
+      ? `${foe.intent.name}（${foe.intent.kind === 'shield' ? `护盾 ${foe.intent.power}` : foe.intent.kind === 'heal' ? `回血 ${foe.intent.power}` : `威能约 ${foe.intent.power}`}）`
+      : b.scouted ? '暂歇调息' : '气机晦暗（念息蛊可探明）';
+
+  const fxFresh = battleFx && (Date.now() - battleFx.ts) < 1600;
+  const foeHitCls = fxFresh && battleFx.foeDmg > 0 ? ' is-struck' : '';
+  const fxPop = fxFresh ? [
+    battleFx.foeDmg > 0 ? `<span class="fx-pop is-dmg">−${battleFx.foeDmg}</span>` : '',
+    battleFx.foeShieldGain > 0 ? `<span class="fx-pop is-shield">+${battleFx.foeShieldGain} 盾</span>` : '',
+    battleFx.foeStunned ? '<span class="fx-pop is-stun">受制</span>' : ''
+  ].join('') : '';
 
   const { choices, queued, cost } = battleGuPlan(gs);
   const hasQueue = queued.length > 0;
@@ -4185,8 +4921,12 @@ function renderBattleView(gs) {
     const position = queued.findIndex((choice) => choice.uid === uid) + 1;
     const selected = position > 0;
     const disabled = b.playerStunned || (!selected && (weak || cooldown > 0 || p.zy - cost < def.cost));
+    const stat = guShortStat(def);
     return `<button class="skill${selected ? ' is-picked' : ''}" aria-pressed="${selected}" title="${esc(weak ? '饥饿虚弱，喂食后方可催动' : guEffectText(def))}" ${disabled ? 'disabled' : ''} data-action="battleAct" data-kind="gu" data-id="${uid}">
-      ${selected ? `<i class="skill-order">${position}</i>` : ''}${esc(def.name)}<small>${weak ? '虚弱' : cooldown > 0 ? `冷却 ${cooldown}` : def.cost}</small>
+      ${selected ? `<i class="skill-order">${position}</i>` : ''}
+      <span class="skill-name">${esc(def.name)}</span>
+      ${stat ? `<em class="skill-stat">${stat}</em>` : ''}
+      <small>${weak ? '虚弱' : cooldown > 0 ? `冷 ${cooldown}` : `${def.cost}元`}</small>
     </button>`;
   }).join('');
 
@@ -4195,7 +4935,9 @@ function renderBattleView(gs) {
     const blocked = killerMoveBlock(gs, m);
     const disabled = b.playerStunned || hasQueue || blocked || cd > 0 || p.zy < m.cost;
     return `<button class="skill is-move" ${disabled ? 'disabled' : ''} title="${esc(blocked || killerEffectText(m))}" data-action="battleAct" data-kind="move" data-id="${esc(m.id)}">
-      ${esc(m.name)}<small>${cd > 0 ? `冷却 ${cd}` : blocked ? '不可用' : m.cost}</small>
+      <span class="skill-name">${esc(m.name)}</span>
+      <em class="skill-stat">${esc(m.kind)}</em>
+      <small>${cd > 0 ? `冷 ${cd}` : blocked ? '受阻' : `${m.cost}元`}</small>
     </button>`;
   }).join('');
 
@@ -4207,49 +4949,57 @@ function renderBattleView(gs) {
     actions = `<button class="primary battle-finish" data-action="finishBattle">${b.state === 'win' ? '打扫战场离开' : b.state === 'fled' ? '脱身离开' : '查看结局'}</button>`;
   } else if (b.playerStunned) {
     actions = `<section class="card battle-actions">
-        <div class="skill-head"><span class="log-warn">心神受震，本轮无法催动蛊虫与杀招</span></div>
+        <div class="skill-head"><span class="log-warn">心神受震，本轮仅能调息稳神</span></div>
         <div class="battle-basic">
           <button class="primary" data-action="battleAct" data-kind="recover">调息稳神</button>
           <span class="battle-spacer"></span>
-          ${b.lethal ? '<span class="battle-lethal">死斗中 · 不可逃</span>' : ''}
+          ${b.lethal ? '<span class="battle-lethal">死斗中 · 不可退避</span>' : ''}
         </div>
       </section>`;
   } else {
     actions = `<section class="card battle-actions">
         ${guButtons ? `<div class="skill-group">
           <div class="skill-head">
-            <span>蛊虫<em>依次点选，再点取消</em></span>
-            <span class="skill-plan">${hasQueue ? `${queued.map(({ def }) => esc(def.name)).join(' → ')} · ${cost} 真元` : ''}</span>
+            <span>空窍蛊虫</span>
+            <span class="skill-plan">${hasQueue ? `催动序：${queued.map(({ def }) => esc(def.name)).join(' → ')} · 耗 ${cost} 真元` : ''}</span>
           </div>
           <div class="skill-list">${guButtons}</div>
-          <button class="primary battle-go" ${hasQueue ? '' : 'disabled'} data-action="battleAct" data-kind="resolveGu">催动</button>
+          <button class="primary battle-go" ${hasQueue ? '' : 'disabled'} data-action="battleAct" data-kind="resolveGu">催动蛊虫</button>
         </div>` : ''}
         ${moveButtons ? `<div class="skill-group">
-          <div class="skill-head"><span>杀招</span></div>
+          <div class="skill-head"><span>自创杀招</span></div>
           <div class="skill-list">${moveButtons}</div>
         </div>` : ''}
         <div class="battle-basic">
           <button class="sm ghost" ${hasQueue ? 'disabled' : ''} data-action="battleAct" data-kind="attack">拳脚试探</button>
-          <button class="sm ghost" ${hasQueue || p.yuanshi < 2 ? 'disabled' : ''} title="消耗 2 元石回复真元" data-action="battleAct" data-kind="stone">元石回元</button>
+          <button class="sm ghost" ${hasQueue || p.yuanshi < 2 ? 'disabled' : ''} data-action="battleAct" data-kind="stone">碎元石回元 · 2石</button>
           <span class="battle-spacer"></span>
           ${b.lethal
-            ? '<span class="battle-lethal">死斗中 · 不可逃</span>'
-            : `<button class="sm ghost" ${hasQueue ? 'disabled' : ''} data-action="battleAct" data-kind="flee">逃走</button>
-               ${foe.practice ? '' : '<button class="sm blood" title="不留余地，之后无法逃走" data-action="battleAct" data-kind="lethal">下死手</button>'}`}
+            ? '<span class="battle-lethal">死斗中 · 不退半步</span>'
+            : `<button class="sm ghost" ${hasQueue ? 'disabled' : ''} data-action="battleAct" data-kind="flee">脱身</button>
+               ${foe.practice ? '' : '<button class="sm blood" data-action="battleAct" data-kind="lethal">下死手</button>'}`}
         </div>
       </section>`;
   }
 
-  return `<section class="card battle-foe">
-      <div class="foe-top">
-        <div class="foe-name"><b>${esc(foe.name)}</b><span>${foe.rank}转</span></div>
-        <span class="battle-round">${b.state === 'ongoing' ? `第 ${b.round} 回合` : ''}</span>
+  return `<section class="card battle-foe${foeHitCls}">
+      <div class="foe-arena">
+        ${renderEnemyEmblemSvg(foe.id, foe.rank)}
+        <div class="foe-core">
+          <div class="foe-top">
+            <div class="foe-name"><b>${esc(foe.name)}</b><span class="badge">${foe.rank}转</span>${fxPop}</div>
+            <span class="battle-round">${b.state === 'ongoing' ? `第 ${b.round} 合` : esc(b.tag)}</span>
+          </div>
+          <div class="foe-status">
+            ${foeHp}
+            ${foe.shield > 0 ? `<span class="foe-shield">护盾 ${foe.shield}</span>` : ''}
+          </div>
+          <div class="foe-intent${foe.stunned ? ' is-stunned' : ''}">
+            <span class="intent-pill">${intentBadge}</span>
+            <span>${esc(intentText)}</span>
+          </div>
+        </div>
       </div>
-      <div class="foe-status">
-        ${foeHp}
-        ${foe.shield > 0 ? `<span class="foe-shield">护盾 ${foe.shield}</span>` : ''}
-      </div>
-      <div class="foe-intent${foe.stunned ? ' is-stunned' : ''}"><span>意图</span>${esc(intentText)}${!b.scouted && !foe.stunned ? '<small>念息蛊可探知</small>' : ''}</div>
       <div class="battle-log">${logHtml}</div>
     </section>
     ${actions}`;
@@ -4257,7 +5007,7 @@ function renderBattleView(gs) {
 
 
 /* === src/ui/map-view.js === */
-function renderMapPanel(gs, title = '青茅山舆图 · 可去之处') {
+function renderMapPanel(gs, title = '青茅山舆图') {
   const moves = placeMoveList(gs);
   const moveMap = Object.fromEntries(moves.map((m) => [m.id, m]));
   const visibleIds = Object.keys(PLACES).filter((id) => !PLACES[id].hidden || gs.flags[PLACES[id].hidden]);
@@ -4281,9 +5031,9 @@ function renderMapPanel(gs, title = '青茅山舆图 · 可去之处') {
     const mv = moveMap[pid];
     const style = `left:${place.x}%;top:${place.y}%`;
     if (pid === gs.location) {
-      const label = `<b>${esc(place.name)}</b><small>在此</small>`;
+      const label = `<b>${esc(place.name)}</b><small>身处此地</small>`;
       nodes += hasPlaceActions(gs)
-        ? `<button type="button" class="map-node is-here" style="${style}" data-action="openPlace" aria-haspopup="dialog">${label}</button>`
+        ? `<button type="button" class="map-node is-here" style="${style}" data-action="closeModal">${label}</button>`
         : `<div class="map-node is-here" style="${style}">${label}</div>`;
     } else if (mv) {
       nodes += `<button type="button" class="map-node is-move" style="${style}" data-action="walkTo" data-id="${pid}" ${mv.blocked ? 'disabled title="' + esc(mv.blocked) + '"' : ''}>
@@ -4296,15 +5046,33 @@ function renderMapPanel(gs, title = '青茅山舆图 · 可去之处') {
 
   const blockedHints = moves.filter((m) => m.blocked).map((m) => `<div>· ${esc(m.name)}：${esc(m.blocked)}</div>`).join('');
 
-  return `<div class="card">
-    <div class="kv"><h3>${esc(title)}</h3><span class="muted">点击金框行脚，点击当前位置查看详情</span></div>
+  return `<div class="map-sheet-wrap">
+    <div class="list-head">
+      <h3>${esc(title)}</h3>
+      <span class="muted">南疆 · 青茅山疆域</span>
+    </div>
     <div class="map-scroll">
       <div class="map-canvas ${isNight(gs.minutes) ? 'is-night' : ''}">
-        <svg class="map-lines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${edges}</svg>
+        <svg class="map-terrain" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+          <!-- 山寨疆界与青茅等高线 -->
+          <path d="M4,8 Q32,4 58,14 L60,88 Q28,94 4,88 Z" fill="rgba(41, 69, 58, 0.14)" stroke="rgba(196, 168, 108, 0.2)" stroke-width="0.35" stroke-dasharray="1.5 1.2"/>
+          <path d="M62,10 Q80,6 96,22 Q98,62 90,92 Q74,95 62,80 Z" fill="rgba(22, 36, 32, 0.35)" stroke="rgba(92, 163, 136, 0.14)" stroke-width="0.3"/>
+          <path d="M64,55 Q74,64 82,78 T95,94" fill="none" stroke="rgba(82, 145, 168, 0.32)" stroke-width="0.7"/>
+          <path d="M66,18 Q76,12 88,26" fill="none" stroke="rgba(196, 168, 108, 0.12)" stroke-width="0.3"/>
+          <path d="M12,34 Q24,28 38,38" fill="none" stroke="rgba(196, 168, 108, 0.12)" stroke-width="0.3"/>
+          <text x="8" y="94" font-size="3.2" fill="rgba(207, 169, 104, 0.45)" font-family="serif">古月山寨</text>
+          <text x="72" y="94" font-size="3.2" fill="rgba(140, 150, 142, 0.5)" font-family="serif">十万大山外缘</text>
+          ${edges}
+        </svg>
         ${nodes}
       </div>
     </div>
-    ${blockedHints ? `<div class="muted" style="margin-top:8px;font-size:.82rem">${blockedHints}</div>` : ''}
+    <div class="map-legend">
+      <span><i class="dot-here"></i>当前所在</span>
+      <span><i class="dot-move"></i>可启程前往</span>
+      <span><i class="dot-lock"></i>前路受阻</span>
+    </div>
+    ${blockedHints ? `<div class="map-blocked">${blockedHints}</div>` : ''}
   </div>`;
 }
 
@@ -4321,23 +5089,26 @@ function renderMapPanel(gs, title = '青茅山舆图 · 可去之处') {
 
 
 
+
+
 function renderFieldTrial(gs, trial) {
   if (!trial) return '';
   const progress = trial.steps.filter(({ done }) => done).length;
   if (gs.location === 'zhulin') {
-    return trial.active ? `<p class="muted">${trial.title} · ${progress}/${trial.steps.length}
-      ${trial.ready ? renderGoalShortcut(gs, { place: 'renwutang' }) : ''}</p>` : '';
+    return trial.active ? `<div class="card trial-banner"><div class="kv"><span>${trial.title} · <b>${progress}/${trial.steps.length}</b></span>${trial.ready ? renderGoalShortcut(gs, { place: 'renwutang' }) : ''}</div></div>` : '';
   }
   const steps = trial.active
-    ? `<ul>${trial.steps.map(({ text, done }) => `<li>${esc(text)} · ${done ? '已完成' : '待完成'}</li>`).join('')}</ul>`
-    : '<p>去竹林勘察、采料、清理兽患后，可回任务堂领赏。</p>';
+    ? `<div class="trial-steps">${trial.steps.map(({ text, done }) =>
+        `<div class="trial-step${done ? ' is-done' : ''}"><i>${done ? '✓' : '·'}</i><span>${esc(text)}</span><em>${done ? '已完成' : '待完成'}</em></div>`
+      ).join('')}</div>`
+    : '<p class="muted">去竹林勘察、采料、清理兽患后，可回任务堂领赏。</p>';
   const rewards = trial.rewards.map(({ id, text }) =>
     `<button class="gold" data-action="placeAct" data-id="fieldReward:${id}">${esc(text)}</button>`).join('');
-  const controls = trial.ready ? `<p>选择一份奖赏并交付。</p><div class="row">${rewards}</div>`
+  const controls = trial.ready ? `<p class="muted">择一份酬赏交付结案。</p><div class="row">${rewards}</div>`
     : trial.active ? renderGoalShortcut(gs, { place: 'zhulin' })
     : '<button class="primary" data-action="placeAct" data-id="fieldPatrol">接取竹林巡守</button>';
   return `<section class="card">
-    <div class="kv"><h3>${trial.title}</h3>${trial.active ? `<b>${progress}/${trial.steps.length}</b>` : ''}</div>
+    <div class="list-head"><h3>${trial.title}</h3>${trial.active ? `<span class="badge gold">${progress}/${trial.steps.length}</span>` : ''}</div>
     ${steps}
     ${controls}
   </section>`;
@@ -4347,7 +5118,7 @@ function renderPlaceView(gs) {
   const night = isNight(gs.minutes);
   const trial = ['zhulin', 'renwutang'].includes(place.id) ? fieldTrialStatus(gs) : null;
   const people = localPeople(gs).map((id) =>
-    `<button data-action="visitPerson" data-id="${id}">${esc(STORY_CHARACTERS[id].name)}</button>`).join('');
+    `<button class="person-seal" data-action="visitPerson" data-id="${id}"><span class="seal-dot"></span>${esc(STORY_CHARACTERS[id].name)}</button>`).join('');
   const scenes = availableLocalScenes(gs).map(({ id, title }) =>
     `<button class="gold" data-action="checkEvents" data-id="${esc(id)}">${esc(title)}</button>`);
   if (hasLocalLifeScene(gs)) scenes.push('<button data-action="lookForLifeScene">留意四周</button>');
@@ -4358,7 +5129,7 @@ function renderPlaceView(gs) {
   if (place.services.includes('cultivate')) {
     actions.push('<button class="primary" data-action="placeAct" data-id="meditate">打坐吐纳 · 1 时辰</button>');
     actions.push('<button data-action="placeAct" data-id="rest">歇息养伤 · 4 时辰</button>');
-    actions.push(`<button title="闭关期间照常消耗蛊虫口粮，请先备料并开启自动喂养" data-action="placeAct" data-id="retreat">闭关至${esc(formatDateTime(nextRetreatTime(gs)))}</button>`);
+    actions.push(`<button data-action="placeAct" data-id="retreat">闭关至${esc(formatDateTime(nextRetreatTime(gs)))}</button>`);
     if (gs.player.xiao < 3) actions.push('<button class="gold" data-action="washMinor">冲刷窍壁</button>');
     else actions.push('<button class="gold" data-action="openBreak">破壁冲关</button>');
   }
@@ -4373,11 +5144,11 @@ function renderPlaceView(gs) {
     actions.push('<button data-action="placeAct" data-id="sparring">与同窗切磋（古月方正）</button>');
   }
   if (place.services.includes('heal')) {
-    actions.push('<button data-action="placeAct" data-id="docHeal">药堂疗伤（10 元石回满）</button>');
+    actions.push('<button data-action="placeAct" data-id="docHeal">药堂疗伤 · 10 元石</button>');
   }
   if (place.services.includes('rumor')) {
     actions.push('<button class="gold" data-action="placeAct" data-id="rumor">打听近况 · 2 刻</button>');
-    if (!gs.flags['clue:huajiu']) actions.push('<button data-action="placeAct" data-id="secretRumor">买暗涧遗洞消息（12 元石）</button>');
+    if (!gs.flags['clue:huajiu']) actions.push('<button data-action="placeAct" data-id="secretRumor">打探暗涧遗洞 · 12 元石</button>');
   }
   if (place.services.includes('clan_hall')) {
     actions.push('<button class="gold" data-action="placeAct" data-id="clanGift">领取二转赏赐</button>');
@@ -4424,24 +5195,28 @@ function renderPlaceView(gs) {
             ${kind === 'gu' ? `<span class="list-meta">${def.rank}转 · ${esc(def.kind)}</span>` : `<span class="list-meta">${esc(def.kind)}</span>`}
             ${limited ? '<span class="gu-tag">商队限售一只</span>' : ''}
           </div>
-          <div class="list-sub" ${effect ? `title="${esc(effect)}"` : ''}>${esc(def.desc)}${effect ? ` · ${esc(effect)}` : ''}</div>
-          ${recipes.length ? `<div class="list-hint">蛊方材料：${esc(recipes.join('、'))}</div>` : ''}
+          <div class="list-sub">${esc(def.desc)}${effect ? ` · ${esc(effect)}` : ''}</div>
+          ${recipes.length ? `<div class="list-hint">可合炼：${esc(recipes.join('、'))}</div>` : ''}
         </div>
         <div class="shop-purchase">
-          ${limited ? '' : `<input type="number" min="1" max="${SHOP_BATCH_LIMIT}" step="1" value="1" aria-label="${esc(def.name)}购买数量" ${affordable ? '' : 'disabled'}>`}
+          ${limited ? '' : `<div class="qty-stepper">
+            <button type="button" class="sm ghost" data-action="stepQty" data-step="-1" ${affordable ? '' : 'disabled'} aria-label="减少数量">−</button>
+            <input type="number" min="1" max="${SHOP_BATCH_LIMIT}" step="1" value="1" aria-label="${esc(def.name)}购买数量" ${affordable ? '' : 'disabled'}>
+            <button type="button" class="sm ghost" data-action="stepQty" data-step="1" ${affordable ? '' : 'disabled'} aria-label="增加数量">+</button>
+          </div>`}
           <button class="sm ${affordable ? '' : 'ghost'}" ${affordable ? '' : 'disabled'} data-action="buyItem" data-id="${esc(entry)}">${id === 'jiuchong' && gs.flags.wine_bid ? '竞买' : '买'} · ${price}${limited ? '' : kind === 'gu' ? '/只' : '/份'}</button>
         </div>
       </li>`;
     }).join('');
-    shopHtml = `<div class="card"><div class="list-head"><h3>${esc(place.name)}货架</h3><span class="muted">余额 ${gs.player.yuanshi} 元石</span></div><ul class="list-rows">${rows}</ul></div>`;
+    shopHtml = `<div class="card"><div class="list-head"><h3>${esc(place.name)}货架</h3><span class="muted">元石 ${gs.player.yuanshi}</span></div><ul class="list-rows">${rows}</ul></div>`;
   }
 
   const board = place.services.includes('quests') ? questBoard(gs) : null;
   const questHtml = board ? `<div class="card">
-      <div class="list-head"><h3>族中委托</h3><span class="muted">轮换 · ${esc(formatDateTime(gs.minutes + board.remaining))}</span></div>
+      <div class="list-head"><h3>族中委托</h3><span class="muted">下次轮换 · ${esc(formatDateTime(gs.minutes + board.remaining))}</span></div>
       <ul class="list-rows">${board.entries.map((q) => {
         const ready = q.progress === q.target;
-        return `<li class="list-row">
+        return `<li class="list-row${ready && q.accepted && !q.claimed ? ' is-ready' : ''}">
           <div class="list-main">
             <div class="list-title"><b>${esc(q.name)}</b><span class="list-meta">赏 ${q.reward} 元石${q.accepted ? ` · ${q.progress}/${q.target}` : ''}</span></div>
             <div class="list-sub">${esc(q.desc)}</div>
@@ -4456,11 +5231,11 @@ function renderPlaceView(gs) {
     </div>` : '';
 
   const recipeHtml = sellsRecipes ? `<div class="card">
-      <div class="list-head"><h3>蛊方</h3></div>
+      <div class="list-head"><h3>在售蛊方</h3></div>
       <ul class="list-rows">${REFINE_RECIPES.filter(isRecipeSold).map((r) => {
         const owned = gs.player.recipes?.includes(r.id);
         const out = GU_DEFS[r.out] || ITEMS[r.out];
-        return `<li class="list-row">
+        return `<li class="list-row${owned ? ' is-ready' : ''}">
           <div class="list-main">
             <div class="list-title"><b>${esc(recipeOutputText(r))}${r.method ?? ''}蛊方</b>${out.rank ? `<span class="list-meta">${out.rank}转</span>` : ''}</div>
             <div class="list-sub">${esc(recipeIngredientsText(r))}</div>
@@ -4472,16 +5247,38 @@ function renderPlaceView(gs) {
       }).join('')}</ul>
     </div>` : '';
 
+  // 直接相邻的路标，方便单手快速行脚，也保留完整山野舆图弹窗
+  const linkedIds = Object.keys(place.links || {}).filter((id) => PLACES[id] && (!PLACES[id].hidden || gs.flags[PLACES[id].hidden]));
+  const moveMap = Object.fromEntries(placeMoveList(gs).map((m) => [m.id, m]));
+  const pathChips = linkedIds.map((id) => {
+    const target = PLACES[id];
+    const mv = moveMap[id];
+    const blocked = mv?.blocked;
+    return `<button type="button" class="sm path-chip${blocked ? ' is-blocked' : ''}" data-action="walkTo" data-id="${id}" ${blocked ? `disabled title="${esc(blocked)}"` : ''}>
+      <span>${esc(target.name)}</span>
+      <small>${blocked ? '受阻' : formatDuration(place.links[id])}</small>
+    </button>`;
+  }).join('');
+
   return `<section class="stage ${night ? 'is-night' : ''}">
-      <div class="stage-loc">${esc(formatDateTime(gs.minutes))} · ${esc(place.region)}</div>
-      <h1 id="place-title">${esc(place.name)}</h1>
-      <p class="stage-desc">${esc(night ? place.night : place.day)}</p>
-      ${place.gather ? `<p class="muted">常见山材 · ${esc([...new Set(place.gather)].map((id) => ITEMS[id].name).join('、'))}${rareGathering(gs, place) ? ` · 今日山材丰收，可采${esc(ITEMS[place.rare.item].name)} ×4` : ''}</p>` : ''}
-      <div class="row">${actions.join('')}</div>
+      ${renderSceneBannerSvg(place.id, night)}
+      <div class="stage-inner">
+        <div class="stage-head">
+          <div>
+            <div class="stage-loc">${esc(place.region)} · ${night ? '夜色' : '白昼'}</div>
+            <h1 id="place-title">${esc(place.name)}</h1>
+          </div>
+          <button type="button" class="sm gold" data-action="openMap">展开舆图</button>
+        </div>
+        <p class="stage-desc">${esc(night ? place.night : place.day)}</p>
+        ${place.gather ? `<p class="stage-gather">山间风物 · ${esc([...new Set(place.gather)].map((id) => ITEMS[id].name).join('、'))}${rareGathering(gs, place) ? ` · 今日丰饶，可采${esc(ITEMS[place.rare.item].name)} ×4` : ''}</p>` : ''}
+        ${actions.length ? `<div class="row stage-actions">${actions.join('')}</div>` : ''}
+        ${pathChips ? `<div class="stage-paths"><span class="stage-paths-label">去处</span>${pathChips}</div>` : ''}
+      </div>
     </section>
-    ${people ? `<section class="card"><h3>在场人物</h3><div class="row">${people}</div></section>` : ''}
-    ${scenes.length ? `<section class="card"><h3>此地剧情</h3><div class="row">${scenes.join('')}</div></section>` : ''}
-    ${place.id === 'gupu' && gs.player.rank < 2 ? '<p class="card muted">晋入二转后，蛊铺会出售月痕蛊与月霓裳。冲击二转前，可先在此买蛊方自行炼制。</p>' : ''}
+    ${people ? `<section class="card"><div class="list-head"><h3>在场人物</h3></div><div class="row">${people}</div></section>` : ''}
+    ${scenes.length ? `<section class="card"><div class="list-head"><h3>此地异动</h3></div><div class="row">${scenes.join('')}</div></section>` : ''}
+    ${place.id === 'gupu' && gs.player.rank < 2 ? '<p class="card muted">掌柜嘱咐：晋入二转后，蛊铺会出售月痕蛊与月霓裳；冲击二转前，可先备好蛊方自行合炼。</p>' : ''}
     ${merchantRefuses(gs) ? '<p class="card muted">贾家封了你的货帖，商队暂不与你做生意。</p>' : ''}
     ${renderFieldTrial(gs, trial)}
     ${questHtml}
@@ -4500,8 +5297,10 @@ function renderApertureView(gs) {
     const def = GU_DEFS[g.id];
     if (!def) return '';
     const isBm = p.benming === g.uid;
-    return `<span class="gu-chip ${g.satiety <= 20 || isGuWeak(g) ? 'weak' : ''}">${isBm ? '★' : ''}${esc(def.name)} <small>${isGuWeak(g) ? '虚弱' : `${g.satiety}%`}</small></span>`;
+    return `<span class="gu-chip ${g.satiety <= 20 || isGuWeak(g) ? 'weak' : ''}">${isBm ? '★ ' : ''}${esc(def.name)} <small>${isGuWeak(g) ? '虚弱' : `${g.satiety}%`}</small></span>`;
   }).join('');
+
+  const svgGuData = p.gu.map((g) => ({ uid: g.uid, weak: isGuWeak(g) || g.satiety <= 20 }));
 
   const order = (g) => (p.benming === g.uid ? 0 : 2) + (p.equipped.includes(g.uid) ? 0 : 1);
   const sortedGu = p.gu
@@ -4510,7 +5309,16 @@ function renderApertureView(gs) {
       || (GU_DEFS[b.g.id]?.rank ?? 0) - (GU_DEFS[a.g.id]?.rank ?? 0)
       || a.i - b.i)
     .map(({ g }) => g);
-  const equippedCount = p.gu.filter((g) => p.equipped.includes(g.uid)).length;
+  const equippedGu = p.gu.filter((g) => p.equipped.includes(g.uid));
+  const equippedCount = equippedGu.length;
+
+  const slotHtml = Array.from({ length: 6 }, (_, idx) => {
+    const gu = equippedGu[idx];
+    if (!gu) return '<span class="slot-pill is-empty">空位</span>';
+    const def = GU_DEFS[gu.id];
+    const weak = isGuWeak(gu);
+    return `<span class="slot-pill${weak ? ' is-weak' : ''}">${p.benming === gu.uid ? '★ ' : ''}${esc(def?.name || '未知')}</span>`;
+  }).join('');
 
   const guRows = sortedGu.map((g) => {
     const def = GU_DEFS[g.id];
@@ -4526,26 +5334,26 @@ function renderApertureView(gs) {
     const boarKey = g.id === 'heishi' ? 'blackBoarStrength' : 'whiteBoarStrength';
     const actions = [
       food ? `<button class="sm ghost" ${foodCount <= 0 || g.satiety >= 100 ? 'disabled' : ''} data-action="feedGu" data-id="${g.uid}">喂食</button>` : '',
-      EQUIP_KINDS.includes(def.kind) ? `<button class="sm ${eq ? 'primary' : 'ghost'}" aria-pressed="${eq}" title="${eq ? '点击撤下' : '战斗中可催动'}" data-action="toggleEquip" data-id="${g.uid}">${eq ? '出战中' : '出战'}</button>` : '',
+      EQUIP_KINDS.includes(def.kind) ? `<button class="sm ${eq ? 'primary' : 'ghost'}" aria-pressed="${eq}" data-action="toggleEquip" data-id="${g.uid}">${eq ? '出战中' : '出战'}</button>` : '',
       isSheli ? `<button class="sm gold" data-action="useSheli" data-id="${g.uid}">炼化破境</button>` : '',
       def.kind === '治疗' ? `<button class="sm gold" data-action="useHealingGu" data-id="${g.uid}">疗伤</button>` : '',
       ['heishi', 'baishi'].includes(g.id) ? (p[boarKey]
         ? '<span class="gu-note">已得一猪之力</span>'
-        : `<button class="sm gold" title="消耗此蛊，永久增加 ${BOAR_BONUS.hp} 气血上限与 ${BOAR_BONUS.power} 力量" data-action="useBoarGu" data-id="${g.uid}">催动 · 气血上限 +${BOAR_BONUS.hp} / 力量 +${BOAR_BONUS.power}</button>`) : ''
+        : `<button class="sm gold" data-action="useBoarGu" data-id="${g.uid}">催动 · 气血 +${BOAR_BONUS.hp} / 力 +${BOAR_BONUS.power}</button>`) : ''
     ].join('');
     return `<li class="gu-row${eq ? ' is-equipped' : ''}">
       <div class="gu-main">
         <div class="gu-title">
           <b>${esc(def.name)}</b>
-          <span class="gu-meta">${def.rank}转 · ${esc(def.kind)}</span>
-          ${isBm ? '<span class="gu-tag" title="合炼失败时保留，炼成后由成蛊继承本命绑定">本命</span>' : ''}
-          ${weak ? '<span class="gu-tag is-weak" title="饱食归零多日已虚弱，喂食后恢复">虚弱</span>' : ''}
+          <span class="gu-meta">${def.rank}转 · ${def.school ? `${esc(def.school)} · ` : ''}${esc(def.kind)}</span>
+          ${isBm ? '<span class="gu-tag">本命</span>' : ''}
+          ${weak ? '<span class="gu-tag is-weak">饥饿虚弱</span>' : ''}
         </div>
         <p class="gu-desc">${esc(def.desc)}</p>
-        ${stats.length ? `<div class="gu-stats" title="${esc(guEffectText(def))}">${stats.map((s) => `<span>${esc(s)}</span>`).join('')}</div>` : ''}
+        ${stats.length ? `<div class="gu-stats">${stats.map((s) => `<span>${esc(s)}</span>`).join('')}</div>` : ''}
       </div>
       <div class="gu-side">
-        <div class="gu-hunger${hungry || weak ? ' is-low' : ''}" title="${weak ? '饥饿虚弱，无法出战' : `饱食 ${g.satiety}%`}">
+        <div class="gu-hunger${hungry || weak ? ' is-low' : ''}">
           <span class="bar"><i style="width:${g.satiety}%"></i></span><span>${weak ? '虚弱' : `${g.satiety}%`}</span>
         </div>
         <div class="gu-food${food && foodCount <= 0 ? ' is-empty' : ''}">${food ? `${esc(food.name)} ×${foodCount}` : '无需喂食'}</div>
@@ -4555,29 +5363,34 @@ function renderApertureView(gs) {
   }).join('');
 
   const movesHtml = p.moves.length
-    ? p.moves.map((m) => `<div class="card">
-        <div class="kv"><b>${esc(m.name)}</b><button class="sm ghost" data-action="forgetKiller" data-id="${esc(m.id)}">删除</button></div>
-        <span class="badge gold">${esc(m.kind)} · 耗${m.cost} 真元</span>
-        <div class="muted">${esc(killerMoveBlock(gs, m) || `${killerEffectText(m)} · 间隔 ${m.cd - 1} 回合`)}</div>
+    ? p.moves.map((m) => `<div class="killer-card">
+        <div class="kv"><b>${esc(m.name)}</b><button class="sm ghost" data-action="forgetKiller" data-id="${esc(m.id)}">散招</button></div>
+        <div class="badge gold">${esc(m.kind)} · ${m.cost} 真元</div>
+        <div class="muted" style="margin-top:6px">${esc(killerMoveBlock(gs, m) || `${killerEffectText(m)} · 间隔 ${m.cd - 1} 回合`)}</div>
       </div>`).join('')
-    : '<div class="muted">尚未创出杀招。</div>';
+    : '<div class="muted">尚未推演出杀招。</div>';
 
   return `<div class="aperture-canvas">
-      <div class="kv">
-        <b>${esc(realmText(p))} · ${esc(p.grade)}等资质（元海 ${p.hai} 成）</b>
-        <span ${p.xiao < 3 ? 'data-live="xp"' : ''}>${p.xiao < 3 ? `修为 ${Math.floor(p.xp)} / ${needXp}` : '本转巅峰 · 可破壁'}</span>
+      ${renderApertureCanvasSvg(p, svgGuData)}
+      <div class="aperture-hud">
+        <div class="kv">
+          <b>${esc(realmText(p))} · ${esc(p.grade)}等（元海 ${p.hai} 成）</b>
+          <span ${p.xiao < 3 ? 'data-live="xp"' : ''}>${p.xiao < 3 ? `修为 ${Math.floor(p.xp)} / ${needXp}` : '本转巅峰 · 可破壁'}</span>
+        </div>
+        <div class="aperture-gu-list">${chips || '<span class="muted">空窍尚空</span>'}</div>
+        <div class="bar"><i data-live="xp-bar" style="width:${xpPct}%"></i></div>
       </div>
-      <div class="aperture-gu-list">${chips || '<span class="muted">空窍尚空</span>'}</div>
-      <div class="bar"><i data-live="xp-bar" style="width:${xpPct}%"></i></div>
     </div>
     <div class="card">
-      <div class="muted">${p.rank >= 4 && p.xiao >= 3 ? '已达本卷境界上限' : esc(realmGuRequirement(p).text)}</div>
-      ${p.hai < 6 ? '<div class="muted">丙、丁等冲刷窍壁耗费更多真元。养好对应转数的酒虫可减轻压力，舍利蛊可直接提升一小阶。</div>' : ''}
+      <div class="list-head"><h3>出战蛊阵</h3><span class="muted">${equippedCount} / 6</span></div>
+      <div class="slot-strip">${slotHtml}</div>
+      <div class="muted" style="margin:8px 0">${p.rank >= 4 && p.xiao >= 3 ? '已达本卷境界上限' : esc(realmGuRequirement(p).text)}</div>
+      ${p.hai < 6 ? '<div class="muted" style="margin-bottom:8px">丙、丁等资质冲刷窍壁耗费更多真元，养好对应转数的酒虫可减轻真元压力。</div>' : ''}
       <div class="row">
         ${p.xiao < 3 ? '<button class="primary" data-action="washMinor">冲刷窍壁</button>' : '<button class="gold" data-action="openBreak">破壁冲关</button>'}
         <button data-action="feedAll">一键喂饱</button>
-        <button data-action="toggleAutoFeed" aria-pressed="${!!p.autoFeed}" title="饱食降至 50% 或以下时，使用行囊口粮">自动喂蛊：${p.autoFeed ? '开' : '关'}</button>
-        ${discoveredKillerPatterns(p).length ? '<button class="gold" data-action="openCustomKiller">自创杀招</button>' : ''}
+        <button data-action="toggleAutoFeed" aria-pressed="${!!p.autoFeed}">自动喂蛊：${p.autoFeed ? '开' : '关'}</button>
+        ${discoveredKillerPatterns(p).length ? '<button class="gold" data-action="openCustomKiller">推演杀招</button>' : ''}
       </div>
     </div>
     ${p.unrefinedBenming ? `<div class="card">
@@ -4594,7 +5407,6 @@ function renderApertureView(gs) {
 
 const EQUIP_KINDS = ['攻击', '防御', '治疗', '增益', '控制', '探知', '隐匿'];
 
-// 卡片上只列关键数值，完整说明放在 title 中。
 function guStats(def) {
   const main = {
     攻击: `伤害 ${def.power}`,
@@ -4602,16 +5414,17 @@ function guStats(def) {
     防御: `护盾 ${def.power}`,
     隐匿: `护盾 ${Math.round(def.power * 0.6)}`,
     治疗: `回血 ${def.power}`,
-    增益: '月光蛊伤害 +35%',
+    增益: '月道攻伐 +35%',
     探知: '看破敌情'
   }[def.kind];
   if (!main) return [];
   const stats = [main];
-  if (def.kind === '控制' || def.id === 'dianlang_gu') stats.push('35% 打断');
+  if (def.kind === '控制' || def.id === 'dianlang_gu') stats.push('35% 震慑打断');
   if (def.id === 'xuefu_gu') stats.push('吸血 35%');
-  stats.push(`真元 ${def.cost}`);
+  if (def.id === 'yuehen') stats.push('穿半盾');
+  stats.push(`耗真元 ${def.cost}`);
   const wait = Math.max(0, def.cd - 1);
-  if (wait) stats.push(`冷却 ${wait}`);
+  if (wait) stats.push(`冷却 ${wait} 回合`);
   return stats;
 }
 
@@ -4729,10 +5542,13 @@ function renderBagView(gs, tab) {
     }).join('');
     const moDesc = p.mo >= 60 ? '正道公敌（铁血冷随时围捕）' : p.mo >= 30 ? '恶名昭彰（魔道捕手巡查）' : '清白';
     return `<div class="card">
-        <h3>人物档案</h3>
-        <div class="kv"><span>姓名 / 境界</span><b>${esc(p.name)} · ${esc(realmText(p))}</b></div>
-        <div class="kv"><span>资质 / 元海</span><b>${esc(p.grade)}等 · ${p.hai} 成</b></div>
-        <div class="kv"><span>元石 / 恶名</span><b>${p.yuanshi} 元石 · 恶名 ${p.mo}（${moDesc}）</b></div>
+        <div class="list-head"><h3>人物档案</h3><span class="badge gold">${esc(realmText(p))}</span></div>
+        <div class="dossier-grid">
+          <div class="dossier-cell"><span>名讳</span><b>${esc(p.name)}</b></div>
+          <div class="dossier-cell"><span>资质 / 元海</span><b>${esc(p.grade)}等 · ${p.hai} 成</b></div>
+          <div class="dossier-cell"><span>元石</span><b>${p.yuanshi}</b></div>
+          <div class="dossier-cell"><span>声名</span><b>恶名 ${p.mo}（${moDesc}）</b></div>
+        </div>
       </div>
       <div class="card">
         <div class="list-head"><h3>行囊物品</h3><span class="muted">${entries.length} 种</span></div>
@@ -4761,7 +5577,6 @@ function renderBagView(gs, tab) {
       <div class="loglist">${gs.logs.map((l) => `<div class="${esc(l.cls || '')}">[第${l.age || 1}年] ${esc(l.text)}</div>`).join('')}</div>
     </div>`;
 }
-
 
 const PROFILE_ARCS = {
   mobei: { meetings: ['classmates', 'mobei_roster'], closer: 'mobei_watch', finale: 'mobei_wall' },
@@ -4807,23 +5622,27 @@ function renderStoryJournal(gs) {
       const entry = history[event.id];
       const choice = event.choices[entry?.choice]?.text;
       const feedback = Array.isArray(entry?.feedback) ? entry.feedback : [];
-      return `<li><b>${esc(event.title)}</b>${choice ? ` · ${esc(choice)}` : ''}
-        <span class="muted">${Number.isFinite(entry?.minute) ? esc(formatDateTime(entry.minute)) : ' · 旧档记录'}</span>
-        ${feedback.length ? `<ul>${feedback.map((line) => `<li>${esc(line)}</li>`).join('')}</ul>` : ''}</li>`;
+      return `<div class="ledger-item">
+        <div class="ledger-head"><b>${esc(event.title)}</b><span class="muted">${Number.isFinite(entry?.minute) ? esc(formatDateTime(entry.minute)) : '旧档记录'}</span></div>
+        ${choice ? `<div class="ledger-choice">抉择：${esc(choice)}</div>` : ''}
+        ${feedback.length ? `<div class="ledger-sub">${feedback.map((line) => `<span>· ${esc(line)}</span>`).join('')}</div>` : ''}
+      </div>`;
     }).join('');
   const people = Object.entries(STORY_CHARACTERS).map(([id, person]) => {
     const level = characterProfileLevel(gs, id);
-    if (!level) return '<p class="muted">未知人物</p>';
+    if (!level) return '<div class="dossier-locked">未知人物</div>';
     const { favor, trust, progress } = storyRelation(gs, id);
     const introduction = id === 'bainingbing' && level === 1 ? '白家寨蛊师' : person.identity;
-    return `<details>
-      <summary>${esc(person.name)} · 好感 ${favor} · 信任 ${trust}</summary>
-      <p>${esc(introduction)}。</p>
-      ${level >= 2 ? `<p>${esc(person.voice)}</p>
-      <p>目标 · ${esc(person.goal)}</p>
-      <p>交往进度 · ${esc(progress || '尚无记录')}</p>` : ''}
-      ${level === 3 ? `<p>利益 · ${esc(person.interest)}</p>
-      <p class="muted">${esc(person.change)}</p>` : ''}
+    return `<details class="dossier-card">
+      <summary><span>${esc(person.name)}</span><small>好感 ${favor} · 信任 ${trust}</small></summary>
+      <div class="dossier-body">
+        <p>${esc(introduction)}。</p>
+        ${level >= 2 ? `<p>${esc(person.voice)}</p>
+        <p><b>目标</b> · ${esc(person.goal)}</p>
+        <p><b>往来</b> · ${esc(progress || '尚无记录')}</p>` : ''}
+        ${level === 3 ? `<p><b>利益</b> · ${esc(person.interest)}</p>
+        <p class="muted">${esc(person.change)}</p>` : ''}
+      </div>
     </details>`;
   }).join('');
   const clueList = [];
@@ -4831,15 +5650,17 @@ function renderStoryJournal(gs) {
     const quest = STORY_QUESTS[id];
     for (const clueId of progress.clues) {
       const { name, detail } = quest.clues[clueId];
-      clueList.push(`<li><b>${esc(name)}</b> · ${esc(detail)}</li>`);
+      clueList.push(`<div class="ledger-item"><b>${esc(name)}</b><div class="muted">${esc(detail)}</div></div>`);
     }
     const awaiting = progress.followupAt && !gs.flags[`event_done:${quest.followupEvent}`];
     const step = quest.steps[progress.stage];
-    return `<p><b>${esc(quest.name)}</b> · ${esc(step?.name || STORY_QUEST_STAGES[progress.stage])}</p>
-      <p>${esc(step?.hint || quest.outcomes[progress.outcome] || '')}</p>
-      ${awaiting ? `<p class="muted">最早回信时间 · ${esc(formatDateTime(progress.followupAt))}</p>` : ''}`;
+    return `<div class="ledger-item">
+      <div class="ledger-head"><b>${esc(quest.name)}</b><span class="badge">${esc(step?.name || STORY_QUEST_STAGES[progress.stage])}</span></div>
+      <div class="muted">${esc(step?.hint || quest.outcomes[progress.outcome] || '')}</div>
+      ${awaiting ? `<div class="list-hint">最早回信 · ${esc(formatDateTime(progress.followupAt))}</div>` : ''}
+    </div>`;
   }).join('');
-  if (gs.flags['clue:huajiu']) clueList.push('<li><b>花酒行者的旧事</b> · 从血蝠洞沿下游走，水帘后有暗涧遗洞。</li>');
+  if (gs.flags['clue:huajiu']) clueList.push('<div class="ledger-item"><b>花酒行者的旧事</b><div class="muted">从血蝠洞沿下游走，水帘后有暗涧遗洞。</div></div>');
   return `<section class="card">
       <h3>成长引导</h3>
       <p>${esc(guide.text)}</p>${renderGoalShortcut(gs, guide)}
@@ -4851,16 +5672,16 @@ function renderStoryJournal(gs) {
     </section>
     <section class="card">
       <h3>支线任务</h3>
-      ${tasks || '<p class="muted">暂无支线记录。</p>'}
+      ${tasks ? `<div class="ledger-list">${tasks}</div>` : '<p class="muted">暂无支线记录。</p>'}
     </section>
     <section class="card">
       <h3>已获得的线索</h3>
-      ${clueList.length ? `<ul>${clueList.join('')}</ul>` : '<p class="muted">尚未记录线索。</p>'}
+      ${clueList.length ? `<div class="ledger-list">${clueList.join('')}</div>` : '<p class="muted">尚未记录线索。</p>'}
     </section>
-    <section class="card"><h3>人物关系</h3>${people}</section>
+    <section class="card"><h3>人物关系</h3><div class="dossier-list">${people}</div></section>
     <section class="card">
       <h3>重要剧情</h3>
-      ${records ? `<ul>${records}</ul>` : '<p class="muted">尚未记录重要剧情。</p>'}
+      ${records ? `<div class="ledger-list">${records}</div>` : '<p class="muted">尚未记录重要剧情。</p>'}
     </section>`;
 }
 
@@ -4922,20 +5743,21 @@ function renderModal(ui) {
   const sheetEl = document.getElementById('sheet');
   if (!modalEl || !sheetEl) return;
 
-  if (ui.modal?.kind === 'place' && (ui.game.battle || ui.game.player.dead)) ui.modal = null;
+  if ((ui.modal?.kind === 'place' || ui.modal?.kind === 'map') && (ui.game.battle || ui.game.player.dead)) ui.modal = null;
   const placeShown = ui.modal?.kind === 'place' && !ui.game.pendingEventId;
+  const mapShown = ui.modal?.kind === 'map' && !ui.game.pendingEventId;
   const refineShown = ui.modal?.kind === 'refine';
   const activeRefineButton = refineShown && sheetEl.contains(document.activeElement) ? document.activeElement : null;
   const samePlaceSheet = sheetEl.classList.contains('place-sheet');
   const keepScroll = (placeShown && samePlaceSheet) || (refineShown
     && sheetEl.classList.contains('refine-sheet') && ui.modal.data.state === 'ongoing' && ui.modal.effect?.action !== 'ignite');
   const scrollTop = keepScroll ? sheetEl.scrollTop : 0;
-  sheetEl.classList.toggle('place-sheet', placeShown);
+  sheetEl.classList.toggle('place-sheet', placeShown || mapShown);
   sheetEl.classList.toggle('refine-sheet', refineShown);
   if (placeShown || refineShown) sheetEl.setAttribute('aria-labelledby', placeShown ? 'place-title' : 'refine-title');
   else if (sheetEl.getAttribute('aria-labelledby') !== 'receipt-title') sheetEl.removeAttribute('aria-labelledby');
 
-  if (ui.game && ui.game.pendingEventId && !ui.game.battle && (!ui.modal || ui.modal.kind === 'place')) {
+  if (ui.game && ui.game.pendingEventId && !ui.game.battle && (!ui.modal || ui.modal.kind === 'place' || ui.modal.kind === 'map')) {
     const id = ui.game.pendingEventId;
     const changed = sheetEl.dataset.storyEvent !== id;
     sheetEl.dataset.storyEvent = id;
@@ -4958,9 +5780,9 @@ function renderModal(ui) {
     const changed = sheetEl.getAttribute('aria-labelledby') !== 'receipt-title' || sheetEl.querySelector('#receipt-title')?.textContent !== receipt.title;
     sheetEl.setAttribute('aria-labelledby', 'receipt-title');
     sheetEl.innerHTML = `<h2 id="receipt-title" tabindex="-1">${esc(receipt.title)}</h2>
-      <ul>${receipt.lines.map((line) => `<li>${esc(line)}</li>`).join('')}</ul>
-      ${receipt.detail ? `<p>${esc(receipt.detail)}</p>` : ''}
-      <div class="row"><button class="primary" data-action="${victory ? 'finishBattle' : 'closeModal'}">${victory ? '离开战场' : '继续'}</button></div>`;
+      <div class="receipt-list">${receipt.lines.map((line) => `<div class="receipt-row">· ${esc(line)}</div>`).join('')}</div>
+      ${receipt.detail ? `<p class="muted">${esc(receipt.detail)}</p>` : ''}
+      <div class="row"><button class="primary" data-action="${victory ? 'finishBattle' : 'closeModal'}">${victory ? '离开战场' : '收悉'}</button></div>`;
     modalEl.hidden = false;
     sheetEl.scrollTop = 0;
     if (changed) sheetEl.querySelector('#receipt-title').focus({ preventScroll: true });
@@ -4973,18 +5795,21 @@ function renderModal(ui) {
     return;
   }
   let html = '';
-  if (ui.modal.kind === 'place') {
-    html = `<div class="place-sheet-controls"><button class="sm" data-action="closeModal">返回地图</button></div>${renderPlaceView(ui.game)}`;
+  if (ui.modal.kind === 'map') {
+    html = `<div class="place-sheet-controls"><button class="sm ghost" data-action="closeModal">收起舆图</button></div>${renderMapPanel(ui.game)}`;
+  } else if (ui.modal.kind === 'place') {
+    html = `<div class="place-sheet-controls"><button class="sm" data-action="closeModal">返回</button></div>${renderPlaceView(ui.game)}`;
   } else if (ui.modal.kind === 'person') {
-    const { id, name, response, favor, trust, progress, giftName, giftReason } = ui.modal.data;
+    const { id, name, response, favor, trust, progress, giftName, giftReason, returnToPlace } = ui.modal.data;
     const scenes = availableLocalScenes(ui.game).filter((event) => event.person === id).map(({ id, title }) =>
       `<button class="gold" data-action="checkEvents" data-id="${esc(id)}">${esc(title)}</button>`).join('');
     sheetEl.setAttribute('aria-labelledby', 'person-title');
-    html = `<h2 id="person-title">${esc(name)}</h2><p>${esc(response)}</p>
-      <p class="muted">好感 ${favor} · 信任 ${trust}${progress ? ` · ${esc(progress)}` : ''}</p>
-      <div class="row"><button data-action="visitPerson" data-id="${esc(id)}">聊天</button>
-      <button class="gold" data-action="giftPerson" data-id="${esc(id)}" ${giftReason ? 'disabled' : ''}>送${esc(giftName)} ×1</button>
-      ${scenes}<button data-action="closeModal">返回地点</button></div>
+    html = `<div class="person-dialog-head"><h2 id="person-title">${esc(name)}</h2><span class="badge">好感 ${favor} · 信任 ${trust}</span></div>
+      <div class="story-scroll person-quote">${esc(response)}</div>
+      ${progress ? `<p class="muted">${esc(progress)}</p>` : ''}
+      <div class="row"><button data-action="visitPerson" data-id="${esc(id)}">交谈</button>
+      <button class="gold" data-action="giftPerson" data-id="${esc(id)}" ${giftReason ? 'disabled' : ''}>赠${esc(giftName)} ×1</button>
+      ${scenes}<button class="ghost" data-action="closeModal">${returnToPlace ? '返回地点' : '辞别'}</button></div>
       ${giftReason ? `<p class="muted">${esc(giftReason)}</p>` : ''}`;
   } else if (ui.modal.kind === 'break') html = renderBreakModal(ui.modal.data);
   else if (refineShown) {
@@ -5020,7 +5845,7 @@ function renderModal(ui) {
   sheetEl.innerHTML = html;
   modalEl.hidden = false;
   sheetEl.scrollTop = scrollTop;
-  if (placeShown && !samePlaceSheet) sheetEl.querySelector('[data-action="closeModal"]').focus();
+  if ((placeShown || mapShown) && !samePlaceSheet) sheetEl.querySelector('[data-action="closeModal"]')?.focus();
   if (refineShown) {
     const buttons = [...sheetEl.querySelectorAll('button:not(:disabled)')];
     const next = activeRefineButton && buttons.find(({ dataset }) =>
@@ -5037,9 +5862,11 @@ function dismissModal(ui) {
     if (ui.game.refining?.state === 'ongoing') return false;
     clearRefineProgress(ui.game);
   }
-  ui.modal = !ui.game.battle && (ui.modal?.kind === 'person' || (ui.modal?.kind === 'receipt' && ui.modal.data.returnToPlace))
-    ? { kind: 'place' }
-    : null;
+  const returnToPlace = !ui.game.battle && (
+    (ui.modal?.kind === 'person' && ui.modal.data?.returnToPlace)
+    || (ui.modal?.kind === 'receipt' && ui.modal.data?.returnToPlace)
+  );
+  ui.modal = returnToPlace ? { kind: 'place' } : null;
   return true;
 }
 
@@ -5108,9 +5935,13 @@ function showReceipt(ui, receipt) {
 function handlePlaceAction(ui, id, { render, showToast }) {
   const result = performPlaceAction(ui.game, id);
   if (!result?.ok) {
-    if (result?.reason) showToast(result.reason);
+    if (result?.reason) {
+      playSfx('alert');
+      showToast(result.reason);
+    }
     return;
   }
+  playSfx(result.won || ui.game.battle ? 'alert' : 'tap');
   if (result.won) setModal(ui, 'win', {});
   if (result.receipt) showReceipt(ui, result.receipt);
   else if (result.message) showToast(result.message);
@@ -5174,8 +6005,8 @@ function handleDeveloperAction(ui, action, { render, showToast }) {
 function handleAction(ui, el, { render, showToast }) {
   const act = el.dataset.action;
   if (!act) return;
-  if (ui.game?.pendingEventId && (!ui.modal || ui.modal.kind === 'place') && !ui.game.battle
-    && act !== 'chooseEvent' && act !== 'togglePause') return;
+  if (ui.game?.pendingEventId && (!ui.modal || ui.modal.kind === 'place' || ui.modal.kind === 'map') && !ui.game.battle
+    && act !== 'chooseEvent' && act !== 'togglePause' && act !== 'toggleSfx') return;
   if (ui.game?.breakthrough && act !== 'breakAct') return;
   if (ui.modal?.kind === 'refine' && act !== 'refineAct' && act !== 'closeModal') return;
   const id = el.dataset.id || '';
@@ -5190,33 +6021,52 @@ function handleAction(ui, el, { render, showToast }) {
     ui.start.target = Math.max(10, Math.min(48, Math.round(ui.start.apt.hai * 5)));
     ui.start.done = false;
     ui.start.phase = 'kaiqiao';
+    playSfx('tap');
     render();
   } else if (act === 'kaiqiaoStep') {
     ui.start.step = Math.min(ui.start.target, ui.start.step + 5);
-    if (ui.start.step >= ui.start.target) ui.start.done = true;
+    if (ui.start.step >= ui.start.target) {
+      ui.start.done = true;
+      playSfx('win');
+    } else {
+      playSfx('walk');
+    }
     render();
   } else if (act === 'kaiqiaoSkip') {
     ui.start.step = ui.start.target;
     ui.start.done = true;
+    playSfx('win');
     render();
   } else if (act === 'kaiqiaoFinish') {
     ui.game = createNewGame(ui.start.name, ui.start.apt);
     ui.start.phase = 'intro';
     ui.tab = 'cultivation';
     saveGame(ui.game);
+    playSfx('tap');
     render();
   } else if (act === 'continueSave') {
     ui.game = loadGame();
     if (!ui.game) { showToast('未找到可用存档'); return; }
     ui.tab = 'place';
     restoreSessions(ui, showToast);
+    playSfx('tap');
     render();
   } else if (act === 'navTab') {
-    if (ui.modal?.kind === 'place') ui.modal = null;
+    if (ui.modal?.kind === 'place' || ui.modal?.kind === 'map') ui.modal = null;
     ui.tab = el.dataset.tab || 'place';
+    playSfx('tap');
     render();
   } else if (act === 'togglePause') {
     ui.game.paused = !ui.game.paused;
+    playSfx('tap');
+    render();
+  } else if (act === 'toggleSfx') {
+    const muted = toggleSfxMuted();
+    if (!muted) playSfx('tap');
+    render();
+  } else if (act === 'toggleGoal') {
+    ui.goalCollapsed = !ui.goalCollapsed;
+    playSfx('tap');
     render();
   } else if (act === 'toggleDeveloper') {
     if (!ui.game) return;
@@ -5228,62 +6078,88 @@ function handleAction(ui, el, { render, showToast }) {
     if (ui.game?.developerMode && !ui.modal) openModal('developer');
   } else if (act === 'devAction') {
     handleDeveloperAction(ui, id, { render, showToast });
+  } else if (act === 'openMap') {
+    if (ui.game && !ui.game.battle && !ui.game.player.dead) {
+      playSfx('tap');
+      openModal('map');
+    }
   } else if (act === 'walkTo') {
     const res = moveToPlace(ui.game, id);
-    if (!res.ok) showToast(res.reason);
-    else if (ui.game.location === id) {
+    if (!res.ok) {
+      playSfx('alert');
+      showToast(res.reason);
+    } else if (ui.game.location === id) {
       ui.tab = 'place';
-      ui.modal = hasPlaceActions(ui.game) ? { kind: 'place' } : null;
-      const sheet = document.getElementById('sheet');
-      if (sheet) sheet.scrollTop = 0;
+      ui.modal = null;
+      playSfx('walk');
+      if (typeof window !== 'undefined') window.scrollTo?.({ top: 0, behavior: 'smooth' });
     }
     saveGame(ui.game);
     render();
   } else if (act === 'openPlace') {
-    if (ui.game && !ui.game.battle && !ui.game.player.dead && hasPlaceActions(ui.game)) {
+    if (ui.game && !ui.game.battle && !ui.game.player.dead) {
       ui.tab = 'place';
-      openModal('place');
+      ui.modal = null;
+      playSfx('tap');
+      render();
     }
-  } else if ((act === 'visitPerson' && ['place', 'person'].includes(ui.modal?.kind))
+  } else if ((act === 'visitPerson' && (ui.modal?.kind === 'place' || ui.modal?.kind === 'person' || (!ui.modal && ui.tab === 'place')))
     || (act === 'giftPerson' && ui.modal?.kind === 'person' && ui.modal.data.id === id)) {
+    const returnToPlace = ui.modal?.kind === 'place' || Boolean(ui.modal?.data?.returnToPlace);
     const person = visitPerson(ui.game, id, act === 'giftPerson');
     if (!person) return;
-    setModal(ui, 'person', person);
+    playSfx(act === 'giftPerson' ? 'heal' : 'tap');
+    setModal(ui, 'person', { ...person, returnToPlace });
     saveGame(ui.game);
     render();
   } else if (act === 'placeAct') {
     handlePlaceAction(ui, id, { render, showToast });
   } else if (act === 'quest') {
+    playSfx('tap');
     showReceipt(ui, handleQuest(ui.game, id));
     saveGame(ui.game);
     render();
   } else if (act === 'buyRecipe') {
     const message = purchaseRecipe(ui.game, id);
     if (!message) return;
+    playSfx('tap');
     saveGame(ui.game);
     render();
     showToast(message);
+  } else if (act === 'stepQty') {
+    const input = el.closest('.shop-purchase')?.querySelector('input[type="number"]');
+    if (!input || input.disabled) return;
+    const delta = Number(el.dataset.step) || 0;
+    const cur = Number.isFinite(input.valueAsNumber) ? input.valueAsNumber : 1;
+    input.value = String(Math.max(1, Math.min(SHOP_BATCH_LIMIT, cur + delta)));
+    playSfx('tap');
   } else if (act === 'buyItem') {
     const input = el.closest('.shop-purchase')?.querySelector('input[type="number"]');
     const result = purchaseShopEntry(ui.game, id, input?.valueAsNumber ?? 1);
-    if (!result.ok) { showToast(result.reason); return; }
+    if (!result.ok) { playSfx('alert'); showToast(result.reason); return; }
+    playSfx('tap');
     saveGame(ui.game);
     render();
     showToast(result.message);
-  } else if (act === 'lookForLifeScene' && ui.modal?.kind === 'place') {
+  } else if (act === 'lookForLifeScene' && (!ui.modal || ui.modal.kind === 'place')) {
     const { message } = lookForLifeScene(ui.game);
     saveGame(ui.game);
+    playSfx('tap');
     if (message) showToast(message);
     render();
   } else if (act === 'checkEvents') {
     if (!checkStoryTriggers(ui.game, id)) return;
-    if (ui.modal?.kind === 'person') setModal(ui, 'place');
+    if (ui.modal?.kind === 'person') {
+      ui.modal = ui.modal.data?.returnToPlace ? { kind: 'place' } : null;
+    }
+    playSfx('tap');
     saveGame(ui.game);
     render();
   } else if (act === 'refineBenming') {
     const res = refineBenming(ui.game);
-    if (!res.ok) { showToast(res.reason); return; }
+    if (!res.ok) { playSfx('alert'); showToast(res.reason); return; }
     ui.tab = 'cultivation';
+    playSfx('win');
     showReceipt(ui, { title: '本命蛊炼化成功', lines: ['月光蛊已成为你的本命蛊。'] });
     saveGame(ui.game);
     render();
@@ -5301,6 +6177,7 @@ function handleAction(ui, el, { render, showToast }) {
     if (p.yuanshi < before.stones) lines.push(`支出元石 ×${before.stones - p.yuanshi}`);
     lines.push(...feedback);
     ui.game.story.history[id].feedback = lines;
+    playSfx('tap');
     if (lines.length) {
       const event = STORY_EVENTS.find((entry) => entry.id === id);
       showReceipt(ui, { title: event.title, lines });
@@ -5310,18 +6187,21 @@ function handleAction(ui, el, { render, showToast }) {
     render();
   } else if (act === 'washMinor') {
     const res = washMinorWall(ui.game);
+    playSfx(res.ok ? 'break' : 'alert');
     showToast(res.ok ? res.message : res.reason);
     saveGame(ui.game);
     render();
   } else if (act === 'openBreak') {
     if (ui.game.breakthrough || ui.game.refining || ui.game.battle || ui.game.player.dead) return;
     const sess = createBreakSession(ui.game);
-    if (sess.error) { showToast(sess.error); return; }
+    if (sess.error) { playSfx('alert'); showToast(sess.error); return; }
     ui.game.breakthrough = sess;
     if (!saveGame(ui.game)) showToast('破壁进度保存失败，请检查本地存储。');
+    playSfx('tap');
     openModal('break', sess);
   } else if (act === 'breakAct' && ui.modal?.kind === 'break' && ui.game.breakthrough) {
     stepBreakSession(ui.game, ui.game.breakthrough, id);
+    playSfx(ui.game.breakthrough?.state === 'win' ? 'win' : id === 'hard' ? 'hit' : 'break');
     if (!saveGame(ui.game)) showToast('破壁进度保存失败，请检查本地存储。');
     render();
   } else if (act === 'startRefine') {
@@ -5332,6 +6212,7 @@ function handleAction(ui, el, { render, showToast }) {
     if (sess.error) { openModal('refineInfo', { recipe, reason: sess.error }); return; }
     ui.game.refining = sess;
     if (!saveGame(ui.game)) showToast('炼蛊进度保存失败，请检查本地存储。');
+    playSfx('tap');
     openModal('refine', sess);
   } else if (act === 'refineAct' && ui.modal?.kind === 'refine') {
     const sess = ui.modal.data;
@@ -5347,20 +6228,26 @@ function handleAction(ui, el, { render, showToast }) {
     stepRefineSession(ui.game, sess, id, Math.random, timing);
     if (state === sess.state && turns === sess.turns && pending === sess.pending.length) return;
     ui.modal.effect = { action: id.split(':')[0], input: el.dataset.input };
+    playSfx(sess.state === 'done' ? (sess.success ? 'win' : 'alert') : 'refine');
     if (!saveGame(ui.game)) showToast('炼蛊进度保存失败，请检查本地存储。');
     render();
   } else if (act === 'openCustomKiller') {
-    if (!ui.game.battle && discoveredKillerPatterns(ui.game.player).length) openModal('killer');
+    if (!ui.game.battle && discoveredKillerPatterns(ui.game.player).length) {
+      playSfx('tap');
+      openModal('killer');
+    }
   } else if (act === 'kmCreate' && ui.modal?.kind === 'killer') {
     const nm = document.getElementById('kmName')?.value || '';
     const res = createKillerMove(ui.game, id, nm);
-    if (!res.ok) { showToast(res.reason); return; }
+    if (!res.ok) { playSfx('alert'); showToast(res.reason); return; }
+    playSfx('win');
     saveGame(ui.game);
     closeModal();
     showToast(`推演成功：「${res.move.name}」`);
   } else if (act === 'forgetKiller') {
     const move = forgetKillerMove(ui.game, id);
     if (!move) return;
+    playSfx('tap');
     saveGame(ui.game);
     render();
     showToast(`已删除「${move.name}」`);
@@ -5369,6 +6256,7 @@ function handleAction(ui, el, { render, showToast }) {
     if (ui.game.player.autoFeed) {
       for (const gu of ui.game.player.gu) feedGu(ui.game, gu, 51);
     }
+    playSfx('tap');
     saveGame(ui.game);
     render();
   } else if (act === 'feedGu' || act === 'feedAll') {
@@ -5378,6 +6266,7 @@ function handleAction(ui, el, { render, showToast }) {
       const fed = ui.game.player.gu.filter((g) => feedGu(ui.game, g, 85)).length;
       showToast(fed ? `已喂养 ${fed} 只蛊虫` : '无需喂养或口粮不足');
     }
+    playSfx('heal');
     saveGame(ui.game);
     render();
   } else if (act === 'toggleEquip') {
@@ -5385,15 +6274,18 @@ function handleAction(ui, el, { render, showToast }) {
     const i = ui.game.player.equipped.indexOf(uid);
     if (i >= 0) ui.game.player.equipped.splice(i, 1);
     else if (ui.game.player.equipped.length < 6) ui.game.player.equipped.push(uid);
-    else showToast('至多同时出战 6 只蛊');
+    else { playSfx('alert'); showToast('至多同时出战 6 只蛊'); }
+    playSfx('tap');
     saveGame(ui.game);
     render();
   } else if (act === 'useHealingGu') {
     const uid = Number(id);
     if (!useHealingGu(ui.game, uid)) {
+      playSfx('alert');
       showToast(ui.game.player.hp >= ui.game.player.hpMax ? '气血已满' : '无法催动治疗蛊，请检查真元');
       return;
     }
+    playSfx('heal');
     recordGuUsage(ui.game, [ui.game.player.gu.find((gu) => gu.uid === uid).id]);
     saveGame(ui.game);
     render();
@@ -5402,6 +6294,7 @@ function handleAction(ui, el, { render, showToast }) {
     const gu = p.gu.find(({ uid }) => uid === Number(id));
     const { hpMax, powerBonus } = p;
     if (!useBoarGu(ui.game, Number(id))) return;
+    playSfx('win');
     showReceipt(ui, {
       title: `已催动${GU_DEFS[gu.id].name}`,
       lines: [`气血上限 ${hpMax} → ${p.hpMax}`, `力量 ${powerBonus} → ${p.powerBonus}`],
@@ -5412,33 +6305,59 @@ function handleAction(ui, el, { render, showToast }) {
   } else if (act === 'useSheli') {
     const result = useSheli(ui.game, Number(id));
     if (result.message || result.reason) showToast(result.message || result.reason);
-    if (!result.ok) return;
+    if (!result.ok) { playSfx('alert'); return; }
+    playSfx('win');
     saveGame(ui.game);
     render();
   } else if (act === 'useHealItem') {
     const result = useHealItem(ui.game, id);
     if (!result.ok) {
       if (result.reason) showToast(result.reason);
+      playSfx('alert');
       return;
     }
+    playSfx('heal');
     saveGame(ui.game);
     render();
   } else if (act === 'battleAct') {
-    battleAct(ui.game, el.dataset.kind, id);
+    const b = ui.game.battle;
+    const kind = el.dataset.kind;
+    const before = b ? {
+      foeHp: b.foe.hp,
+      foeShield: b.foe.shield,
+      foeStunned: b.foe.stunned,
+      meHp: ui.game.player.hp,
+      meShield: b.meShield
+    } : null;
+    battleAct(ui.game, kind, id);
+    if (b && before && kind !== 'gu') {
+      const foeDmg = Math.max(0, (before.foeHp + before.foeShield) - (b.foe.hp + b.foe.shield));
+      const foeShieldGain = Math.max(0, b.foe.shield - before.foeShield);
+      const foeStunned = !before.foeStunned && b.foe.stunned;
+      ui.battleFx = { ts: Date.now(), foeDmg, foeShieldGain, foeStunned };
+      if (b.state === 'win') playSfx('win');
+      else if (foeDmg > 0) playSfx('hit');
+      else if (b.meShield > before.meShield) playSfx('shield');
+      else if (ui.game.player.hp > before.meHp) playSfx('heal');
+      else playSfx('tap');
+    } else {
+      playSfx('tap');
+    }
     saveGame(ui.game);
     render();
   } else if (act === 'finishBattle') {
-    const foe = ui.game.battle?.foe.id;
+    ui.battleFx = null;
     if (!finishStoryBattle(ui.game)) return;
     if (ui.game.player.dead) setModal(ui, 'dead', {});
-    else if (!ui.game.pendingEventId && ui.game.location === 'zhulin' && ['yezhu', 'zhuwang'].includes(foe)) {
+    else if (!ui.game.pendingEventId) {
       ui.tab = 'place';
-      setModal(ui, 'place');
+      ui.modal = null;
     }
     saveGame(ui.game);
     render();
   } else if (act === 'saveCicada') {
     const res = saveSpringSnapshot(ui.game);
+    playSfx(res.ok ? 'win' : 'alert');
     showToast(res.ok ? '已留下春秋蝉旧影' : res.reason);
     saveGame(ui.game);
     render();
@@ -5447,8 +6366,10 @@ function handleAction(ui, el, { render, showToast }) {
     if (!res.ok) { showToast(res.reason); return; }
     ui.game = res.state;
     restoreSessions(ui, showToast, true);
+    playSfx('break');
     render();
   } else if (act === 'manualSave') {
+    playSfx('tap');
     showToast(saveGame(ui.game) ? '进度已保存' : '保存失败，请检查本地存储。');
   } else if (act === 'exportSave') {
     const text = JSON.stringify(ui.game, null, 2);
@@ -5471,9 +6392,11 @@ function handleAction(ui, el, { render, showToast }) {
     resetProgress();
     ui.game = null;
     ui.modal = null;
+    ui.battleFx = null;
     ui.start = createStartState();
     render();
   } else if (act === 'closeModal') {
+    playSfx('tap');
     closeModal();
   }
 }
@@ -5495,7 +6418,8 @@ function handleAction(ui, el, { render, showToast }) {
 
 
 
-const ui = { game: loadGame(), tab: 'place', modal: null, start: createStartState() };
+
+const ui = { game: loadGame(), tab: 'place', modal: null, goalCollapsed: false, battleFx: null, start: createStartState() };
 
 function showToast(msg) {
   const el = document.getElementById('toast');
@@ -5511,24 +6435,29 @@ function renderTopBar(goal) {
   const hpPct = Math.round(p.hp / Math.max(1, p.hpMax) * 100);
   const zyPct = Math.round(p.zy / Math.max(1, p.zyMax) * 100);
   const placeName = PLACES[ui.game.location]?.name || '青茅山';
+  const muted = isSfxMuted();
   return `<header class="topbar">
     <div class="top-row">
       <div class="top-id">
         <strong>${esc(p.name)}</strong>
         <span class="badge gold">${esc(realmText(p))}</span>
-        <span class="badge">${esc(placeName)}</span>
+        <button type="button" class="badge place-pill" data-action="openMap" title="打开青茅山舆图">${esc(placeName)} ▾</button>
       </div>
       <div class="clock-box">
         <span data-live="clock">${esc(formatDateTime(ui.game.minutes))}</span>
         ${ui.game.developerMode ? '<button class="sm gold" data-action="openDeveloper">开发者</button>' : ''}
-        <button class="sm ghost" data-action="togglePause">${ui.game.paused ? '▶ 继续流逝' : '⏸ 暂停'}</button>
+        <button class="sm ghost" data-action="togglePause">${ui.game.paused ? '▶ 续' : '⏸ 止'}</button>
+        <button class="sm ghost" data-action="toggleSfx" aria-label="${muted ? '开启声效' : '静音'}">${muted ? '🔇' : '🔔'}</button>
       </div>
     </div>
-    <div class="goal-bar"><span>目标</span><div>${esc(goal.text)}</div>${ui.tab === 'cultivation' ? '' : renderGoalShortcut(ui.game, goal)}</div>
     <div class="res-row">
       <div class="res-item"><div class="res-head"><span>气血${ui.game.battle?.meShield ? ` · 盾 ${ui.game.battle.meShield}` : ''}</span><span data-live="hp">${Math.round(p.hp)}/${p.hpMax}</span></div><div class="bar hp"><i data-live="hp-bar" style="width:${hpPct}%"></i></div></div>
       <div class="res-item"><div class="res-head"><span>真元</span><span data-live="zy">${Math.round(p.zy)}/${p.zyMax}</span></div><div class="bar zy"><i data-live="zy-bar" style="width:${zyPct}%"></i></div></div>
       <div class="res-item res-meta"><div class="res-head"><span>元石 <b>${p.yuanshi}</b></span><span>${p.mo >= 30 ? `恶名 ${p.mo}` : `${p.grade}等`}</span></div></div>
+    </div>
+    <div class="goal-strip${ui.goalCollapsed ? ' is-collapsed' : ''}">
+      <button type="button" class="goal-toggle" data-action="toggleGoal" aria-expanded="${!ui.goalCollapsed}">要务</button>
+      ${ui.goalCollapsed ? '' : `<div class="goal-text">${esc(goal.text)}</div>${ui.tab === 'cultivation' ? '' : renderGoalShortcut(ui.game, goal)}`}
     </div>
   </header>`;
 }
@@ -5545,9 +6474,9 @@ function render() {
   const goal = mainGrowthGoal(ui.game);
   let body = '';
   if (ui.game.battle) {
-    body = renderBattleView(ui.game);
+    body = renderBattleView(ui.game, ui.battleFx);
   } else if (ui.tab === 'place') {
-    body = renderMapPanel(ui.game);
+    body = renderPlaceView(ui.game);
   } else if (ui.tab === 'cultivation') {
     body = renderCultivationView(ui.game, goal);
   } else if (ui.tab === 'aperture') {
@@ -5559,7 +6488,7 @@ function render() {
   }
 
   const navButtons = [
-    ['place', '地图'], ['cultivation', '修行'], ['aperture', '空窍'],
+    ['place', '此地'], ['cultivation', '修行'], ['aperture', '空窍'],
     ['refine', '炼蛊'], ['bag', '行囊'], ['journal', '行纪']
   ].map(([id, label]) => `<button class="${ui.tab === id ? 'on' : ''}" data-action="navTab" data-tab="${id}">${label}</button>`).join('');
 

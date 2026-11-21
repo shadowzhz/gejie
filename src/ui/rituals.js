@@ -4,11 +4,11 @@ import { OVERLOAD_PRESSURE, refineChance, refineReady, refineTechniques } from '
 import { esc } from '../core/state.js';
 import { evalCond } from '../core/story-engine.js';
 import { renderRefineRequirements } from './refine-view.js';
+import { renderBreakSealSvg, renderFurnaceCauldronSvg, renderHopeFlowerSvg, renderSceneBannerSvg } from './visuals.js';
 
 export function renderStartScreen(startState) {
   if (startState.phase === 'kaiqiao') {
     const step = startState.step;
-    const pct = Math.min(100, Math.round(step / 50 * 100));
     let beat = '暗河幽蓝，花海深处便是元泉。';
     if (step >= 45) beat = '腹中光团愈发明亮，元泉近在眼前，岸上屏息以待。';
     else if (step >= 40) beat = '四十步！岸上鸦雀无声。';
@@ -19,43 +19,48 @@ export function renderStartScreen(startState) {
 
     const apt = startState.apt;
     const body = startState.done
-      ? `<div class="card">
-          <h3>开窍落定 · ${esc(startState.name)}</h3>
-          <p><b class="log-gold">${esc(apt.grade)}等资质 · 元海 ${apt.hai} 成</b></p>
+      ? `<div class="card ritual-result">
+          <div class="list-head"><h3>开窍落定 · ${esc(startState.name)}</h3><span class="badge gold">${esc(apt.grade)}等资质 · 元海 ${apt.hai} 成</span></div>
           <p class="muted">${esc(apt.desc)}</p>
           <button class="primary" data-action="kaiqiaoFinish">踏入古月山寨</button>
         </div>`
       : `<div class="row">
-          <button class="gold" data-action="kaiqiaoStep">迈步向前（${step} 步）</button>
+          <button class="gold" data-action="kaiqiaoStep">迈步向前 · 第 ${step} 步</button>
           <button class="ghost" data-action="kaiqiaoSkip">跳过演出</button>
         </div>`;
 
-    return `<div class="shell" style="padding:20px;justify-content:center">
-      <div class="stage">
-        <div class="stage-loc">南疆 · 青茅山 · 古月山寨地下溶洞</div>
-        <h1>开窍大典</h1>
-        <p class="stage-desc">${esc(beat)}</p>
-        <div class="kv"><span>希望蛊共鸣</span><b>${step} / 50 步</b></div>
-        <div class="bar"><i style="width:${pct}%"></i></div>
+    return `<div class="shell start-shell">
+      <div class="stage is-night">
+        ${renderSceneBannerSvg('huajiu', true)}
+        <div class="stage-inner">
+          <div class="stage-loc">南疆 · 青茅山 · 地下溶洞</div>
+          <h1>开窍大典</h1>
+          ${renderHopeFlowerSvg(step, startState.target)}
+          <p class="stage-desc" style="margin-top:10px">${esc(beat)}</p>
+          <div class="kv"><span>希望蛊共鸣</span><b>${step} / 50 步</b></div>
+        </div>
       </div>
       ${body}
     </div>`;
   }
 
-  return `<div class="shell" style="padding:20px;justify-content:center">
-    <div class="stage">
-      <div class="stage-loc">南疆 · 青茅山篇</div>
-      <h1>蛊界</h1>
-      <p class="stage-desc">春雨初歇，青茅山的竹楼还滴着水。今天是古月山寨的开窍大典，也是你踏入蛊师之路的第一天——直至狼潮降临、血海与天鹤决战，走出青茅山。</p>
-      <div class="card">
-        <h3>立命开窍</h3>
-        <div style="margin-bottom:10px">
-          <label class="muted" for="startName">姓名</label>
-          <input id="startName" type="text" maxlength="8" placeholder="输入姓名" value="${esc(startState.name)}">
-        </div>
-        <div class="row">
-          <button class="gold" data-action="startKaiqiao">前往开窍大典</button>
-          ${startState.hasSave ? '<button class="primary" data-action="continueSave">继续上一世</button>' : ''}
+  return `<div class="shell start-shell">
+    <div class="stage title-hero">
+      ${renderSceneBannerSvg('zhulou', true)}
+      <div class="stage-inner">
+        <div class="title-seal">南疆 · 青茅山篇</div>
+        <h1 class="title-main">蛊界</h1>
+        <p class="stage-desc">春雨初歇，青茅山的竹楼还滴着水。今天是古月山寨的开窍大典，也是你踏入蛊师之路的第一天——直至狼潮降临、血海与天鹤决战，走出青茅山。</p>
+        <div class="card title-box">
+          <h3>立命开窍</h3>
+          <div style="margin-bottom:12px">
+            <label class="muted" for="startName">名讳</label>
+            <input id="startName" type="text" maxlength="8" placeholder="输入名讳" value="${esc(startState.name)}">
+          </div>
+          <div class="row">
+            <button class="gold" data-action="startKaiqiao">前往开窍大典</button>
+            ${startState.hasSave ? '<button class="primary" data-action="continueSave">继续上一世</button>' : ''}
+          </div>
         </div>
       </div>
     </div>
@@ -71,21 +76,26 @@ export function renderBreakModal(sess) {
 
   const actions = sess.state === 'ongoing'
     ? `<div class="row">
-        <button class="blood" ${sess.zy < 1 ? 'disabled' : ''} data-action="breakAct" data-id="hard">强行冲关（-${hardNeed} 真元）</button>
-        <button class="gold" ${sess.zy < 1 ? 'disabled' : ''} data-action="breakAct" data-id="soft">稳步冲关（-${softNeed} 真元）</button>
-        <button ${sess.stones < stoneCost || sess.zy >= sess.zyMax ? 'disabled' : ''} data-action="breakAct" data-id="stone">元石回元（-${stoneCost} 元石）</button>
-        <button class="ghost" ${sess.zy < steadyNeed || sess.hurt <= 0 ? 'disabled' : ''} data-action="breakAct" data-id="steady">温养护窍（-${steadyNeed} 真元）</button>
+        <button class="blood" ${sess.zy < 1 ? 'disabled' : ''} data-action="breakAct" data-id="hard">强行冲关（−${hardNeed} 真元）</button>
+        <button class="gold" ${sess.zy < 1 ? 'disabled' : ''} data-action="breakAct" data-id="soft">稳步冲关（−${softNeed} 真元）</button>
+        <button ${sess.stones < stoneCost || sess.zy >= sess.zyMax ? 'disabled' : ''} data-action="breakAct" data-id="stone">元石回元（−${stoneCost} 石）</button>
+        <button class="ghost" ${sess.zy < steadyNeed || sess.hurt <= 0 ? 'disabled' : ''} data-action="breakAct" data-id="steady">温养护窍（−${steadyNeed} 真元）</button>
         <button class="ghost" data-action="breakAct" data-id="stop">散气退关</button>
       </div>`
-    : `<button class="primary" data-action="closeModal">收功</button>`;
+    : `<button class="primary" data-action="closeModal">收功出关</button>`;
 
   return `<h2>破壁冲关 · ${sess.turn}转 → ${sess.turn + 1}转</h2>
-    <div class="muted">第 ${sess.steps} 息 · 窍壁每息愈合 ${sess.wallHeal}%</div>
-    <div class="kv"><span>窍壁裂痕</span><b>${sess.crack.toFixed(1)}%</b></div>
-    <div class="bar"><i style="width:${Math.min(100, Math.round(sess.crack))}%"></i></div>
-    <div class="kv"><span>空窍真元</span><b>${Math.round(sess.zy)} / ${sess.zyMax}（${zyPct}%）</b></div>
-    <div class="kv"><span>空窍震伤</span><b style="color:${sess.hurt >= 70 ? 'var(--blood)' : 'var(--warn)'}">${sess.hurt} / 100</b></div>
-    <div class="kv"><span>元石余额</span><b>${sess.stones}</b></div>
+    <div class="break-hero">
+      ${renderBreakSealSvg(sess.crack, sess.hurt)}
+      <div class="break-metrics">
+        <div class="muted">第 ${sess.steps} 息 · 窍壁每息愈合 ${sess.wallHeal}%</div>
+        <div class="kv"><span>窍壁裂痕</span><b>${sess.crack.toFixed(1)}%</b></div>
+        <div class="bar"><i style="width:${Math.min(100, Math.round(sess.crack))}%"></i></div>
+        <div class="kv"><span>空窍真元</span><b>${Math.round(sess.zy)} / ${sess.zyMax}（${zyPct}%）</b></div>
+        <div class="kv"><span>空窍震伤</span><b style="color:${sess.hurt >= 70 ? 'var(--blood)' : 'var(--warn)'}">${sess.hurt} / 100</b></div>
+        <div class="kv"><span>元石余额</span><b>${sess.stones}</b></div>
+      </div>
+    </div>
     <div class="card loglist">${sess.lines.map((l) => `<div>${esc(l)}</div>`).join('')}</div>
     ${actions}`;
 }
@@ -96,23 +106,18 @@ function renderRefineFurnace(sess, effect) {
   const formed = progress >= flow.target;
   const hot = pressure > flow.safePressure;
   const status = state === 'ready' ? '炉火未点'
-    : state === 'ongoing' ? sess.pending.length ? '等火星经过炉心，再投入蛊虫或蛊材'
-      : formed && !hot ? '蛊影已经凝实，可以合盖'
-      : !sess.turns ? '炉火将尽，只能收炉或撤火'
-      : hot ? '炉火太旺，掀开炉盖可以放火' : '等火星经过炉心，按下风箱'
+    : state === 'ongoing' ? sess.pending.length ? '待火星落入炉心，依次投入蛊虫与蛊材'
+      : formed && !hot ? '蛊影已凝实，可合盖收炉'
+      : !sess.turns ? '炉火将尽，须决断收炉或撤火'
+      : hot ? '炉压过盛，可掀盖泄火' : '观炉心火候，适时鼓风或温养'
     : success ? `炼成 · ${sess.outName}`
-    : state === 'aborted' ? '已停炉'
-    : pressure >= OVERLOAD_PRESSURE ? '炸炉' : '炼蛊失败';
+    : state === 'aborted' ? '已撤火停炉'
+    : pressure >= OVERLOAD_PRESSURE ? '炉炸火散' : '合炼未成';
   const outcome = state === 'done' ? (success ? 'success' : 'failure') : state;
-  return `<div class="refine-stage" data-state="${outcome}" data-effect="${effect?.action ?? ''}" data-hot="${hot}" style="--heat:${Math.min(1, pressure / OVERLOAD_PRESSURE)};--shape:${Math.min(1, progress / flow.target)}">
+  const shapeRatio = Math.min(1, progress / flow.target);
+  return `<div class="refine-stage" data-state="${outcome}" data-effect="${effect?.action ?? ''}" data-hot="${hot}" style="--heat:${Math.min(1, pressure / OVERLOAD_PRESSURE)};--shape:${shapeRatio}">
       <div class="refine-scene" aria-hidden="true">
-        <div class="refine-halo"></div>
-        <div class="refine-vapor"></div>
-        <div class="refine-shape"></div>
-        <div class="refine-flame"></div>
-        <div class="refine-pot"><div class="refine-mouth"></div><div class="refine-sigil"></div></div>
-        <div class="refine-lid"></div>
-        <div class="refine-result"></div>
+        ${renderFurnaceCauldronSvg(outcome, hot, shapeRatio, effect?.action)}
         ${effect?.input ? `<div class="refine-drop">${esc(effect.input)}</div>` : ''}
       </div>
       ${canTime ? '<div class="refine-timing" aria-hidden="true"><i></i></div>' : ''}
@@ -126,12 +131,12 @@ export function renderRefineModal(sess, effect) {
   if (sess.state === 'ready') return `${scene}
     ${renderRefineRequirements(sess.materials, sess.cost, sess.baseRate, sess.realmBonus ?? 0)}
     <div class="row">
-      <button class="primary" data-action="refineAct" data-id="ignite">开炉</button>
-      <button class="ghost" data-action="closeModal">取消</button>
+      <button class="primary" data-action="refineAct" data-id="ignite">点炉起火</button>
+      <button class="ghost" data-action="closeModal">罢手</button>
     </div>`;
   if (sess.state !== 'ongoing') return `${scene}
-    <div>${sess.lines.slice(-1).map((line) => esc(line)).join('')}</div>
-    <button class="primary" data-action="closeModal">返回炼蛊</button>`;
+    <div class="muted">${sess.lines.slice(-1).map((line) => esc(line)).join('')}</div>
+    <button class="primary" data-action="closeModal">收炉离开</button>`;
 
   if (sess.pending.length) return `<div class="refine-ritual">${scene}
       <div class="row">${sess.pending.map((input, index) =>
@@ -155,7 +160,7 @@ export function renderRefineModal(sess, effect) {
       ${sess.turns && !ready ? '<button data-action="refineAct" data-id="gentle">温养</button>' : ''}
       ${techniques.some(({ id, enabled }) => id === 'vent' && enabled) && !ready ? '<button data-action="refineAct" data-id="vent">掀盖放火</button>' : ''}
       ${signature && !ready ? `<button data-action="refineAct" data-id="signature">${esc(signature.name)}</button>` : ''}
-      ${protectables.map((gu) => `<button class="sm" title="耗一次运炉，失败时保住此蛊" data-action="refineAct" data-id="protect:${gu.uid}">护蛊印 · ${esc(gu.name)}</button>`).join('')}
+      ${protectables.map((gu) => `<button class="sm" data-action="refineAct" data-id="protect:${gu.uid}">护蛊印 · ${esc(gu.name)}</button>`).join('')}
       ${chance ? `<button class="${ready ? 'primary' : 'blood'}" data-action="refineAct" data-id="seal">${ready ? '合盖收炉' : '冒险合盖'} · ${Math.round(chance * 100)}%</button>` : ''}
       <button class="ghost" data-action="refineAct" data-id="abort">撤火</button>
     </div>
@@ -163,13 +168,23 @@ export function renderRefineModal(sess, effect) {
   </div>`;
 }
 
+const CHOICE_NUMS = ['一', '二', '三', '四', '五', '六'];
+
 export function renderEventModal(gs, eventId) {
   const ev = STORY_EVENTS.find((e) => e.id === eventId);
   if (!ev) return '';
   const paragraphs = [ev.text, ...(ev.notes ?? []).filter(({ cond }) => evalCond(gs, cond)).map(({ text }) => text)];
-  return `<h2 id="story-title" tabindex="-1">${esc(ev.title)}</h2>
-    <div class="card" style="white-space:pre-line">${esc(paragraphs.join('\n\n'))}</div>
-    <div class="row story-choices">${ev.choices.map((c, idx) => evalCond(gs, c.cond) ? `<button class="primary" data-action="chooseEvent" data-id="${esc(ev.id)}" data-idx="${idx}">${esc(c.text)}</button>` : '').join('')}</div>`;
+  const visibleChoices = ev.choices
+    .map((c, idx) => ({ c, idx }))
+    .filter(({ c }) => evalCond(gs, c.cond));
+  return `<div class="story-header">
+      <span class="story-kicker">卷一 · 青茅往事</span>
+      <h2 id="story-title" tabindex="-1">${esc(ev.title)}</h2>
+    </div>
+    <div class="story-scroll">${esc(paragraphs.join('\n\n'))}</div>
+    <div class="story-choices-col">${visibleChoices.map(({ c, idx }, num) =>
+      `<button class="story-choice-btn" data-action="chooseEvent" data-id="${esc(ev.id)}" data-idx="${idx}"><span class="choice-idx">${CHOICE_NUMS[num] || num + 1}</span><span>${esc(c.text)}</span></button>`
+    ).join('')}</div>`;
 }
 
 export function renderCustomKillerModal(gs) {
@@ -177,14 +192,14 @@ export function renderCustomKillerModal(gs) {
     const blocked = killerCraftBlock(gs, pattern);
     return `<div class="card">
       <div class="kv"><b>${esc(pattern.name)}</b><span class="badge">${pattern.kind} · 耗 ${pattern.cost} 真元</span></div>
-      <div>${esc(killerPatternSequence(pattern))}</div>
+      <div style="margin:4px 0">${esc(killerPatternSequence(pattern))}</div>
       <div class="muted">${esc(pattern.desc)}</div>
-      <div class="muted">${esc(killerEffectText(pattern))}</div>
+      <div class="muted" style="margin-bottom:8px">${esc(killerEffectText(pattern))}</div>
       <button class="sm primary" ${blocked ? 'disabled' : ''} data-action="kmCreate" data-id="${pattern.id}">${esc(blocked || `推演 · ${pattern.fee} 元石`)}</button>
     </div>`;
   }).join('');
-  return `<h2>自创杀招</h2>
-    <input id="kmName" type="text" maxlength="10" aria-label="自定杀招名称" placeholder="自定杀招名称（可留空）">
+  return `<h2>推演杀招</h2>
+    <input id="kmName" type="text" maxlength="10" aria-label="自定杀招名称" placeholder="自定杀招名号（可留空）">
     ${rows}
     <div class="row"><button class="ghost" data-action="closeModal">返回空窍</button></div>`;
 }

@@ -4,29 +4,32 @@ import { fieldTrialStatus } from '../core/field-trial.js';
 import { renderGoalShortcut } from './cultivation-view.js';
 import { GU_DEFS, ITEMS, REFINE_RECIPES, guEffectText, recipeIngredientsText, recipeOutputText } from '../data/gu.js';
 import { MERCHANT_GU, PLACES, placeShopEntries, merchantRefuses, rareGathering, shopUnitPrice } from '../data/places.js';
-import { formatDateTime, isNight } from '../core/calendar.js';
+import { formatDateTime, formatDuration, isNight } from '../core/calendar.js';
+import { placeMoveList } from '../core/clock.js';
 import { esc, questBoard, SHOP_BATCH_LIMIT } from '../core/state.js';
 import { availableLocalScenes, evalCond, hasLocalLifeScene, nextRetreatTime } from '../core/story-engine.js';
 import { availableRecipeDiscovery, isRecipeSold } from '../core/refine.js';
 import { STORY_EVENTS } from '../data/story.js';
+import { renderSceneBannerSvg } from './visuals.js';
 
 function renderFieldTrial(gs, trial) {
   if (!trial) return '';
   const progress = trial.steps.filter(({ done }) => done).length;
   if (gs.location === 'zhulin') {
-    return trial.active ? `<p class="muted">${trial.title} · ${progress}/${trial.steps.length}
-      ${trial.ready ? renderGoalShortcut(gs, { place: 'renwutang' }) : ''}</p>` : '';
+    return trial.active ? `<div class="card trial-banner"><div class="kv"><span>${trial.title} · <b>${progress}/${trial.steps.length}</b></span>${trial.ready ? renderGoalShortcut(gs, { place: 'renwutang' }) : ''}</div></div>` : '';
   }
   const steps = trial.active
-    ? `<ul>${trial.steps.map(({ text, done }) => `<li>${esc(text)} · ${done ? '已完成' : '待完成'}</li>`).join('')}</ul>`
-    : '<p>去竹林勘察、采料、清理兽患后，可回任务堂领赏。</p>';
+    ? `<div class="trial-steps">${trial.steps.map(({ text, done }) =>
+        `<div class="trial-step${done ? ' is-done' : ''}"><i>${done ? '✓' : '·'}</i><span>${esc(text)}</span><em>${done ? '已完成' : '待完成'}</em></div>`
+      ).join('')}</div>`
+    : '<p class="muted">去竹林勘察、采料、清理兽患后，可回任务堂领赏。</p>';
   const rewards = trial.rewards.map(({ id, text }) =>
     `<button class="gold" data-action="placeAct" data-id="fieldReward:${id}">${esc(text)}</button>`).join('');
-  const controls = trial.ready ? `<p>选择一份奖赏并交付。</p><div class="row">${rewards}</div>`
+  const controls = trial.ready ? `<p class="muted">择一份酬赏交付结案。</p><div class="row">${rewards}</div>`
     : trial.active ? renderGoalShortcut(gs, { place: 'zhulin' })
     : '<button class="primary" data-action="placeAct" data-id="fieldPatrol">接取竹林巡守</button>';
   return `<section class="card">
-    <div class="kv"><h3>${trial.title}</h3>${trial.active ? `<b>${progress}/${trial.steps.length}</b>` : ''}</div>
+    <div class="list-head"><h3>${trial.title}</h3>${trial.active ? `<span class="badge gold">${progress}/${trial.steps.length}</span>` : ''}</div>
     ${steps}
     ${controls}
   </section>`;
@@ -37,7 +40,7 @@ export function renderPlaceView(gs) {
   const night = isNight(gs.minutes);
   const trial = ['zhulin', 'renwutang'].includes(place.id) ? fieldTrialStatus(gs) : null;
   const people = localPeople(gs).map((id) =>
-    `<button data-action="visitPerson" data-id="${id}">${esc(STORY_CHARACTERS[id].name)}</button>`).join('');
+    `<button class="person-seal" data-action="visitPerson" data-id="${id}"><span class="seal-dot"></span>${esc(STORY_CHARACTERS[id].name)}</button>`).join('');
   const scenes = availableLocalScenes(gs).map(({ id, title }) =>
     `<button class="gold" data-action="checkEvents" data-id="${esc(id)}">${esc(title)}</button>`);
   if (hasLocalLifeScene(gs)) scenes.push('<button data-action="lookForLifeScene">留意四周</button>');
@@ -48,7 +51,7 @@ export function renderPlaceView(gs) {
   if (place.services.includes('cultivate')) {
     actions.push('<button class="primary" data-action="placeAct" data-id="meditate">打坐吐纳 · 1 时辰</button>');
     actions.push('<button data-action="placeAct" data-id="rest">歇息养伤 · 4 时辰</button>');
-    actions.push(`<button title="闭关期间照常消耗蛊虫口粮，请先备料并开启自动喂养" data-action="placeAct" data-id="retreat">闭关至${esc(formatDateTime(nextRetreatTime(gs)))}</button>`);
+    actions.push(`<button data-action="placeAct" data-id="retreat">闭关至${esc(formatDateTime(nextRetreatTime(gs)))}</button>`);
     if (gs.player.xiao < 3) actions.push('<button class="gold" data-action="washMinor">冲刷窍壁</button>');
     else actions.push('<button class="gold" data-action="openBreak">破壁冲关</button>');
   }
@@ -63,11 +66,11 @@ export function renderPlaceView(gs) {
     actions.push('<button data-action="placeAct" data-id="sparring">与同窗切磋（古月方正）</button>');
   }
   if (place.services.includes('heal')) {
-    actions.push('<button data-action="placeAct" data-id="docHeal">药堂疗伤（10 元石回满）</button>');
+    actions.push('<button data-action="placeAct" data-id="docHeal">药堂疗伤 · 10 元石</button>');
   }
   if (place.services.includes('rumor')) {
     actions.push('<button class="gold" data-action="placeAct" data-id="rumor">打听近况 · 2 刻</button>');
-    if (!gs.flags['clue:huajiu']) actions.push('<button data-action="placeAct" data-id="secretRumor">买暗涧遗洞消息（12 元石）</button>');
+    if (!gs.flags['clue:huajiu']) actions.push('<button data-action="placeAct" data-id="secretRumor">打探暗涧遗洞 · 12 元石</button>');
   }
   if (place.services.includes('clan_hall')) {
     actions.push('<button class="gold" data-action="placeAct" data-id="clanGift">领取二转赏赐</button>');
@@ -114,24 +117,28 @@ export function renderPlaceView(gs) {
             ${kind === 'gu' ? `<span class="list-meta">${def.rank}转 · ${esc(def.kind)}</span>` : `<span class="list-meta">${esc(def.kind)}</span>`}
             ${limited ? '<span class="gu-tag">商队限售一只</span>' : ''}
           </div>
-          <div class="list-sub" ${effect ? `title="${esc(effect)}"` : ''}>${esc(def.desc)}${effect ? ` · ${esc(effect)}` : ''}</div>
-          ${recipes.length ? `<div class="list-hint">蛊方材料：${esc(recipes.join('、'))}</div>` : ''}
+          <div class="list-sub">${esc(def.desc)}${effect ? ` · ${esc(effect)}` : ''}</div>
+          ${recipes.length ? `<div class="list-hint">可合炼：${esc(recipes.join('、'))}</div>` : ''}
         </div>
         <div class="shop-purchase">
-          ${limited ? '' : `<input type="number" min="1" max="${SHOP_BATCH_LIMIT}" step="1" value="1" aria-label="${esc(def.name)}购买数量" ${affordable ? '' : 'disabled'}>`}
+          ${limited ? '' : `<div class="qty-stepper">
+            <button type="button" class="sm ghost" data-action="stepQty" data-step="-1" ${affordable ? '' : 'disabled'} aria-label="减少数量">−</button>
+            <input type="number" min="1" max="${SHOP_BATCH_LIMIT}" step="1" value="1" aria-label="${esc(def.name)}购买数量" ${affordable ? '' : 'disabled'}>
+            <button type="button" class="sm ghost" data-action="stepQty" data-step="1" ${affordable ? '' : 'disabled'} aria-label="增加数量">+</button>
+          </div>`}
           <button class="sm ${affordable ? '' : 'ghost'}" ${affordable ? '' : 'disabled'} data-action="buyItem" data-id="${esc(entry)}">${id === 'jiuchong' && gs.flags.wine_bid ? '竞买' : '买'} · ${price}${limited ? '' : kind === 'gu' ? '/只' : '/份'}</button>
         </div>
       </li>`;
     }).join('');
-    shopHtml = `<div class="card"><div class="list-head"><h3>${esc(place.name)}货架</h3><span class="muted">余额 ${gs.player.yuanshi} 元石</span></div><ul class="list-rows">${rows}</ul></div>`;
+    shopHtml = `<div class="card"><div class="list-head"><h3>${esc(place.name)}货架</h3><span class="muted">元石 ${gs.player.yuanshi}</span></div><ul class="list-rows">${rows}</ul></div>`;
   }
 
   const board = place.services.includes('quests') ? questBoard(gs) : null;
   const questHtml = board ? `<div class="card">
-      <div class="list-head"><h3>族中委托</h3><span class="muted">轮换 · ${esc(formatDateTime(gs.minutes + board.remaining))}</span></div>
+      <div class="list-head"><h3>族中委托</h3><span class="muted">下次轮换 · ${esc(formatDateTime(gs.minutes + board.remaining))}</span></div>
       <ul class="list-rows">${board.entries.map((q) => {
         const ready = q.progress === q.target;
-        return `<li class="list-row">
+        return `<li class="list-row${ready && q.accepted && !q.claimed ? ' is-ready' : ''}">
           <div class="list-main">
             <div class="list-title"><b>${esc(q.name)}</b><span class="list-meta">赏 ${q.reward} 元石${q.accepted ? ` · ${q.progress}/${q.target}` : ''}</span></div>
             <div class="list-sub">${esc(q.desc)}</div>
@@ -146,11 +153,11 @@ export function renderPlaceView(gs) {
     </div>` : '';
 
   const recipeHtml = sellsRecipes ? `<div class="card">
-      <div class="list-head"><h3>蛊方</h3></div>
+      <div class="list-head"><h3>在售蛊方</h3></div>
       <ul class="list-rows">${REFINE_RECIPES.filter(isRecipeSold).map((r) => {
         const owned = gs.player.recipes?.includes(r.id);
         const out = GU_DEFS[r.out] || ITEMS[r.out];
-        return `<li class="list-row">
+        return `<li class="list-row${owned ? ' is-ready' : ''}">
           <div class="list-main">
             <div class="list-title"><b>${esc(recipeOutputText(r))}${r.method ?? ''}蛊方</b>${out.rank ? `<span class="list-meta">${out.rank}转</span>` : ''}</div>
             <div class="list-sub">${esc(recipeIngredientsText(r))}</div>
@@ -162,16 +169,38 @@ export function renderPlaceView(gs) {
       }).join('')}</ul>
     </div>` : '';
 
+  // 直接相邻的路标，方便单手快速行脚，也保留完整山野舆图弹窗
+  const linkedIds = Object.keys(place.links || {}).filter((id) => PLACES[id] && (!PLACES[id].hidden || gs.flags[PLACES[id].hidden]));
+  const moveMap = Object.fromEntries(placeMoveList(gs).map((m) => [m.id, m]));
+  const pathChips = linkedIds.map((id) => {
+    const target = PLACES[id];
+    const mv = moveMap[id];
+    const blocked = mv?.blocked;
+    return `<button type="button" class="sm path-chip${blocked ? ' is-blocked' : ''}" data-action="walkTo" data-id="${id}" ${blocked ? `disabled title="${esc(blocked)}"` : ''}>
+      <span>${esc(target.name)}</span>
+      <small>${blocked ? '受阻' : formatDuration(place.links[id])}</small>
+    </button>`;
+  }).join('');
+
   return `<section class="stage ${night ? 'is-night' : ''}">
-      <div class="stage-loc">${esc(formatDateTime(gs.minutes))} · ${esc(place.region)}</div>
-      <h1 id="place-title">${esc(place.name)}</h1>
-      <p class="stage-desc">${esc(night ? place.night : place.day)}</p>
-      ${place.gather ? `<p class="muted">常见山材 · ${esc([...new Set(place.gather)].map((id) => ITEMS[id].name).join('、'))}${rareGathering(gs, place) ? ` · 今日山材丰收，可采${esc(ITEMS[place.rare.item].name)} ×4` : ''}</p>` : ''}
-      <div class="row">${actions.join('')}</div>
+      ${renderSceneBannerSvg(place.id, night)}
+      <div class="stage-inner">
+        <div class="stage-head">
+          <div>
+            <div class="stage-loc">${esc(place.region)} · ${night ? '夜色' : '白昼'}</div>
+            <h1 id="place-title">${esc(place.name)}</h1>
+          </div>
+          <button type="button" class="sm gold" data-action="openMap">展开舆图</button>
+        </div>
+        <p class="stage-desc">${esc(night ? place.night : place.day)}</p>
+        ${place.gather ? `<p class="stage-gather">山间风物 · ${esc([...new Set(place.gather)].map((id) => ITEMS[id].name).join('、'))}${rareGathering(gs, place) ? ` · 今日丰饶，可采${esc(ITEMS[place.rare.item].name)} ×4` : ''}</p>` : ''}
+        ${actions.length ? `<div class="row stage-actions">${actions.join('')}</div>` : ''}
+        ${pathChips ? `<div class="stage-paths"><span class="stage-paths-label">去处</span>${pathChips}</div>` : ''}
+      </div>
     </section>
-    ${people ? `<section class="card"><h3>在场人物</h3><div class="row">${people}</div></section>` : ''}
-    ${scenes.length ? `<section class="card"><h3>此地剧情</h3><div class="row">${scenes.join('')}</div></section>` : ''}
-    ${place.id === 'gupu' && gs.player.rank < 2 ? '<p class="card muted">晋入二转后，蛊铺会出售月痕蛊与月霓裳。冲击二转前，可先在此买蛊方自行炼制。</p>' : ''}
+    ${people ? `<section class="card"><div class="list-head"><h3>在场人物</h3></div><div class="row">${people}</div></section>` : ''}
+    ${scenes.length ? `<section class="card"><div class="list-head"><h3>此地异动</h3></div><div class="row">${scenes.join('')}</div></section>` : ''}
+    ${place.id === 'gupu' && gs.player.rank < 2 ? '<p class="card muted">掌柜嘱咐：晋入二转后，蛊铺会出售月痕蛊与月霓裳；冲击二转前，可先备好蛊方自行合炼。</p>' : ''}
     ${merchantRefuses(gs) ? '<p class="card muted">贾家封了你的货帖，商队暂不与你做生意。</p>' : ''}
     ${renderFieldTrial(gs, trial)}
     ${questHtml}
