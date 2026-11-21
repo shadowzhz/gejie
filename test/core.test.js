@@ -7,9 +7,11 @@ import { makeTime, MIN_PER_DAY, MIN_PER_MONTH } from '../src/core/calendar.js';
 import { applyEventChoice, availableLocalScenes, checkStoryTriggers, evalCond, finishStoryBattle, hasLocalLifeScene, lookForLifeScene, innRumors, nextRetreatTime } from '../src/core/story-engine.js';
 import { createKillerMove, forgetKillerMove } from '../src/core/killer.js';
 import { battleAct, battleGuPlan, startBattle } from '../src/core/combat.js';
-import { createBreakSession, stepBreakSession, validBreakSession, washMinorWall } from '../src/core/breakthrough.js';
+import { createBreakSession, nextRealmRequirements, stepBreakSession, validBreakSession, washMinorWall } from '../src/core/breakthrough.js';
 import { availableRecipeDiscovery, canStartRefine, createRefineSession, isRecipeSold, knowsRefineRecipe, purchaseRecipe, REFINE_SESSION_VERSION, refineChance, refineReady, refineRealm, refineTechniques, restoreRefineSession, stepRefineSession } from '../src/core/refine.js';
 import { renderCustomKillerModal, renderEventModal } from '../src/ui/rituals.js';
+import { mainGrowthGoal } from '../src/core/growth-guide.js';
+import { renderCultivationView, renderGoalShortcut } from '../src/ui/cultivation-view.js';
 import { renderPlaceView } from '../src/ui/place-view.js';
 import { changeStoryRelation, storyRelation } from '../src/core/story-progress.js';
 import { performPlaceAction } from '../src/core/place-actions.js';
@@ -1449,4 +1451,78 @@ test('保护商队证人能换来私路救援，撤离分支可在原终章结�
   gs.location = 'zhaimen';
   assert.equal(performPlaceAction(gs, 'escapeMountain').won, true);
   assert.equal(gs.player.escapedMountain, true);
+});
+
+test('修行指引在夺得头名、错过交卷和错过领蛊后都能接到出寨历练', () => {
+  for (const route of ['win', 'lateSubmit', 'lateClaim']) {
+    const gs = createNewGame();
+    const p = gs.player;
+    applyEventChoice(gs, 'kaike', 0);
+    assert.equal(mainGrowthGoal(gs).place, 'xuetang');
+    assert.match(renderGoalShortcut(gs, mainGrowthGoal(gs)), /data-id="xuetang"/);
+    if (route === 'lateClaim') {
+      gs.minutes = makeTime(1, 3, 3);
+      assert.equal(checkStoryTriggers(gs)?.id, 'toumin_lost');
+      applyEventChoice(gs, 'toumin_lost', 1);
+      assert.equal(mainGrowthGoal(gs).place, 'xuetang');
+    }
+    assert.ok(moveToPlace(gs, 'xuetang').ok);
+    performPlaceAction(gs, 'pickBenming');
+    assert.equal(mainGrowthGoal(gs).tab, 'cultivation');
+    assert.match(renderCultivationView(gs, mainGrowthGoal(gs)), /data-action="refineBenming"/);
+    assert.ok(refineBenming(gs).ok);
+    if (route !== 'lateClaim') assert.equal(mainGrowthGoal(gs).place, 'xuetang');
+
+    if (route === 'win') {
+      assert.equal(checkStoryTriggers(gs, 'toumin_win')?.id, 'toumin_win');
+      const stones = p.yuanshi;
+      applyEventChoice(gs, 'toumin_win', 0);
+      assert.equal(p.yuanshi, stones + 20);
+    } else if (route === 'lateSubmit') {
+      gs.minutes = makeTime(1, 3, 3);
+      assert.equal(checkStoryTriggers(gs)?.id, 'toumin_lost');
+      applyEventChoice(gs, 'toumin_lost', 0);
+    }
+
+    assert.equal(mainGrowthGoal(gs).place, 'yanwu');
+    assert.ok(moveToPlace(gs, 'yanwu').ok);
+    assert.ok(performPlaceAction(gs, 'caoren').ok);
+    gs.battle.state = 'win';
+    assert.ok(finishStoryBattle(gs));
+    assert.equal(mainGrowthGoal(gs).place, 'zhulin');
+    assert.match(renderGoalShortcut(gs, mainGrowthGoal(gs)), /data-id="zhulin"/);
+    assert.ok(moveToPlace(gs, 'zhulin').ok);
+  }
+});
+
+test('修行页与冲刷、破壁共用蛊虫、修为和真元门槛', () => {
+  const gs = createNewGame('测试者', { grade: '丙', hai: 5, desc: '' });
+  const p = gs.player;
+  addGu(gs, 'yueguang');
+  addGu(gs, 'shipi');
+  const minor = nextRealmRequirements(p);
+  assert.equal(minor.zy, Math.round(p.zyMax * 0.75));
+  assert.equal(minor.gu.count, minor.gu.need);
+  assert.match(renderCultivationView(gs, mainGrowthGoal(gs)), /下一境界 · 一转中阶/);
+  p.xp = minor.xp - 1;
+  p.zy = minor.zy;
+  assert.match(washMinorWall(gs).reason, /修为不足/);
+  p.xp++;
+  p.zy--;
+  assert.match(washMinorWall(gs).reason, /真元不足/);
+  p.zy++;
+  assert.ok(washMinorWall(gs).ok);
+
+  p.xiao = 3;
+  const major = nextRealmRequirements(p);
+  assert.equal(major.xp, 0);
+  assert.equal(major.gu.count, 0);
+  assert.equal(createBreakSession(gs).error, major.gu.text);
+  addGu(gs, 'yuehen');
+  p.zy = nextRealmRequirements(p).zy - 1;
+  assert.match(createBreakSession(gs).error, /真元/);
+  p.zy++;
+  assert.equal(createBreakSession(gs).state, 'ongoing');
+  p.rank = 4;
+  assert.equal(nextRealmRequirements(p), null);
 });

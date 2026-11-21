@@ -30,6 +30,8 @@ const ORDER = [
   'src/core/refine.js',
   'src/core/breakthrough.js',
   'src/core/place-actions.js',
+  'src/core/growth-guide.js',
+  'src/ui/cultivation-view.js',
   'src/ui/rituals.js',
   'src/ui/battle-view.js',
   'src/ui/map-view.js',

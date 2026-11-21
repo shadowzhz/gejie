@@ -1,12 +1,16 @@
 import { formatDateTime, isNight, MIN_PER_DAY } from '../core/calendar.js';
 import { minorXpNeed, saveGame } from '../core/state.js';
+import { nextRealmRequirements } from '../core/breakthrough.js';
 import { advanceMinutes } from '../core/clock.js';
 import { setModal } from './modal-controller.js';
 
 function updateLiveDisplay(ui) {
   const p = ui.game.player;
   const need = minorXpNeed(p);
+  const next = ui.tab === 'cultivation' ? nextRealmRequirements(p) : null;
   const labels = {
+    'cultivation-xp': `${Math.floor(p.xp)} / ${next?.xp}`,
+    'cultivation-zy': `${Math.floor(p.zy)} / ${next?.zy}`,
     clock: formatDateTime(ui.game.minutes),
     hp: `${Math.round(p.hp)}/${p.hpMax}`,
     zy: `${Math.round(p.zy)}/${p.zyMax}`,

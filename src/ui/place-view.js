@@ -25,7 +25,7 @@ export function renderPlaceView(gs) {
   }
   if (place.services.includes('xuetang_gu')) {
     if (!gs.player.benming && !gs.player.unrefinedBenming) actions.push('<button class="gold" data-action="placeAct" data-id="pickBenming">进蛊室领本命蛊（月光蛊）</button>');
-    if (gs.player.unrefinedBenming) actions.push('<button class="primary" data-action="navTab" data-tab="aperture">前往空窍炼化月光蛊</button>');
+    if (gs.player.unrefinedBenming) actions.push('<button class="primary" data-action="navTab" data-tab="cultivation">前往修行炼化月光蛊</button>');
     const submission = STORY_EVENTS.find((event) => event.id === 'toumin_win');
     if (evalCond(gs, submission.cond)) actions.push('<button class="primary" data-action="checkEvents" data-id="toumin_win">向家老交卷夺头名</button>');
   }

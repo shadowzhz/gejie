@@ -90,13 +90,15 @@ button.sm { min-height: 32px; padding: 4px 10px; font-size: .85rem; }
 .clock-box { display: flex; align-items: center; gap: 8px; font-size: .86rem; color: var(--dim); }
 .goal-bar {
   display: flex;
-  align-items: baseline;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
   font-size: .82rem;
   color: #dfd3b4;
   padding: 2px 0 2px 8px;
   border-left: 2px solid var(--gold);
 }
+.goal-bar > div { flex: 1 1 12rem; }
 .goal-bar > span { font-size: .74rem; color: var(--gold); flex-shrink: 0; }
 .res-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 14px; align-items: center; }
 .res-item { min-width: 0; }
@@ -257,7 +259,7 @@ button.sm { min-height: 32px; padding: 4px 10px; font-size: .85rem; }
   background: rgba(12, 23, 21, .97);
   border-top: 1px solid var(--line);
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 4px;
   padding: 6px 8px;
 }

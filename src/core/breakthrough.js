@@ -8,6 +8,18 @@ export function realmGuRequirement(p) {
   return { need, count, text: `持有 ${rank} 转蛊虫 ${count}/${need} 只` };
 }
 
+export function nextRealmRequirements(p) {
+  const major = p.xiao >= 3;
+  if (major && p.rank >= 4) return null;
+  return {
+    target: realmText({ rank: p.rank + Number(major), xiao: major ? 0 : p.xiao + 1 }),
+    major,
+    gu: realmGuRequirement(p),
+    xp: major ? 0 : minorXpNeed(p),
+    zy: Math.round(p.zyMax * (major ? 0.9 : p.hai < 6 && !activeCultivationWine(p) ? 0.75 : 0.6))
+  };
+}
+
 export function realmGrowthText(before, after) {
   const stats = [['hpMax', '气血上限'], ['zyMax', '真元上限'], ['speed', '身法']];
   return stats.map(([key, label]) => `${label} ${before[key]} → ${after[key]}`).join(' · ');
@@ -16,10 +28,8 @@ export function realmGrowthText(before, after) {
 export function washMinorWall(gs) {
   const p = gs.player;
   if (p.xiao >= 3) return { ok: false, reason: '已至本转巅峰，须破壁冲击大境界' };
-  const gu = realmGuRequirement(p);
+  const { gu, xp: needXp, zy: needZy } = nextRealmRequirements(p);
   if (gu.count < gu.need) return { ok: false, reason: gu.text };
-  const needXp = minorXpNeed(p);
-  const needZy = Math.round(p.zyMax * (p.hai < 6 && !activeCultivationWine(p) ? 0.75 : 0.6));
   if (p.xp < needXp) return { ok: false, reason: `修为不足（需 ${needXp}）` };
   if (p.zy < needZy) return { ok: false, reason: `真元不足（需 ${needZy}）` };
   const before = { ...p };
@@ -52,9 +62,9 @@ export function createBreakSession(gs) {
   const p = gs.player;
   if (p.rank >= 4) return { error: '青茅山卷暂止于三/四转' };
   if (p.xiao < 3) return { error: '须先修至本转巅峰，方可破壁' };
-  const gu = realmGuRequirement(p);
+  const { gu, zy } = nextRealmRequirements(p);
   if (gu.count < gu.need) return { error: gu.text };
-  if (p.zy < Math.round(p.zyMax * 0.9)) return { error: '真元须温养至九成以上' };
+  if (p.zy < zy) return { error: '真元须温养至九成以上' };
   const crackMult = Math.min(2.2, 1 + 0.2 * (p.attempts || 0));
   const wine = activeCultivationWine(p);
   return {

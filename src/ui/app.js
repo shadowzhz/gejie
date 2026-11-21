@@ -6,6 +6,8 @@ import { renderBattleView } from './battle-view.js';
 import { renderMapPanel } from './map-view.js';
 import { renderApertureView } from './aperture-view.js';
 import { renderRefineView } from './refine-view.js';
+import { mainGrowthGoal } from '../core/growth-guide.js';
+import { renderCultivationView, renderGoalShortcut } from './cultivation-view.js';
 import { renderBagView } from './bag-view.js';
 import { createStartState, handleAction } from './actions.js';
 import { startGameLoop } from './game-loop.js';
@@ -23,7 +25,7 @@ function showToast(msg) {
   showToast._t = setTimeout(() => el.classList.remove('show'), 2200);
 }
 
-function renderTopBar() {
+function renderTopBar(goal) {
   const p = ui.game.player;
   const hpPct = Math.round(p.hp / Math.max(1, p.hpMax) * 100);
   const zyPct = Math.round(p.zy / Math.max(1, p.zyMax) * 100);
@@ -41,7 +43,7 @@ function renderTopBar() {
         <button class="sm ghost" data-action="togglePause">${ui.game.paused ? '▶ 继续流逝' : '⏸ 暂停'}</button>
       </div>
     </div>
-    <div class="goal-bar"><span>目标</span>${esc(ui.game.goal)}</div>
+    <div class="goal-bar"><span>目标</span><div>${esc(goal.text)}</div>${ui.tab === 'cultivation' ? '' : renderGoalShortcut(ui.game, goal)}</div>
     <div class="res-row">
       <div class="res-item"><div class="res-head"><span>气血${ui.game.battle?.meShield ? ` · 盾 ${ui.game.battle.meShield}` : ''}</span><span data-live="hp">${Math.round(p.hp)}/${p.hpMax}</span></div><div class="bar hp"><i data-live="hp-bar" style="width:${hpPct}%"></i></div></div>
       <div class="res-item"><div class="res-head"><span>真元</span><span data-live="zy">${Math.round(p.zy)}/${p.zyMax}</span></div><div class="bar zy"><i data-live="zy-bar" style="width:${zyPct}%"></i></div></div>
@@ -60,11 +62,14 @@ export function render() {
     return;
   }
 
+  const goal = mainGrowthGoal(ui.game);
   let body = '';
   if (ui.game.battle) {
     body = renderBattleView(ui.game);
   } else if (ui.tab === 'place') {
     body = renderMapPanel(ui.game);
+  } else if (ui.tab === 'cultivation') {
+    body = renderCultivationView(ui.game, goal);
   } else if (ui.tab === 'aperture') {
     body = renderApertureView(ui.game);
   } else if (ui.tab === 'refine') {
@@ -74,12 +79,12 @@ export function render() {
   }
 
   const navButtons = [
-    ['place', '地图'], ['aperture', '空窍'],
+    ['place', '地图'], ['cultivation', '修行'], ['aperture', '空窍'],
     ['refine', '炼蛊'], ['bag', '行囊'], ['journal', '行纪']
   ].map(([id, label]) => `<button class="${ui.tab === id ? 'on' : ''}" data-action="navTab" data-tab="${id}">${label}</button>`).join('');
 
   app.innerHTML = `<div class="shell">
-    ${renderTopBar()}
+    ${renderTopBar(goal)}
     <main class="main">${body}</main>
     <nav class="nav">${navButtons}</nav>
   </div>`;

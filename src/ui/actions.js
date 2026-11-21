@@ -113,7 +113,7 @@ export function handleAction(ui, el, { render, showToast }) {
   } else if (act === 'kaiqiaoFinish') {
     ui.game = createNewGame(ui.start.name, ui.start.apt);
     ui.start.phase = 'intro';
-    ui.tab = 'place';
+    ui.tab = 'cultivation';
     saveGame(ui.game);
     render();
   } else if (act === 'continueSave') {
@@ -143,6 +143,7 @@ export function handleAction(ui, el, { render, showToast }) {
     const res = moveToPlace(ui.game, id);
     if (!res.ok) showToast(res.reason);
     else if (ui.game.location === id) {
+      ui.tab = 'place';
       ui.modal = hasPlaceActions(ui.game) ? { kind: 'place' } : null;
       const sheet = document.getElementById('sheet');
       if (sheet) sheet.scrollTop = 0;
@@ -150,7 +151,10 @@ export function handleAction(ui, el, { render, showToast }) {
     saveGame(ui.game);
     render();
   } else if (act === 'openPlace') {
-    if (ui.game && !ui.game.battle && !ui.game.player.dead && hasPlaceActions(ui.game)) openModal('place');
+    if (ui.game && !ui.game.battle && !ui.game.player.dead && hasPlaceActions(ui.game)) {
+      ui.tab = 'place';
+      openModal('place');
+    }
   } else if (act === 'placeAct') {
     handlePlaceAction(ui, id, { openModal, render, showToast });
   } else if (act === 'quest') {
@@ -182,6 +186,7 @@ export function handleAction(ui, el, { render, showToast }) {
   } else if (act === 'refineBenming') {
     const res = refineBenming(ui.game);
     if (!res.ok) { showToast(res.reason); return; }
+    ui.tab = 'cultivation';
     saveGame(ui.game);
     render();
   } else if (act === 'chooseEvent') {

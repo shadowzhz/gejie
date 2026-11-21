@@ -98,13 +98,15 @@ button.sm { min-height: 32px; padding: 4px 10px; font-size: .85rem; }
 .clock-box { display: flex; align-items: center; gap: 8px; font-size: .86rem; color: var(--dim); }
 .goal-bar {
   display: flex;
-  align-items: baseline;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
   font-size: .82rem;
   color: #dfd3b4;
   padding: 2px 0 2px 8px;
   border-left: 2px solid var(--gold);
 }
+.goal-bar > div { flex: 1 1 12rem; }
 .goal-bar > span { font-size: .74rem; color: var(--gold); flex-shrink: 0; }
 .res-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 14px; align-items: center; }
 .res-item { min-width: 0; }
@@ -265,7 +267,7 @@ button.sm { min-height: 32px; padding: 4px 10px; font-size: .85rem; }
   background: rgba(12, 23, 21, .97);
   border-top: 1px solid var(--line);
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 4px;
   padding: 6px 8px;
 }
@@ -3430,6 +3432,17 @@ function realmGuRequirement(p) {
   const count = p.gu.filter((g) => GU_DEFS[g.id]?.rank === rank).length;
   return { need, count, text: `持有 ${rank} 转蛊虫 ${count}/${need} 只` };
 }
+function nextRealmRequirements(p) {
+  const major = p.xiao >= 3;
+  if (major && p.rank >= 4) return null;
+  return {
+    target: realmText({ rank: p.rank + Number(major), xiao: major ? 0 : p.xiao + 1 }),
+    major,
+    gu: realmGuRequirement(p),
+    xp: major ? 0 : minorXpNeed(p),
+    zy: Math.round(p.zyMax * (major ? 0.9 : p.hai < 6 && !activeCultivationWine(p) ? 0.75 : 0.6))
+  };
+}
 function realmGrowthText(before, after) {
   const stats = [['hpMax', '气血上限'], ['zyMax', '真元上限'], ['speed', '身法']];
   return stats.map(([key, label]) => `${label} ${before[key]} → ${after[key]}`).join(' · ');
@@ -3437,10 +3450,8 @@ function realmGrowthText(before, after) {
 function washMinorWall(gs) {
   const p = gs.player;
   if (p.xiao >= 3) return { ok: false, reason: '已至本转巅峰，须破壁冲击大境界' };
-  const gu = realmGuRequirement(p);
+  const { gu, xp: needXp, zy: needZy } = nextRealmRequirements(p);
   if (gu.count < gu.need) return { ok: false, reason: gu.text };
-  const needXp = minorXpNeed(p);
-  const needZy = Math.round(p.zyMax * (p.hai < 6 && !activeCultivationWine(p) ? 0.75 : 0.6));
   if (p.xp < needXp) return { ok: false, reason: `修为不足（需 ${needXp}）` };
   if (p.zy < needZy) return { ok: false, reason: `真元不足（需 ${needZy}）` };
   const before = { ...p };
@@ -3471,9 +3482,9 @@ function createBreakSession(gs) {
   const p = gs.player;
   if (p.rank >= 4) return { error: '青茅山卷暂止于三/四转' };
   if (p.xiao < 3) return { error: '须先修至本转巅峰，方可破壁' };
-  const gu = realmGuRequirement(p);
+  const { gu, zy } = nextRealmRequirements(p);
   if (gu.count < gu.need) return { error: gu.text };
-  if (p.zy < Math.round(p.zyMax * 0.9)) return { error: '真元须温养至九成以上' };
+  if (p.zy < zy) return { error: '真元须温养至九成以上' };
   const crackMult = Math.min(2.2, 1 + 0.2 * (p.attempts || 0));
   const wine = activeCultivationWine(p);
   return {
@@ -3701,6 +3712,92 @@ function performPlaceAction(gs, id) {
     return;
   }
   return { ok: true };
+}
+
+
+/* === src/core/growth-guide.js === */
+
+
+
+const submission = STORY_EVENTS.find(({ id }) => id === 'toumin_win');
+const milestones = [
+  ['nianmo_exam', '先修行与历练，为年末大考做准备。'],
+  ['langchao_start', '趁狼潮未至，提升境界并备好疗伤物资。'],
+  ['wolf_breach', '补充气血与真元，准备应对东门战事。'],
+  ['tie_inquiry', '铁家将查问狼潮战事与商队失踪案。'],
+  ['three_clans', '养好出战蛊虫，准备参加三寨大比。'],
+  ['qingmao_endgame', '备好药粮，准备应对青茅山最后一战。']
+].map(([id, hint]) => {
+  const event = STORY_EVENTS.find((entry) => entry.id === id);
+  const date = parseTimeExpr(event.cond.split('&')[0].slice('after:'.length));
+  return { id, title: event.title, date, hint };
+});
+function mainGrowthGoal(gs) {
+  const { flags, player: p, minutes, pendingEventId } = gs;
+  if (p.escapedMountain) return { text: '已走出青茅山' };
+  if (pendingEventId) {
+    const event = STORY_EVENTS.find(({ id }) => id === pendingEventId);
+    if (event) return { text: `处理眼前事件 · ${event.title}` };
+  }
+  if (flags.qingmao_finished) return { text: '从青茅寨门离开青茅山', place: 'zhaimen' };
+  if (!p.benming) {
+    if (p.unrefinedBenming) return { text: '消耗真元，炼化本命蛊', tab: 'cultivation' };
+    return { text: '到学堂的蛊室领取本命蛊', place: 'xuetang' };
+  }
+  if (!flags['event_done:toumin_win'] && evalCond({ ...gs, location: 'xuetang' }, submission.cond)) {
+    return { text: '三月三日前回学堂向家老交卷', place: 'xuetang' };
+  }
+  if (!flags.practiced) return { text: '到演武场与草人傀儡对练，开启出寨历练', place: 'yanwu' };
+  if (flags['clue:huajiu'] && !flags['looted:huajiu'] && !flags.langchao_seen) {
+    return { text: '探索暗涧遗洞，搜寻花酒行者遗藏', place: 'huajiu' };
+  }
+  if (!flags['clear:zhulin'] && !flags.nianmo_done && minutes < milestones[0].date) {
+    return { text: '到月下竹林搜山历练，实力足够后挑战兽王', place: 'zhulin' };
+  }
+  const next = milestones.find(({ id }) => !flags[`event_done:${id}`]);
+  if (next) {
+    const when = minutes < next.date ? ` · ${formatDateTime(next.date)}` : '';
+    return { text: `${next.title}${when}。 ${next.hint}`, place: 'zhulou' };
+  }
+  return { text: gs.goal };
+}
+
+
+/* === src/ui/cultivation-view.js === */
+function renderGoalShortcut(gs, goal) {
+  if (gs.battle || gs.player.dead || gs.pendingEventId || gs.refining || gs.breakthrough) return '';
+  if (goal.tab) return '<button class="sm gold" data-action="navTab" data-tab="cultivation">前往修行</button>';
+  if (!goal.place) return '';
+  const name = PLACES[goal.place].name;
+  if (gs.location === goal.place) return `<button class="sm gold" data-action="openPlace">进入${esc(name)}</button>`;
+  const route = placeMoveList(gs).find(({ id }) => id === goal.place);
+  if (!route || route.blocked) return `<small>${esc(route?.blocked || '此处无路可通')}</small>`;
+  return `<button class="sm gold" data-action="walkTo" data-id="${goal.place}">前往${esc(name)} · ${formatDuration(route.minutes)}</button>`;
+}
+function renderCultivationView(gs, goal) {
+  const p = gs.player;
+  const next = nextRealmRequirements(p);
+  const requirements = next ? `
+    <h3>下一境界 · ${esc(next.target)}</h3>
+    <div class="kv"><span>蛊虫</span><b>${esc(next.gu.text)}</b></div>
+    ${next.major ? '' : `<div class="kv"><span>修为</span><b data-live="cultivation-xp">${Math.floor(p.xp)} / ${next.xp}</b></div>`}
+    <div class="kv"><span>真元</span><b data-live="cultivation-zy">${Math.floor(p.zy)} / ${next.zy}</b></div>
+    <div class="row">
+      <button class="primary" data-action="${next.major ? 'openBreak' : 'washMinor'}">${next.major ? '破壁冲关' : '冲刷窍壁'}</button>
+      ${next.gu.count < next.gu.need ? `<button data-action="navTab" data-tab="refine">查看蛊方</button>${renderGoalShortcut(gs, { place: 'gupu' })}` : ''}
+    </div>
+    <p class="muted">${next.major ? '真元会随时间恢复。回竹楼打坐可加快恢复。' : '随时间流逝积累修为、恢复真元。也可回竹楼打坐吐纳。'}</p>
+    ${renderGoalShortcut(gs, { place: 'zhulou' })}
+  ` : '<p>已达到本卷境界上限。</p>';
+  return `<section class="card">
+      <h2>修行</h2>
+      <p class="muted">当前境界 · ${esc(realmText(p))}</p>
+      <h3>主线目标</h3>
+      <p>${esc(goal.text)}</p>
+      ${goal.tab === 'cultivation' ? `<button class="primary" data-action="refineBenming">炼化本命蛊 · ${BENMING_ZY_COST} 真元</button>` : renderGoalShortcut(gs, goal)}
+      ${gs.flags.toumin_won ? '<p class="muted">已夺得学堂头名。</p>' : gs.flags['event_done:toumin_lost'] ? '<p class="muted">学堂头名已旁落，仍可继续修行。</p>' : ''}
+    </section>
+    <section class="card">${requirements}</section>`;
 }
 
 
@@ -4053,7 +4150,7 @@ function renderPlaceView(gs) {
   }
   if (place.services.includes('xuetang_gu')) {
     if (!gs.player.benming && !gs.player.unrefinedBenming) actions.push('<button class="gold" data-action="placeAct" data-id="pickBenming">进蛊室领本命蛊（月光蛊）</button>');
-    if (gs.player.unrefinedBenming) actions.push('<button class="primary" data-action="navTab" data-tab="aperture">前往空窍炼化月光蛊</button>');
+    if (gs.player.unrefinedBenming) actions.push('<button class="primary" data-action="navTab" data-tab="cultivation">前往修行炼化月光蛊</button>');
     const submission = STORY_EVENTS.find((event) => event.id === 'toumin_win');
     if (evalCond(gs, submission.cond)) actions.push('<button class="primary" data-action="checkEvents" data-id="toumin_win">向家老交卷夺头名</button>');
   }
@@ -4479,8 +4576,7 @@ function renderStoryJournal(gs) {
   events.reverse().sort((a, b) => (history[b.id]?.minute ?? -1) - (history[a.id]?.minute ?? -1));
   const latestMain = events.find((event) => !event.quest && !event.person && !event.ambient);
   const chapter = gs.player.escapedMountain ? '卷一已结束' : '卷一 · 青茅山';
-  const main = gs.flags.qingmao_finished && !gs.player.escapedMountain
-    ? '从青茅寨门离开青茅山' : gs.goal;
+  const main = mainGrowthGoal(gs);
   const records = events
     .map((event) => {
       const entry = history[event.id];
@@ -4519,7 +4615,7 @@ function renderStoryJournal(gs) {
   if (gs.flags['clue:huajiu']) clueList.push('<li><b>花酒行者的旧事</b> · 从血蝠洞沿下游走，水帘后有暗涧遗洞。</li>');
   return `<section class="card">
       <h3>主线 · ${chapter}</h3>
-      ${!gs.player.escapedMountain ? `<p>${esc(main)}</p>` : ''}
+      ${!gs.player.escapedMountain ? `<p>${esc(main.text)}</p>${renderGoalShortcut(gs, main)}` : ''}
       ${latestMain ? `<p class="muted">最近的主线进展 · ${esc(latestMain.title)}</p>` : ''}
     </section>
     <section class="card">
@@ -4691,10 +4787,14 @@ function dismissModal(ui) {
 
 
 
+
 function updateLiveDisplay(ui) {
   const p = ui.game.player;
   const need = minorXpNeed(p);
+  const next = ui.tab === 'cultivation' ? nextRealmRequirements(p) : null;
   const labels = {
+    'cultivation-xp': `${Math.floor(p.xp)} / ${next?.xp}`,
+    'cultivation-zy': `${Math.floor(p.zy)} / ${next?.zy}`,
     clock: formatDateTime(ui.game.minutes),
     hp: `${Math.round(p.hp)}/${p.hpMax}`,
     zy: `${Math.round(p.zy)}/${p.zyMax}`,
@@ -4832,7 +4932,7 @@ function handleAction(ui, el, { render, showToast }) {
   } else if (act === 'kaiqiaoFinish') {
     ui.game = createNewGame(ui.start.name, ui.start.apt);
     ui.start.phase = 'intro';
-    ui.tab = 'place';
+    ui.tab = 'cultivation';
     saveGame(ui.game);
     render();
   } else if (act === 'continueSave') {
@@ -4862,6 +4962,7 @@ function handleAction(ui, el, { render, showToast }) {
     const res = moveToPlace(ui.game, id);
     if (!res.ok) showToast(res.reason);
     else if (ui.game.location === id) {
+      ui.tab = 'place';
       ui.modal = hasPlaceActions(ui.game) ? { kind: 'place' } : null;
       const sheet = document.getElementById('sheet');
       if (sheet) sheet.scrollTop = 0;
@@ -4869,7 +4970,10 @@ function handleAction(ui, el, { render, showToast }) {
     saveGame(ui.game);
     render();
   } else if (act === 'openPlace') {
-    if (ui.game && !ui.game.battle && !ui.game.player.dead && hasPlaceActions(ui.game)) openModal('place');
+    if (ui.game && !ui.game.battle && !ui.game.player.dead && hasPlaceActions(ui.game)) {
+      ui.tab = 'place';
+      openModal('place');
+    }
   } else if (act === 'placeAct') {
     handlePlaceAction(ui, id, { openModal, render, showToast });
   } else if (act === 'quest') {
@@ -4901,6 +5005,7 @@ function handleAction(ui, el, { render, showToast }) {
   } else if (act === 'refineBenming') {
     const res = refineBenming(ui.game);
     if (!res.ok) { showToast(res.reason); return; }
+    ui.tab = 'cultivation';
     saveGame(ui.game);
     render();
   } else if (act === 'chooseEvent') {
@@ -5080,6 +5185,8 @@ function handleAction(ui, el, { render, showToast }) {
 
 
 
+
+
 const ui = { game: loadGame(), tab: 'place', modal: null, start: createStartState() };
 
 function showToast(msg) {
@@ -5091,7 +5198,7 @@ function showToast(msg) {
   showToast._t = setTimeout(() => el.classList.remove('show'), 2200);
 }
 
-function renderTopBar() {
+function renderTopBar(goal) {
   const p = ui.game.player;
   const hpPct = Math.round(p.hp / Math.max(1, p.hpMax) * 100);
   const zyPct = Math.round(p.zy / Math.max(1, p.zyMax) * 100);
@@ -5109,7 +5216,7 @@ function renderTopBar() {
         <button class="sm ghost" data-action="togglePause">${ui.game.paused ? '▶ 继续流逝' : '⏸ 暂停'}</button>
       </div>
     </div>
-    <div class="goal-bar"><span>目标</span>${esc(ui.game.goal)}</div>
+    <div class="goal-bar"><span>目标</span><div>${esc(goal.text)}</div>${ui.tab === 'cultivation' ? '' : renderGoalShortcut(ui.game, goal)}</div>
     <div class="res-row">
       <div class="res-item"><div class="res-head"><span>气血${ui.game.battle?.meShield ? ` · 盾 ${ui.game.battle.meShield}` : ''}</span><span data-live="hp">${Math.round(p.hp)}/${p.hpMax}</span></div><div class="bar hp"><i data-live="hp-bar" style="width:${hpPct}%"></i></div></div>
       <div class="res-item"><div class="res-head"><span>真元</span><span data-live="zy">${Math.round(p.zy)}/${p.zyMax}</span></div><div class="bar zy"><i data-live="zy-bar" style="width:${zyPct}%"></i></div></div>
@@ -5127,11 +5234,14 @@ function render() {
     return;
   }
 
+  const goal = mainGrowthGoal(ui.game);
   let body = '';
   if (ui.game.battle) {
     body = renderBattleView(ui.game);
   } else if (ui.tab === 'place') {
     body = renderMapPanel(ui.game);
+  } else if (ui.tab === 'cultivation') {
+    body = renderCultivationView(ui.game, goal);
   } else if (ui.tab === 'aperture') {
     body = renderApertureView(ui.game);
   } else if (ui.tab === 'refine') {
@@ -5141,12 +5251,12 @@ function render() {
   }
 
   const navButtons = [
-    ['place', '地图'], ['aperture', '空窍'],
+    ['place', '地图'], ['cultivation', '修行'], ['aperture', '空窍'],
     ['refine', '炼蛊'], ['bag', '行囊'], ['journal', '行纪']
   ].map(([id, label]) => `<button class="${ui.tab === id ? 'on' : ''}" data-action="navTab" data-tab="${id}">${label}</button>`).join('');
 
   app.innerHTML = `<div class="shell">
-    ${renderTopBar()}
+    ${renderTopBar(goal)}
     <main class="main">${body}</main>
     <nav class="nav">${navButtons}</nav>
   </div>`;

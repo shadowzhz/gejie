@@ -1,3 +1,5 @@
+import { mainGrowthGoal } from '../core/growth-guide.js';
+import { renderGoalShortcut } from './cultivation-view.js';
 import { STORY_CHARACTERS } from '../data/characters.js';
 import { STORY_EVENTS, STORY_QUESTS, STORY_QUEST_STAGES } from '../data/story.js';
 import { formatDateTime } from '../core/calendar.js';
@@ -129,8 +131,7 @@ function renderStoryJournal(gs) {
   events.reverse().sort((a, b) => (history[b.id]?.minute ?? -1) - (history[a.id]?.minute ?? -1));
   const latestMain = events.find((event) => !event.quest && !event.person && !event.ambient);
   const chapter = gs.player.escapedMountain ? '卷一已结束' : '卷一 · 青茅山';
-  const main = gs.flags.qingmao_finished && !gs.player.escapedMountain
-    ? '从青茅寨门离开青茅山' : gs.goal;
+  const main = mainGrowthGoal(gs);
   const records = events
     .map((event) => {
       const entry = history[event.id];
@@ -169,7 +170,7 @@ function renderStoryJournal(gs) {
   if (gs.flags['clue:huajiu']) clueList.push('<li><b>花酒行者的旧事</b> · 从血蝠洞沿下游走，水帘后有暗涧遗洞。</li>');
   return `<section class="card">
       <h3>主线 · ${chapter}</h3>
-      ${!gs.player.escapedMountain ? `<p>${esc(main)}</p>` : ''}
+      ${!gs.player.escapedMountain ? `<p>${esc(main.text)}</p>${renderGoalShortcut(gs, main)}` : ''}
       ${latestMain ? `<p class="muted">最近的主线进展 · ${esc(latestMain.title)}</p>` : ''}
     </section>
     <section class="card">
