@@ -1,4 +1,5 @@
-import { fieldTrialStatus } from './field-trial.js';
+import { nextRealmRequirements } from './breakthrough.js';
+import { fieldRecommendation, fieldTrialStatus } from './field-trial.js';
 import { STORY_EVENTS } from '../data/story.js';
 import { formatDateTime, parseTimeExpr } from './calendar.js';
 import { evalCond } from './story-engine.js';
@@ -17,7 +18,7 @@ const milestones = [
   return { id, title: event.title, date, hint };
 });
 
-export function mainGrowthGoal(gs) {
+export function mainStoryGoal(gs) {
   const { flags, player: p, minutes, pendingEventId } = gs;
   if (p.escapedMountain) return { text: '已走出青茅山' };
   if (pendingEventId) {
@@ -26,18 +27,13 @@ export function mainGrowthGoal(gs) {
   }
   if (flags.qingmao_finished) return { text: '从青茅寨门离开青茅山', place: 'zhaimen' };
   if (!p.benming) {
-    if (p.unrefinedBenming) return { text: '消耗真元，炼化本命蛊', tab: 'cultivation' };
+    if (p.unrefinedBenming) return { text: '消耗真元，炼化本命蛊', tab: 'cultivation', refineBenming: true };
     return { text: '到学堂的蛊室领取本命蛊', place: 'xuetang' };
   }
   if (!flags['event_done:toumin_win'] && evalCond({ ...gs, location: 'xuetang' }, submission.cond)) {
     return { text: '三月三日前回学堂向家老交卷', place: 'xuetang' };
   }
   if (!flags.practiced) return { text: '到演武场与草人傀儡对练，开启出寨历练', place: 'yanwu' };
-  const trial = fieldTrialStatus(gs);
-  if (trial?.active && (!trial.repeat || trial.ready)) {
-    if (trial.ready) return { text: `${trial.title}已完成，回任务堂交付并选择奖励`, place: 'renwutang' };
-    return { text: `${trial.title} · ${trial.next.text}`, place: 'zhulin' };
-  }
   if (flags['clue:huajiu'] && !flags['looted:huajiu'] && !flags.langchao_seen) {
     return { text: '探索暗涧遗洞，搜寻花酒行者遗藏', place: 'huajiu' };
   }
@@ -47,4 +43,25 @@ export function mainGrowthGoal(gs) {
     return { text: `${next.title}${when}。 ${next.hint}`, place: 'zhulou' };
   }
   return { text: gs.goal };
+}
+
+export function mainGrowthGoal(gs) {
+  const { player, flags, pendingEventId } = gs;
+  if (player.escapedMountain || pendingEventId || flags.qingmao_finished) return mainStoryGoal(gs);
+
+  const trial = fieldTrialStatus(gs);
+  if (trial?.active && !trial.repeat && !trial.ready) {
+    return { text: `${trial.title} · ${trial.next.text}`, place: 'zhulin' };
+  }
+  if (trial?.ready) {
+    return { text: `${trial.title}已完成，回任务堂交付并选择奖励`, place: 'renwutang' };
+  }
+  if (!player.benming || !flags.practiced) return mainStoryGoal(gs);
+
+  const next = nextRealmRequirements(player);
+  if (next) {
+    const requirements = [next.gu.text, ...(next.major ? [] : [`修为 ${next.xp}`]), `真元 ${next.zy}`];
+    return { text: `突破至${next.target} · ${requirements.join(' · ')}`, tab: 'cultivation' };
+  }
+  return fieldRecommendation(gs) ?? { text: '自由活动' };
 }

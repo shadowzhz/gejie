@@ -2388,9 +2388,9 @@ const fieldTrialSteps = [
 ];
 
 const fieldRewards = [
-  { id: 'stones', stones: [18, 9] },
-  { id: 'healing', stones: [6, 3], item: 'zhixuegao', count: [3, 1] },
-  { id: 'food', stones: [6, 3], item: 'yuelanhua', count: [12, 6] }
+  { id: 'stones', stones: [18, 3] },
+  { id: 'healing', stones: [6, 1], item: 'zhixuegao', count: [3, 1] },
+  { id: 'food', stones: [6, 1], item: 'yuelanhua', count: [12, 3] }
 ];
 function fieldTrialStatus(gs) {
   const p = gs.player;
@@ -3757,17 +3757,15 @@ function performPlaceAction(gs, id) {
     return { ok: true, message };
   } else if (id.startsWith('fieldReward:') || id === 'fieldPatrol') {
     return settleFieldTrial(gs, id === 'fieldPatrol' ? id : id.slice('fieldReward:'.length));
-  } else if (id === 'exploreFight') {
+  } else if (id === 'exploreFight' || id === 'exploreBoss') {
     const place = PLACES[gs.location];
+    const boss = id === 'exploreBoss';
+    const enemy = boss ? place.bossEnemy : place.exploreEnemy;
     advanceMinutes(gs, 60);
-    if (!gs.pendingEventId && place.exploreEnemy) {
-      const battle = startBattle(gs, place.exploreEnemy, `${place.name}遭遇`);
+    if (!gs.pendingEventId && enemy) {
+      const battle = startBattle(gs, enemy, boss ? `讨伐${place.name}` : `${place.name}遭遇`);
       if (battle && place.id === 'zhulin' && fieldTrialStatus(gs)?.steps[0].done) battle.scouted = true;
     }
-  } else if (id === 'exploreBoss') {
-    const place = PLACES[gs.location];
-    advanceMinutes(gs, 60);
-    if (!gs.pendingEventId && place.bossEnemy) startBattle(gs, place.bossEnemy, `讨伐${place.name}`);
   } else if (id === 'gather' || id === 'gatherPetals') {
     const place = PLACES[gs.location];
     const petals = id === 'gatherPetals';
@@ -3819,6 +3817,7 @@ function performPlaceAction(gs, id) {
 
 
 
+
 const submission = STORY_EVENTS.find(({ id }) => id === 'toumin_win');
 const milestones = [
   ['nianmo_exam', '先修行与历练，为年末大考做准备。'],
@@ -3832,7 +3831,7 @@ const milestones = [
   const date = parseTimeExpr(event.cond.split('&')[0].slice('after:'.length));
   return { id, title: event.title, date, hint };
 });
-function mainGrowthGoal(gs) {
+function mainStoryGoal(gs) {
   const { flags, player: p, minutes, pendingEventId } = gs;
   if (p.escapedMountain) return { text: '已走出青茅山' };
   if (pendingEventId) {
@@ -3841,18 +3840,13 @@ function mainGrowthGoal(gs) {
   }
   if (flags.qingmao_finished) return { text: '从青茅寨门离开青茅山', place: 'zhaimen' };
   if (!p.benming) {
-    if (p.unrefinedBenming) return { text: '消耗真元，炼化本命蛊', tab: 'cultivation' };
+    if (p.unrefinedBenming) return { text: '消耗真元，炼化本命蛊', tab: 'cultivation', refineBenming: true };
     return { text: '到学堂的蛊室领取本命蛊', place: 'xuetang' };
   }
   if (!flags['event_done:toumin_win'] && evalCond({ ...gs, location: 'xuetang' }, submission.cond)) {
     return { text: '三月三日前回学堂向家老交卷', place: 'xuetang' };
   }
   if (!flags.practiced) return { text: '到演武场与草人傀儡对练，开启出寨历练', place: 'yanwu' };
-  const trial = fieldTrialStatus(gs);
-  if (trial?.active && (!trial.repeat || trial.ready)) {
-    if (trial.ready) return { text: `${trial.title}已完成，回任务堂交付并选择奖励`, place: 'renwutang' };
-    return { text: `${trial.title} · ${trial.next.text}`, place: 'zhulin' };
-  }
   if (flags['clue:huajiu'] && !flags['looted:huajiu'] && !flags.langchao_seen) {
     return { text: '探索暗涧遗洞，搜寻花酒行者遗藏', place: 'huajiu' };
   }
@@ -3862,6 +3856,26 @@ function mainGrowthGoal(gs) {
     return { text: `${next.title}${when}。 ${next.hint}`, place: 'zhulou' };
   }
   return { text: gs.goal };
+}
+function mainGrowthGoal(gs) {
+  const { player, flags, pendingEventId } = gs;
+  if (player.escapedMountain || pendingEventId || flags.qingmao_finished) return mainStoryGoal(gs);
+
+  const trial = fieldTrialStatus(gs);
+  if (trial?.active && !trial.repeat && !trial.ready) {
+    return { text: `${trial.title} · ${trial.next.text}`, place: 'zhulin' };
+  }
+  if (trial?.ready) {
+    return { text: `${trial.title}已完成，回任务堂交付并选择奖励`, place: 'renwutang' };
+  }
+  if (!player.benming || !flags.practiced) return mainStoryGoal(gs);
+
+  const next = nextRealmRequirements(player);
+  if (next) {
+    const requirements = [next.gu.text, ...(next.major ? [] : [`修为 ${next.xp}`]), `真元 ${next.zy}`];
+    return { text: `突破至${next.target} · ${requirements.join(' · ')}`, tab: 'cultivation' };
+  }
+  return fieldRecommendation(gs) ?? { text: '自由活动' };
 }
 
 
@@ -3879,7 +3893,6 @@ function renderGoalShortcut(gs, goal) {
 function renderCultivationView(gs, goal) {
   const p = gs.player;
   const next = nextRealmRequirements(p);
-  const recommendation = fieldRecommendation(gs);
   const requirements = next ? `
     <h3>下一境界 · ${esc(next.target)}</h3>
     <div class="kv"><span>蛊虫</span><b>${esc(next.gu.text)}</b></div>
@@ -3895,15 +3908,11 @@ function renderCultivationView(gs, goal) {
   return `<section class="card">
       <h2>修行</h2>
       <p class="muted">当前境界 · ${esc(realmText(p))}</p>
-      <h3>主线目标</h3>
+      <h3>成长引导</h3>
       <p>${esc(goal.text)}</p>
-      ${goal.tab === 'cultivation' ? `<button class="primary" data-action="refineBenming">炼化本命蛊 · ${BENMING_ZY_COST} 真元</button>` : renderGoalShortcut(gs, goal)}
+      ${goal.refineBenming ? `<button class="primary" data-action="refineBenming">炼化本命蛊 · ${BENMING_ZY_COST} 真元</button>` : goal.tab ? '' : renderGoalShortcut(gs, goal)}
       ${gs.flags.toumin_won ? '<p class="muted">已夺得学堂头名。</p>' : gs.flags['event_done:toumin_lost'] ? '<p class="muted">学堂头名已旁落，仍可继续修行。</p>' : ''}
     </section>
-    ${recommendation ? `<section class="card">
-      <h3>推荐历练</h3><p>${esc(recommendation.text)}</p>
-      ${renderGoalShortcut(gs, recommendation)}
-    </section>` : ''}
     <section class="card">${requirements}</section>`;
 }
 
@@ -4721,7 +4730,8 @@ function renderStoryJournal(gs) {
   events.reverse().sort((a, b) => (history[b.id]?.minute ?? -1) - (history[a.id]?.minute ?? -1));
   const latestMain = events.find((event) => !event.quest && !event.person && !event.ambient);
   const chapter = gs.player.escapedMountain ? '卷一已结束' : '卷一 · 青茅山';
-  const main = mainGrowthGoal(gs);
+  const guide = mainGrowthGoal(gs);
+  const main = mainStoryGoal(gs);
   const records = events
     .map((event) => {
       const entry = history[event.id];
@@ -4759,8 +4769,12 @@ function renderStoryJournal(gs) {
   }).join('');
   if (gs.flags['clue:huajiu']) clueList.push('<li><b>花酒行者的旧事</b> · 从血蝠洞沿下游走，水帘后有暗涧遗洞。</li>');
   return `<section class="card">
+      <h3>成长引导</h3>
+      <p>${esc(guide.text)}</p>${renderGoalShortcut(gs, guide)}
+    </section>
+    <section class="card">
       <h3>主线 · ${chapter}</h3>
-      ${!gs.player.escapedMountain ? `<p>${esc(main.text)}</p>${renderGoalShortcut(gs, main)}` : ''}
+      ${!gs.player.escapedMountain && main.text !== guide.text ? `<p>${esc(main.text)}</p>${renderGoalShortcut(gs, main)}` : ''}
       ${latestMain ? `<p class="muted">最近的主线进展 · ${esc(latestMain.title)}</p>` : ''}
     </section>
     <section class="card">
@@ -4965,16 +4979,15 @@ function startGameLoop(ui, render) {
     if (!ui.game || ui.game.paused || ui.game.player.dead || ui.game.battle || ui.game.pendingEventId || ui.modal) return;
     const day = Math.floor(ui.game.minutes / MIN_PER_DAY);
     const hallOpen = ui.game.flags['open:jiazhuge'];
-    const inCultivation = ui.tab === 'cultivation';
-    const recommendation = inCultivation ? fieldRecommendation(ui.game)?.text : undefined;
+    const goal = mainGrowthGoal(ui.game).text;
     advanceMinutes(ui.game, 15);
-    const recommendationChanged = inCultivation && recommendation !== fieldRecommendation(ui.game)?.text;
+    const goalChanged = goal !== mainGrowthGoal(ui.game).text;
     if (ui.game.pendingEventId) saveGame(ui.game);
     if (ui.game.player.dead) {
       setModal(ui, 'dead', {});
       render();
     } else if (ui.game.battle || ui.game.pendingEventId || day !== Math.floor(ui.game.minutes / MIN_PER_DAY)
-      || recommendationChanged || hallOpen !== ui.game.flags['open:jiazhuge']) render();
+      || goalChanged || hallOpen !== ui.game.flags['open:jiazhuge']) render();
     else updateLiveDisplay(ui);
   }, 1000);
 }

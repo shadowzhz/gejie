@@ -8,9 +8,9 @@ const fieldTrialSteps = [
 ];
 
 const fieldRewards = [
-  { id: 'stones', stones: [18, 9] },
-  { id: 'healing', stones: [6, 3], item: 'zhixuegao', count: [3, 1] },
-  { id: 'food', stones: [6, 3], item: 'yuelanhua', count: [12, 6] }
+  { id: 'stones', stones: [18, 3] },
+  { id: 'healing', stones: [6, 1], item: 'zhixuegao', count: [3, 1] },
+  { id: 'food', stones: [6, 1], item: 'yuelanhua', count: [12, 3] }
 ];
 
 export function fieldTrialStatus(gs) {

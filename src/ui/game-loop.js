@@ -1,4 +1,4 @@
-import { fieldRecommendation } from '../core/field-trial.js';
+import { mainGrowthGoal } from '../core/growth-guide.js';
 import { formatDateTime, isNight, MIN_PER_DAY } from '../core/calendar.js';
 import { minorXpNeed, saveGame } from '../core/state.js';
 import { nextRealmRequirements } from '../core/breakthrough.js';
@@ -36,16 +36,15 @@ export function startGameLoop(ui, render) {
     if (!ui.game || ui.game.paused || ui.game.player.dead || ui.game.battle || ui.game.pendingEventId || ui.modal) return;
     const day = Math.floor(ui.game.minutes / MIN_PER_DAY);
     const hallOpen = ui.game.flags['open:jiazhuge'];
-    const inCultivation = ui.tab === 'cultivation';
-    const recommendation = inCultivation ? fieldRecommendation(ui.game)?.text : undefined;
+    const goal = mainGrowthGoal(ui.game).text;
     advanceMinutes(ui.game, 15);
-    const recommendationChanged = inCultivation && recommendation !== fieldRecommendation(ui.game)?.text;
+    const goalChanged = goal !== mainGrowthGoal(ui.game).text;
     if (ui.game.pendingEventId) saveGame(ui.game);
     if (ui.game.player.dead) {
       setModal(ui, 'dead', {});
       render();
     } else if (ui.game.battle || ui.game.pendingEventId || day !== Math.floor(ui.game.minutes / MIN_PER_DAY)
-      || recommendationChanged || hallOpen !== ui.game.flags['open:jiazhuge']) render();
+      || goalChanged || hallOpen !== ui.game.flags['open:jiazhuge']) render();
     else updateLiveDisplay(ui);
   }, 1000);
 }

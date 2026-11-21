@@ -1546,7 +1546,13 @@ test('首次出寨试炼和重复巡守串起竹林行动、跨存档交付与�
   assert.equal(mainGrowthGoal(gs).place, 'zhulin');
   assert.ok(moveToPlace(gs, 'zhulin').ok);
   assert.match(renderPlaceView(gs), /勘察兽径/);
+  const unscoutedBoss = structuredClone(gs);
+  assert.ok(performPlaceAction(unscoutedBoss, 'exploreBoss').ok);
+  assert.equal(unscoutedBoss.battle.scouted, false);
   assert.ok(performPlaceAction(gs, 'fieldScout').ok);
+  const scoutedBoss = structuredClone(gs);
+  assert.ok(performPlaceAction(scoutedBoss, 'exploreBoss').ok);
+  assert.equal(scoutedBoss.battle.scouted, true);
   const petals = gs.player.items.yuelanhua;
   assert.ok(performPlaceAction(gs, 'gatherPetals').ok);
   assert.equal(gs.player.items.yuelanhua, petals + 2);
@@ -1598,8 +1604,11 @@ test('首次出寨试炼和重复巡守串起竹林行动、跨存档交付与�
   finishStoryBattle(gs);
   assert.ok(moveToPlace(gs, 'renwutang').ok);
   const food = gs.player.items.yuelanhua;
+  const patrolStones = gs.player.yuanshi;
+  assert.match(renderPlaceView(gs), /3 元石/);
   assert.ok(performPlaceAction(gs, 'fieldReward:food').ok);
-  assert.equal(gs.player.items.yuelanhua, food + 6);
+  assert.equal(gs.player.items.yuelanhua, food + 3);
+  assert.equal(gs.player.yuanshi, patrolStones + 1);
 });
 
 test('历练推荐照顾受伤玩家，并随境界和区域解锁切换', () => {
@@ -1617,4 +1626,31 @@ test('历练推荐照顾受伤玩家，并随境界和区域解锁切换', () =>
   assert.equal(fieldRecommendation(gs).place, 'zhulin');
   p.hp = 1;
   assert.equal(fieldRecommendation(gs).place, 'zhulou');
+});
+
+test('修行和行纪按同一优先级引导试炼、交付、突破与探索', () => {
+  const gs = createNewGame();
+  applyEventChoice(gs, 'kaike', 0);
+  const p = gs.player;
+  p.benming = addGu(gs, 'yueguang').uid;
+  gs.flags.practiced = true;
+
+  function assertGuide(expected) {
+    const goal = mainGrowthGoal(gs);
+    assert.match(goal.text, expected);
+    assert.match(renderCultivationView(gs, goal), new RegExp(`<h3>成长引导</h3>\\s*<p>${goal.text}</p>`));
+    assert.match(renderBagView(gs, 'journal'), new RegExp(`<h3>成长引导</h3>\\s*<p>${goal.text}</p>`));
+  }
+
+  assertGuide(/首次出寨试炼 · 勘察/);
+  p.fieldTrial = { scouted: true, gathered: true, won: true };
+  assertGuide(/首次出寨试炼已完成，回任务堂/);
+  p.fieldTrial = { firstClaimed: true, active: true };
+  assertGuide(/突破至一转中阶/);
+  Object.assign(p.fieldTrial, { scouted: true, gathered: true, won: true });
+  assertGuide(/竹林巡守已完成，回任务堂/);
+  p.fieldTrial = { firstClaimed: true };
+  p.rank = 4;
+  p.xiao = 3;
+  assertGuide(/血蝠洞/);
 });

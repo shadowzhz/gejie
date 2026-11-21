@@ -75,17 +75,15 @@ export function performPlaceAction(gs, id) {
     return { ok: true, message };
   } else if (id.startsWith('fieldReward:') || id === 'fieldPatrol') {
     return settleFieldTrial(gs, id === 'fieldPatrol' ? id : id.slice('fieldReward:'.length));
-  } else if (id === 'exploreFight') {
+  } else if (id === 'exploreFight' || id === 'exploreBoss') {
     const place = PLACES[gs.location];
+    const boss = id === 'exploreBoss';
+    const enemy = boss ? place.bossEnemy : place.exploreEnemy;
     advanceMinutes(gs, 60);
-    if (!gs.pendingEventId && place.exploreEnemy) {
-      const battle = startBattle(gs, place.exploreEnemy, `${place.name}遭遇`);
+    if (!gs.pendingEventId && enemy) {
+      const battle = startBattle(gs, enemy, boss ? `讨伐${place.name}` : `${place.name}遭遇`);
       if (battle && place.id === 'zhulin' && fieldTrialStatus(gs)?.steps[0].done) battle.scouted = true;
     }
-  } else if (id === 'exploreBoss') {
-    const place = PLACES[gs.location];
-    advanceMinutes(gs, 60);
-    if (!gs.pendingEventId && place.bossEnemy) startBattle(gs, place.bossEnemy, `讨伐${place.name}`);
   } else if (id === 'gather' || id === 'gatherPetals') {
     const place = PLACES[gs.location];
     const petals = id === 'gatherPetals';

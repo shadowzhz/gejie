@@ -1,4 +1,3 @@
-import { fieldRecommendation } from '../core/field-trial.js';
 import { formatDuration } from '../core/calendar.js';
 import { PLACES } from '../data/places.js';
 import { nextRealmRequirements } from '../core/breakthrough.js';
@@ -19,7 +18,6 @@ export function renderGoalShortcut(gs, goal) {
 export function renderCultivationView(gs, goal) {
   const p = gs.player;
   const next = nextRealmRequirements(p);
-  const recommendation = fieldRecommendation(gs);
   const requirements = next ? `
     <h3>下一境界 · ${esc(next.target)}</h3>
     <div class="kv"><span>蛊虫</span><b>${esc(next.gu.text)}</b></div>
@@ -35,14 +33,10 @@ export function renderCultivationView(gs, goal) {
   return `<section class="card">
       <h2>修行</h2>
       <p class="muted">当前境界 · ${esc(realmText(p))}</p>
-      <h3>主线目标</h3>
+      <h3>成长引导</h3>
       <p>${esc(goal.text)}</p>
-      ${goal.tab === 'cultivation' ? `<button class="primary" data-action="refineBenming">炼化本命蛊 · ${BENMING_ZY_COST} 真元</button>` : renderGoalShortcut(gs, goal)}
+      ${goal.refineBenming ? `<button class="primary" data-action="refineBenming">炼化本命蛊 · ${BENMING_ZY_COST} 真元</button>` : goal.tab ? '' : renderGoalShortcut(gs, goal)}
       ${gs.flags.toumin_won ? '<p class="muted">已夺得学堂头名。</p>' : gs.flags['event_done:toumin_lost'] ? '<p class="muted">学堂头名已旁落，仍可继续修行。</p>' : ''}
     </section>
-    ${recommendation ? `<section class="card">
-      <h3>推荐历练</h3><p>${esc(recommendation.text)}</p>
-      ${renderGoalShortcut(gs, recommendation)}
-    </section>` : ''}
     <section class="card">${requirements}</section>`;
 }
